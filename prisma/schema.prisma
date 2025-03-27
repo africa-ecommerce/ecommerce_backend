@@ -1,0 +1,471 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+
+// model User {
+//   id                 String   @id @default(uuid())
+//   name               String
+//   email              String   @unique
+//   password           String
+//   isVerified         Boolean  @default(false)
+//   verificationToken  String?
+//   tokenExpires       DateTime?
+//   createdAt          DateTime @default(now())
+//   updatedAt          DateTime @updatedAt
+// }
+
+// model Merchant {
+//   id        String    @id @default(uuid())
+//   // name      String
+//   // email     String    @unique
+//   phone     String    @unique // whatsapp number
+//   // password  String
+//   createdAt DateTime  @default(now())
+//   updatedAt DateTime  @updatedAt
+//   location  Json? // { lat, lng, address }
+//   // media     Media[]
+//   // -------
+//   products  Product[]
+//   orders    Order[]
+//   userId    String
+
+//   businessName String
+//   tier         Tier    @default(FREE)
+//   qrCode       String?
+//   user         User    @relation(fields: [userId], references: [id])
+// }
+
+// enum Tier {
+//   FREE
+//   PREMIUM
+//   BUSINESS
+// }
+
+// enum Category {
+//   fashion
+// }
+
+// model Customer {
+//   id        String   @id @default(uuid())
+//   name      String
+//   email     String   @unique
+//   phone     String?
+//   address   String? // Delivery address
+//   createdAt DateTime @default(now())
+//   orders    Order[]
+// }
+
+// model Product {
+//   id          String    @id @default(uuid())
+//   title       String
+//   description String?
+//   price       Float
+//   inventory   Int
+//   merchantId  String
+//   localUnit   String? // e.g., "derica" for rice
+//   variations  Json? // { sizes: [], colors: [] }
+//   category    Category? @relation(fields: [categoryId], references: [id])
+//   categoryId  String?
+//   createdAt   DateTime  @default(now())
+//   updatedAt   DateTime  @updatedAt
+
+//   merchant   Merchant    @relation(fields: [merchantId], references: [id])
+//   orderItems OrderItem[]
+// }
+
+// enum OrderStatus {
+//   PENDING
+//   CONFIRMED
+//   SHIPPED
+//   DELIVERED
+//   CANCELLED
+// }
+
+// enum QRType {
+//   STORE
+//   PRODUCT
+//   PROMOTION
+// }
+
+// model Order {
+//   id         String      @id @default(uuid())
+//   merchantId String
+//   customer   Customer?   @relation(fields: [customerId], references: [id])
+//   customerId String?
+//   status     OrderStatus @default(PENDING)
+//   total      Float
+//   createdAt  DateTime    @default(now())
+//   updatedAt  DateTime    @updatedAt
+//   items      OrderItem[]
+//   paymentId  String?
+//   merchant   Merchant    @relation(fields: [merchantId], references: [id])
+// }
+
+// model OrderItem {
+//   id        String   @id @default(uuid())
+//   orderId   String
+//   productId String
+//   quantity  Int
+//   price     Float
+//   createdAt DateTime @default(now())
+
+//   order   Order   @relation(fields: [orderId], references: [id])
+//   product Product @relation(fields: [productId], references: [id])
+// }
+
+// enum SubscriptionTier {
+//   FREE
+//   PREMIUM
+//   BUSINESS
+// }
+
+// enum SubscriptionStatus {
+//   ACTIVE
+//   CANCELLED
+//   EXPIRED
+// }
+
+// model Subscription {
+//   id         String             @id @default(uuid())
+//   merchantId String
+//   tier       SubscriptionTier
+//   startDate  DateTime           @default(now())
+//   endDate    DateTime
+//   status     SubscriptionStatus @default(ACTIVE)
+//   merchant   Merchant           @relation(fields: [merchantId], references: [id])
+// }
+
+// // prisma/schema.prisma
+
+// // ... existing models (Merchant, Product, etc.)
+
+// model Website {
+//   id          String   @id @default(uuid())
+//   merchantId  String   @unique // One website per merchant
+//   subdomain   String   @unique // e.g., merchantname.africonnect.com
+//   title       String
+//   tagline     String?
+//   content     String? // JSON or Markdown content, as needed
+//   theme       String // Selected template/theme identifier
+//   buildStatus String   @default("pending") // pending, building, success, error
+//   updatedAt   DateTime @updatedAt
+
+//   merchant Merchant @relation(fields: [merchantId], references: [id])
+// }
+
+// model WhatsAppMessage {
+//   id         String   @id @default(uuid())
+//   merchantId String
+//   sender     String // Phone number or sender identifier
+//   content    String // Text message content (or a URL to media if applicable)
+//   mediaUrl   String? // Optional URL if the message includes media
+//   createdAt  DateTime @default(now())
+
+//   merchant Merchant @relation(fields: [merchantId], references: [id])
+// }
+
+// model QRCode {
+//   id         String   @id @default(uuid())
+//   type       QRType   @default(STORE)
+//   targetId   String // Product/Merchant ID
+//   merchant   Merchant @relation(fields: [merchantId], references: [id])
+//   merchantId String
+// }
+
+
+
+
+
+// Unified User Model with Role-Based Access
+
+
+
+
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  password          String
+  phone             String?    @unique
+  name              String
+  role              UserRole  @default(CUSTOMER)
+  emailVerified        Boolean   @default(false)
+  verificationToken String?
+  tokenExpires      DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  refreshToken      String?
+
+  // // Customer Features
+  // addresses Address[]
+  // orders    Order[]    @relation("CustomerOrders")
+  // cart      CartItem[]
+  // reviews   Review[]
+
+  // // Merchant Features
+  // merchantProfile MerchantProfile?
+  // products        Product[]        @relation("MerchantProducts")
+  // receivedOrders  Order[]          @relation("MerchantOrders")
+  // qrCodes         QRCode[]
+  // subscriptions   Subscription[]
+
+  @@index([email, phone])
+}
+
+// // Merchant-Specific Business Details
+// model MerchantProfile {
+//   id           String   @id @default(uuid())
+//   businessName String
+//   description  String?
+//   tier         Tier     @default(FREE)
+//   verified     Boolean  @default(false)
+//   userId       String   @unique
+//   createdAt    DateTime @default(now())
+//   updatedAt    DateTime @updatedAt
+
+//   // Relations
+//   user           User       @relation(fields: [userId], references: [id])
+//   categories     Category[]
+//   storeAddresses Address[]
+// }
+
+// // Product Catalog Management
+// model Product {
+//   id          String   @id @default(uuid())
+//   title       String
+//   description String?
+//   price       Float
+//   inventory   Int      @default(0)
+//   localUnit   String?
+//   variations  Json?
+//   categoryId  String?
+//   merchantId  String
+//   createdAt   DateTime @default(now())
+//   updatedAt   DateTime @updatedAt
+
+//   // Relations
+//   merchant   User        @relation(fields: [merchantId], references: [id], name: "MerchantProducts")
+//   category   Category?   @relation(fields: [categoryId], references: [id])
+//   media      Media[]
+//   orderItems OrderItem[]
+// }
+
+// // Order Management System
+// model Order {
+//   id         String      @id @default(uuid())
+//   total      Float
+//   status     OrderStatus @default(PENDING)
+//   customerId String
+//   merchantId String
+//   paymentId  String?
+//   createdAt  DateTime    @default(now())
+//   updatedAt  DateTime    @updatedAt
+
+//   // Relations
+//   customer        User        @relation(fields: [customerId], references: [id], name: "CustomerOrders")
+//   merchant        User        @relation(fields: [merchantId], references: [id], name: "MerchantOrders")
+//   items           OrderItem[]
+//   payment         Payment?    @relation(fields: [paymentId], references: [id])
+//   shippingAddress Address?
+// }
+
+// // Order Line Items
+// model OrderItem {
+//   id        String   @id @default(uuid())
+//   quantity  Int
+//   price     Float
+//   orderId   String
+//   productId String
+//   createdAt DateTime @default(now())
+
+//   // Relations
+//   order   Order   @relation(fields: [orderId], references: [id])
+//   product Product @relation(fields: [productId], references: [id])
+// }
+
+// // Shopping Cart Management
+// model CartItem {
+//   id        String   @id @default(uuid())
+//   quantity  Int      @default(1)
+//   userId    String
+//   productId String
+//   createdAt DateTime @default(now())
+
+//   // Relations
+//   user    User    @relation(fields: [userId], references: [id])
+//   product Product @relation(fields: [productId], references: [id])
+// }
+
+// // Address Management
+// model Address {
+//   id         String      @id @default(uuid())
+//   street     String
+//   city       String
+//   state      String
+//   country    String      @default("Nigeria")
+//   postalCode String?
+//   lat        Float?
+//   lng        Float?
+//   userId     String?
+//   merchantId String?
+//   type       AddressType @default(SHIPPING)
+//   createdAt  DateTime    @default(now())
+
+//   // Relations
+//   user     User? @relation(fields: [userId], references: [id])
+//   merchant User? @relation(fields: [merchantId], references: [id])
+// }
+
+// // Media Management
+// model Media {
+//   id         String    @id @default(uuid())
+//   url        String
+//   type       MediaType @default(IMAGE)
+//   productId  String?
+//   merchantId String?
+//   createdAt  DateTime  @default(now())
+
+//   // Relations
+//   product  Product? @relation(fields: [productId], references: [id])
+//   merchant User?    @relation(fields: [merchantId], references: [id])
+// }
+
+// // QR Code System
+// model QRCode {
+//   id         String    @id @default(uuid())
+//   type       QRType    @default(STORE)
+//   targetId   String
+//   url        String
+//   merchant   User      @relation(fields: [merchantId], references: [id])
+//   merchantId String
+//   scans      Int       @default(0)
+//   expiresAt  DateTime?
+//   createdAt  DateTime  @default(now())
+// }
+
+// // Product Reviews
+// model Review {
+//   id         String   @id @default(uuid())
+//   rating     Int      @range(1, 5)
+//   comment    String?
+//   productId  String
+//   customerId String
+//   createdAt  DateTime @default(now())
+
+//   // Relations
+//   product  Product @relation(fields: [productId], references: [id])
+//   customer User    @relation(fields: [customerId], references: [id])
+// }
+
+// // Payment Processing
+// model Payment {
+//   id            String        @id @default(uuid())
+//   amount        Float
+//   method        PaymentMethod
+//   transactionId String        @unique
+//   status        PaymentStatus @default(PENDING)
+//   createdAt     DateTime      @default(now())
+
+//   // Relations
+//   order Order?
+// }
+
+// // Product Categorization
+// model Category {
+//   id          String     @id @default(uuid())
+//   name        String
+//   slug        String     @unique
+//   parentId    String?
+//   description String?
+//   products    Product[]
+//   merchants   User[]
+//   children    Category[] @relation("CategoryToCategory")
+
+//   // Hierarchy
+//   parent Category? @relation("CategoryToCategory", fields: [parentId], references: [id])
+// }
+
+// // Subscription Management
+// model Subscription {
+//   id         String             @id @default(uuid())
+//   tier       SubscriptionTier
+//   startDate  DateTime           @default(now())
+//   endDate    DateTime
+//   status     SubscriptionStatus @default(ACTIVE)
+//   merchant   User               @relation(fields: [merchantId], references: [id])
+//   merchantId String
+// }
+
+// Enum Definitions
+enum UserRole {
+  CUSTOMER
+  MERCHANT
+  ADMIN
+}
+
+// enum Tier {
+//   FREE
+//   PREMIUM
+//   BUSINESS
+// }
+
+// enum QRType {
+//   STORE
+//   PRODUCT
+//   PROMOTION
+// }
+
+// enum OrderStatus {
+//   DRAFT
+//   PENDING
+//   CONFIRMED
+//   SHIPPED
+//   DELIVERED
+//   CANCELLED
+//   RETURNED
+// }
+
+// enum PaymentMethod {
+//   MOBILE_MONEY
+//   CARD
+//   BANK_TRANSFER
+//   CASH
+//   USSD
+// }
+
+// enum PaymentStatus {
+//   PENDING
+//   COMPLETED
+//   FAILED
+//   REFUNDED
+// }
+
+// enum MediaType {
+//   IMAGE
+//   VIDEO
+//   DOCUMENT
+// }
+
+// enum SubscriptionStatus {
+//   ACTIVE
+//   CANCELLED
+//   EXPIRED
+// }
+
+// enum AddressType {
+//   SHIPPING
+//   BILLING
+//   BUSINESS
+// }
