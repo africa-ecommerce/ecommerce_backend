@@ -112,6 +112,7 @@ app.use("/auth", authRoutes);
 // app.use("/whatsapp-messages", whatsappMessageRoutes);
 // app.use("/affiliates", affiliateRoutes);
 
+
 // Health Check
 app.get("/health", (req, res) => {
   res.json({ message: "AfriConnect API is running" });

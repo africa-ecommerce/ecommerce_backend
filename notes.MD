@@ -1,4 +1,24 @@
 upgrade prisma
-REFRESH TOKEN TIME?
 
-HELMET TIME
+
+REDIS OR SO prod
+
+
+REDIRECT IN CLIENT
+
+ERROR CODE
+ON EVERY LOGIN ROUTE CHECK CALLBACK URL AND PASS TO BACKEND
+
+
+env 
+
+google and whatsapp
+ONBOARDING ONCE AND OTHER TIME DASHBOARD
+
+current user
+
+
+check frontend routes
+
+CALLBACK ERROR
+

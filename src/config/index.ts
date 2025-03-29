@@ -5,8 +5,6 @@ import { createClient } from "redis";
 
 
 dotenv.config();
-
-
 // Explicitly extend globalThis
 declare global {
   var prisma: PrismaClient | undefined;
@@ -22,8 +20,6 @@ if (process.env.NODE_ENV !== "production") {
 
 export const jwtSecret =  process.env.JWT_SECRET || "defaultsecret";
 export const refreshTokenSecret = process.env.REFRESH_SECRET || "defaultsecret";
-
-
 export const  port  = process.env.PORT || 5000;
 
 export const redisClient = createClient({

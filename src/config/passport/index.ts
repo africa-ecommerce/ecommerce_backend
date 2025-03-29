@@ -80,7 +80,6 @@ passport.deserializeUser(async (id: string, done) => {
         id: true,
         email: true,
         name: true,
-        role: true,
         emailVerified: true,
       },
     });
@@ -93,39 +92,41 @@ passport.deserializeUser(async (id: string, done) => {
 
 
 // Google OAuth Strategy
-passport.use(new GoogleStrategy(
-  {
-    clientID: process.env.GOOGLE_CLIENT_ID!,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    callbackURL: "/auth/google/callback",
-  },
-  async (accessToken, refreshToken, profile, done) => {
-    try {
-      // Extract verified email from Google profile
-      const email = profile.emails?.[0].value;
-      if (!email) {
-        return done(new Error("No email provided by Google"));
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      callbackURL: "http://localhost:3000/auth/google/callback",
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        // Extract verified email from Google profile
+        const email = profile.emails?.[0].value;
+        if (!email) {
+          return done(new Error("No email provided by Google"));
+        }
+        // Try to find an existing user
+        let user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+          // Create a new user with email verified set to true
+          user = await prisma.user.create({
+            data: {
+              email,
+              name: profile.displayName,
+              password: "", // Password can be empty or set to null for OAuth users
+              emailVerified: true,
+              // Other fields as needed…
+            },
+          });
+        }
+        return done(null, user);
+      } catch (error) {
+        return done(error as Error);
       }
-      // Try to find an existing user
-      let user = await prisma.user.findUnique({ where: { email } });
-      if (!user) {
-        // Create a new user with email verified set to true
-        user = await prisma.user.create({
-          data: {
-            email,
-            name: profile.displayName,
-            password: "", // Password can be empty or set to null for OAuth users
-            emailVerified: true,
-            // Other fields as needed…
-          },
-        });
-      }
-      return done(null, user);
-    } catch (error) {
-      return done(error as Error);
     }
-  }
-));
+  )
+);
 
 // Facebook OAuth Strategy
 passport.use(new FacebookStrategy(

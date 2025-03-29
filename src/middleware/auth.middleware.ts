@@ -27,7 +27,7 @@ export const authenticateJWT = async (
       const decoded = verifyAccessToken(accessToken);
       const user = await prisma.user.findUnique({
         where: { id: decoded.userId },
-        select: { id: true, email: true, emailVerified: true, role: true },
+        select: { id: true, email: true, emailVerified: true },
       });
 
       if (!user || !user.emailVerified) {
@@ -96,7 +96,7 @@ const refreshAndRetry = async (
       });
 
     // 10. Attach user to request
-    req.user = { id: user.id, email: user.email, role: user.role };
+    req.user = { id: user.id, email: user.email, role: user };
     // Update cookies
     res.locals.newAccessToken = newAccessToken;
     res.locals.newRefreshToken = newRefreshToken;
@@ -110,7 +110,7 @@ const refreshAndRetry = async (
       .clearCookie("accessToken")
       .clearCookie("refreshToken")
       .status(401)
-      .json({ error: "Session expired - please login" });
+      .json({ error: "Session expired - please login!" });
   }
 };
 

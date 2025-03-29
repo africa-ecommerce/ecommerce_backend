@@ -198,15 +198,16 @@ model User {
   id                String    @id @default(uuid())
   email             String    @unique
   password          String
-  phone             String?    @unique
   name              String
-  role              UserRole  @default(CUSTOMER)
+  // role              UserRole  @default(CUSTOMER) ----> RELATE TABLES
   emailVerified        Boolean   @default(false)
   verificationToken String?
   tokenExpires      DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   refreshToken      String?
+  policy     Boolean   @default(false)
+   passwordTokens  PasswordToken[]
 
   // // Customer Features
   // addresses Address[]
@@ -221,7 +222,21 @@ model User {
   // qrCodes         QRCode[]
   // subscriptions   Subscription[]
 
-  @@index([email, phone])
+  @@index([email, name])
+}
+
+
+
+
+model PasswordToken {
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
+  expires DateTime
+   userId    String
+   user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([email, token])
 }
 
 // // Merchant-Specific Business Details
