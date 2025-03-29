@@ -67,10 +67,10 @@ export const verifyEmail = async (req: Request, res: Response) => {
       });
     } else {
       // For login flow: Generate JWT, set it in an HTTP-only cookie, and redirect 
-      if (source && typeof source === "string" && isValidCallbackUrl(source)) {
+      // if (source && typeof source === "string" && isValidCallbackUrl(source)) {
         redirectUrl = source;
-      } else {
-        redirectUrl = "/dashboard";
+      // } else {
+      //   redirectUrl = "/dashboard";
       }
 
       generateJWT(user.id, res);
@@ -78,7 +78,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
         message: "Email verified! Redirecting to dashboard.",
         redirectUrl, 
       });
-    }
+    
   } catch (error: any) {
     console.error("Email verification error:", error);
      res.status(500).json({ error: "Internal server error!" });

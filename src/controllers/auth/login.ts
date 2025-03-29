@@ -31,7 +31,7 @@ export const login = (req: Request, res: Response, next: NextFunction) => {
             typeof callbackUrl === "string" &&
             isValidCallbackUrl(callbackUrl)
               ? callbackUrl
-              : "login";
+              : "/dashboard";
           // Check if the token is still valid; if not, generate a new one
           let tokenToSend = user.verificationToken;
           if (
