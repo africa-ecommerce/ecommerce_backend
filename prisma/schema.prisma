@@ -208,6 +208,7 @@ model User {
   refreshToken      String?
   policy     Boolean   @default(false)
    passwordTokens  PasswordToken[]
+   isOnboarded     Boolean   @default(false)
 
   // // Customer Features
   // addresses Address[]

@@ -91,7 +91,7 @@ export const sendNewPasswordMail = async (req: Request, res: Response) => {
   // For security, always return a success message
   if (!user) {
     res.status(200).json({
-      message: "If that email is registered, a reset link has been sent!",
+      message: "Reset link has been sent to registered email!",
     });
     return;
   }
@@ -113,7 +113,7 @@ export const sendNewPasswordMail = async (req: Request, res: Response) => {
   await sendResetPasswordMail(email, verificationToken);
 
   res.status(200).json({
-    message: "If that email is registered, a reset link has been sent!",
+    message: "Reset link has been sent to registered email!",
   });
 };
 
@@ -141,7 +141,7 @@ export const resendNewPasswordMail = async (req: Request, res: Response) => {
     // Always return the same generic message for security reasons
     if (!user) {
       res.status(200).json({
-        message: "If that email is registered, a reset link has been resent!",
+        message: "Reset link has been resent to registered email!",
       });
       return;
     }
@@ -170,7 +170,7 @@ export const resendNewPasswordMail = async (req: Request, res: Response) => {
     await sendResetPasswordMail(email, passwordToken.token);
 
     res.status(200).json({
-      message: "If that email is registered, a reset link has been resent!",
+      message: "Reset link has been resent to registered email!",
     });
   } catch (error: any) {
     console.error("Resend new password error:", error);

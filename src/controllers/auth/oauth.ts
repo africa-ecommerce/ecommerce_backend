@@ -7,28 +7,22 @@ import { generateTokens, setAuthCookies } from "../../helper/generateJWT";
 export const google = (req: Request, res: Response, next: NextFunction) => {
   const { callbackUrl } = req.query;
 
-   let finalRedirect = "http://localhost:3000/dashboard";
+    const url =
+      callbackUrl &&
+      typeof callbackUrl === "string" &&
+      isValidCallbackUrl(callbackUrl)
+        ? callbackUrl
+        : "/dashboard";
+
+         const decodedCallback = decodeURIComponent(url);
+
+
 
   // Validate and pass callback URL via state
-
-
-   if (
-     callbackUrl &&
-     typeof callbackUrl === "string" &&
-     isValidCallbackUrl(callbackUrl)
-   ) {
-     const decodedCallback = decodeURIComponent(callbackUrl);
-
-     // Check if it's a relative path
-    
-       finalRedirect = `http://localhost:3000${
-         decodedCallback.startsWith("/")
-           ? decodedCallback
-           : `/${decodedCallback}`
-       }`;
-   }
  
-   const state = finalRedirect;
+   const state = `http://localhost:3000${
+     decodedCallback.startsWith("/") ? decodedCallback : `/${decodedCallback}`
+   }`;
 
   passport.authenticate("google", {
     scope: ["profile", "email"],
@@ -38,21 +32,25 @@ export const google = (req: Request, res: Response, next: NextFunction) => {
 
 export const googleCallback = async (req: Request, res: Response) => {
   try {
-    let redirectUrl = "http://localhost:3000/dashboard";
+    let redirectUrl;
 
-    if (req.query.state) {
-      const decodedState = decodeURIComponent(req.query.state as string);
+      const decodedState = req.query.state as string;
 
       // Validate the decoded URL
-        redirectUrl = decodedState;
-    }
+      redirectUrl = decodedState;
 
     if (!req.user) throw new Error("No user found in session");
     const user = req.user as any;
 
+    // ✅ Adjusted: If the user is linking their account for the first time (not onboarded), override redirect URL
+    // Here we assume new users have isOnboarded === false (or undefined) and later you'll update it to true after onboarding.
+    if (!user.isOnboarded) {
+      redirectUrl = "http://localhost:3000/onboarding";
+    }
+
     // Generate tokens and set cookies
-   const tokens = await generateTokens(user.id);
-   setAuthCookies(res, tokens);
+    const tokens = await generateTokens(user.id);
+    setAuthCookies(res, tokens);
 
     res.redirect(redirectUrl);
   } catch (error) {

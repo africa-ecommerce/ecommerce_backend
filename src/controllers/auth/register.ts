@@ -2,14 +2,13 @@ import { Request, Response } from "express";
 import isEmail from "validator/lib/isEmail"; // Using validator library for email validation
 import { prisma } from "../../config";
 import bcrypt from "bcryptjs";
-import { sendVerificationMail } from "../../helper/sendVeriificationMail";
+import { sendVerificationMail } from "../../helper/sendVerificationMail";
 import { v4 as uuidv4 } from "uuid";
-import session from "express-session";
+// import session from "express-session";
 
-
-export interface CustomSession extends session.Session {
-  unverifiedEmail?: string |  null
-}
+// export interface CustomSession extends session.Session {
+//   unverifiedEmail?: string |  null
+// }
 
 function isValidFullName(fullName: string): boolean {
   const nameParts = fullName.trim().split(/\s+/);
@@ -19,7 +18,7 @@ function isValidFullName(fullName: string): boolean {
 export const register = async (req: Request, res: Response) => {
   try {
     // Destructure and validate required fields
-    let { name, email, password, policy } = req.body; //------------> full names? validate on frontend zod, ADJUST POLICY
+    let { name, email, password } = req.body; //------------> full names? validate on frontend zod, ADJUST POLICY
 
     if (!name || !email || !password) {
       res.status(400).json({ error: "All fields are required!" });
@@ -74,23 +73,22 @@ export const register = async (req: Request, res: Response) => {
       },
     });
 
-    
-    const sourceParam = "register";
+    //decode
+    // const sourceParam = "register";
 
     // Send verification email with the source parameter in the verification link.
-    await sendVerificationMail(email, verificationToken, sourceParam);
+    await sendVerificationMail(email, verificationToken);
 
-    // Cast session to your custom type and store the unverified email
-    const customSession = req.session as CustomSession;
+    // // Cast session to your custom type and store the unverified email
+    // const customSession = req.session as CustomSession;
 
-    // Save unverified email in session for later use (secure server-side storage)
-    customSession.unverifiedEmail = email;
+    // // Save unverified email in session for later use (secure server-side storage)
+    // customSession.unverifiedEmail = email;
     res.status(201).json({ message: "Verification email sent!", email });
   } catch (error: any) {
     // Log the error for internal debugging
     console.error("Registration error:", error);
-     res.status(500).json({ error: "Internal server error!" });
-     return;
+    res.status(500).json({ error: "Internal server error!" });
+    return;
   }
 };
-

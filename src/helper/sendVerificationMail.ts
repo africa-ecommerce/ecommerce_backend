@@ -3,16 +3,13 @@ import { mail } from "../lib/mail";
 // Helper function to send a verification email
 export const sendVerificationMail = async (
   email: string,
-  token: string,
-  callbackParam: string // this parameter can be a callback URL or "login" (for default behavior)
+  token: string
 ) => {
   const subject = "Verify Your Email Address";
   // Build the URL with token and source (callback) parameter.
   const url = `${
     process.env.APP_URL
-  }/auth/verify-email?token=${token}&source=${encodeURIComponent(
-    callbackParam
-  )}`;
+  }/auth/verify-email?token=${token}`;
 
   const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #f9f9f9;">
