@@ -21,4 +21,14 @@ current user
 check frontend routes
 
 CALLBACK ERROR
+GOOGLE OAUTH
+POLICY FOR OAUTH
 
+headers in client
+setup upgrades in website
+ 
+ auth error route frontend
+validate policy in backend
+collect oauth callbackurl in frontend
+
+auth token expiry TIME

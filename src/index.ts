@@ -26,7 +26,7 @@ import { dynamicHugoProxy } from "./middleware/hugoProxy.middleware";
 import { RedisStore } from "connect-redis";
 import session from "express-session";
 import { refreshToken } from "./helper/refereshToken";
-import { authenticateJWT } from "./middleware/auth.middleware";
+import  authenticateJWT  from "./middleware/auth.middleware";
 import passport from "./config/passport";
 
 
@@ -70,14 +70,18 @@ app.use(morgan("dev"));
 app.use(
   session({
     store: new RedisStore({ client: redisClient }),
-    secret: process.env.SESSION_SECRET || "yourSecret",
+    secret: process.env.SESSION_SECRET! || "yourSecret",
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // use true if using HTTPS
-      sameSite: "lax", // or "strict" based on your needs
-      maxAge: 1000 * 60 * 60, // 1 hour
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      domain:
+        process.env.NODE_ENV === "development"
+          ? "localhost"
+          : ".yourdomain.com",
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
   })
 );

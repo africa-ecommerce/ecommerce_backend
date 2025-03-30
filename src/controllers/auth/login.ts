@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import { prisma } from "../../config";
 import { sendVerificationMail } from "../../helper/sendVeriificationMail";
 import { isValidCallbackUrl } from "../../helper/verifyCallbackUrl";
-import { generateJWT } from "../../helper/generateJWT";
+import { generateTokens, setAuthCookies } from "../../helper/generateJWT";
 
 
 
@@ -65,7 +65,8 @@ export const login = (req: Request, res: Response, next: NextFunction) => {
           redirectUrl = callbackUrl;
         }
         // Generate a JWT for the user
-        generateJWT(user.id, res);
+       const tokens = await generateTokens(user.id);
+    setAuthCookies(res, tokens);
 
         // Redirect the user to the dashboard or another authenticated page
          res.status(200).json({

@@ -3,7 +3,7 @@ import {prisma, redisClient } from "../../config";
 import { sendVerificationMail } from "../../helper/sendVeriificationMail";
 import {CustomSession} from "./register"
 import { v4 as uuidv4 } from "uuid";
-import { generateJWT } from "../../helper/generateJWT";
+import { generateTokens, setAuthCookies } from "../../helper/generateJWT";
 import { isValidCallbackUrl } from "../../helper/verifyCallbackUrl";
 import rateLimit from "express-rate-limit";
 import RedisStore from "rate-limit-redis";
@@ -73,7 +73,8 @@ export const verifyEmail = async (req: Request, res: Response) => {
       //   redirectUrl = "/dashboard";
       }
 
-      generateJWT(user.id, res);
+      const tokens = await generateTokens(user.id);
+      setAuthCookies(res, tokens);
       res.status(200).json({
         message: "Email verified! Redirecting to dashboard.",
         redirectUrl, 

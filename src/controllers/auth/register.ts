@@ -19,7 +19,7 @@ function isValidFullName(fullName: string): boolean {
 export const register = async (req: Request, res: Response) => {
   try {
     // Destructure and validate required fields
-    let { name, email, password, policy } = req.body; //------------> full names? validate on frontend zod
+    let { name, email, password, policy } = req.body; //------------> full names? validate on frontend zod, ADJUST POLICY
 
     if (!name || !email || !password) {
       res.status(400).json({ error: "All fields are required!" });
@@ -70,7 +70,7 @@ export const register = async (req: Request, res: Response) => {
         verificationToken,
         tokenExpires,
         emailVerified: false,
-        policy,
+        policy: true,
       },
     });
 

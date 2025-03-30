@@ -8,7 +8,7 @@ import {
   resendVerificationLimiter,
   verifyEmail,
 } from "../controllers/auth/verifyEmail";
-import { authenticateJWT } from "../middleware/auth.middleware";
+import  authenticateJWT  from "../middleware/auth.middleware";
 import { getCurrentUser } from "../controllers/auth/currentUser";
 import {
   newPassword,
@@ -64,7 +64,7 @@ router.get("/google", google);
 
 router.get(
   "/google/callback",
-  passport.authenticate("google", { failureRedirect: "http://localhost:3000/auth/login" }),
+  passport.authenticate("google", { failureRedirect: "/auth/login" }),
   googleCallback
 );
 
