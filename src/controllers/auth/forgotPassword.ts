@@ -1,8 +1,5 @@
 import bcrypt from "bcryptjs";
 import { Request, Response } from "express";
-// import { getPasswordResetTokenByToken } from "../lib/token";
-// import { getUserByEmail } from "../data/user";
-// import { db } from "@/lib/prismaDb";
 import { prisma } from "../../config";
 import { v4 as uuidv4 } from "uuid";
 import { sendResetPasswordMail } from "../../helper/sendResetPasswordMail";
@@ -25,7 +22,6 @@ export const newPassword = async (req: Request, res: Response) => {
     return;
   }
   if (newPassword.length < 6) {
-    // password length validation
     res.status(400).json({ error: "Minimum 6 characters required!" });
     return;
   }
@@ -79,7 +75,6 @@ export const newPassword = async (req: Request, res: Response) => {
   }
 };
 
-// POST /api/auth/forgot-password
 export const sendNewPasswordMail = async (req: Request, res: Response) => {
   const { email } = req.body;
   if (!email) {

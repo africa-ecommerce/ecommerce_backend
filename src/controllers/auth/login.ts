@@ -3,7 +3,6 @@ import { Request, Response, NextFunction } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { prisma } from "../../config";
 import { sendVerificationMail } from "../../helper/sendVerificationMail";
-import { isValidCallbackUrl } from "../../helper/verifyCallbackUrl";
 import { generateTokens, setAuthCookies } from "../../helper/generateJWT";
 
 export const login = (req: Request, res: Response, next: NextFunction) => {
@@ -12,25 +11,12 @@ export const login = (req: Request, res: Response, next: NextFunction) => {
     { session: false },
     async (err: any, user: any) => {
       try {
-        const { callbackUrl } = req.query;
         // 1. Handle authentication errors
         if (err) return next(err);
         if (!user) {
           res.status(401).json({ error: "Invalid credentials!" });
           return;
         }
-
-        // Prepare the value to pass down.
-        // If a valid callbackUrl is provided, pass that; otherwise, default to "login"
-        const redirectUrl =
-          callbackUrl &&
-          typeof callbackUrl === "string" &&
-          isValidCallbackUrl(callbackUrl)
-            ? callbackUrl
-            : "/dashboard";
-
-             const decodedCallback = decodeURIComponent(redirectUrl);
-
 
         // 2. Check email verification status
         if (!user.emailVerified) {
@@ -69,10 +55,7 @@ export const login = (req: Request, res: Response, next: NextFunction) => {
             email: user.email,
             name: user.name,
           },
-          redirectUrl: decodedCallback,
         });
-
-        // current user implementation set up current user  ----------->;
       } catch (error) {
         next(error);
       }

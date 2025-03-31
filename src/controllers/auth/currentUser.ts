@@ -5,8 +5,8 @@ export const getCurrentUser = async (req: AuthRequest, res: Response) => {
   try {
     // If user is not attached to request (shouldn't happen with authenticateJWT middleware)
     if (!req.user) {
-       res.status(401).json({ error: "Authentication required" });
-       return;
+      res.status(401).json({ error: "Authentication required" });
+      return;
     }
 
     // Return only necessary, non-sensitive user information
@@ -18,8 +18,8 @@ export const getCurrentUser = async (req: AuthRequest, res: Response) => {
         email,
         name,
         role,
-        emailVerified
-      }
+        emailVerified,
+      },
     });
   } catch (error) {
     console.error("Get current user error:", error);

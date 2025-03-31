@@ -3,26 +3,23 @@ import { isValidCallbackUrl } from "../../helper/verifyCallbackUrl";
 import { Request, Response, NextFunction } from "express";
 import { generateTokens, setAuthCookies } from "../../helper/generateJWT";
 
-
 export const google = (req: Request, res: Response, next: NextFunction) => {
   const { callbackUrl } = req.query;
 
-    const url =
-      callbackUrl &&
-      typeof callbackUrl === "string" &&
-      isValidCallbackUrl(callbackUrl)
-        ? callbackUrl
-        : "/dashboard";
+  const url =
+    callbackUrl &&
+    typeof callbackUrl === "string" &&
+    isValidCallbackUrl(callbackUrl)
+      ? callbackUrl
+      : "/dashboard";
 
-         const decodedCallback = decodeURIComponent(url);
-
-
+  const decodedCallback = decodeURIComponent(url);
 
   // Validate and pass callback URL via state
- 
-   const state = `http://localhost:3000${
-     decodedCallback.startsWith("/") ? decodedCallback : `/${decodedCallback}`
-   }`;
+
+  const state = `http://localhost:3000${
+    decodedCallback.startsWith("/") ? decodedCallback : `/${decodedCallback}`
+  }`;
 
   passport.authenticate("google", {
     scope: ["profile", "email"],
@@ -34,10 +31,10 @@ export const googleCallback = async (req: Request, res: Response) => {
   try {
     let redirectUrl;
 
-      const decodedState = req.query.state as string;
+    const decodedState = req.query.state as string;
 
-      // Validate the decoded URL
-      redirectUrl = decodedState;
+    // Validate the decoded URL
+    redirectUrl = decodedState;
 
     if (!req.user) throw new Error("No user found in session");
     const user = req.user as any;
@@ -77,7 +74,6 @@ export const facebook = (req: Request, res: Response, next: NextFunction) => {
     state,
   })(req, res, next);
 };
-
 
 export const facebookCallback = (req: Request, res: Response) => {
   // Decode the state to get the original callback URL

@@ -4,11 +4,6 @@ import { prisma } from "../../config";
 import bcrypt from "bcryptjs";
 import { sendVerificationMail } from "../../helper/sendVerificationMail";
 import { v4 as uuidv4 } from "uuid";
-// import session from "express-session";
-
-// export interface CustomSession extends session.Session {
-//   unverifiedEmail?: string |  null
-// }
 
 function isValidFullName(fullName: string): boolean {
   const nameParts = fullName.trim().split(/\s+/);
@@ -18,7 +13,7 @@ function isValidFullName(fullName: string): boolean {
 export const register = async (req: Request, res: Response) => {
   try {
     // Destructure and validate required fields
-    let { name, email, password } = req.body; //------------> full names? validate on frontend zod, ADJUST POLICY
+    let { name, email, password } = req.body;
 
     if (!name || !email || !password) {
       res.status(400).json({ error: "All fields are required!" });
@@ -73,17 +68,9 @@ export const register = async (req: Request, res: Response) => {
       },
     });
 
-    //decode
-    // const sourceParam = "register";
-
-    // Send verification email with the source parameter in the verification link.
+    // Send verification email
     await sendVerificationMail(email, verificationToken);
 
-    // // Cast session to your custom type and store the unverified email
-    // const customSession = req.session as CustomSession;
-
-    // // Save unverified email in session for later use (secure server-side storage)
-    // customSession.unverifiedEmail = email;
     res.status(201).json({ message: "Verification email sent!", email });
   } catch (error: any) {
     // Log the error for internal debugging

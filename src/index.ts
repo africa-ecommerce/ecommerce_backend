@@ -25,7 +25,6 @@ import { subscriptionCheck } from "./middleware/subscription.middleware";
 import { dynamicHugoProxy } from "./middleware/hugoProxy.middleware";
 import { RedisStore } from "connect-redis";
 import session from "express-session";
-import { refreshToken } from "./helper/refereshToken";
 import  authenticateJWT  from "./middleware/auth.middleware";
 import passport from "./config/passport";
 

@@ -8,7 +8,7 @@ import {
   resendVerificationLimiter,
   verifyEmail,
 } from "../controllers/auth/verifyEmail";
-import  authenticateJWT  from "../middleware/auth.middleware";
+import authenticateJWT from "../middleware/auth.middleware";
 import { getCurrentUser } from "../controllers/auth/currentUser";
 import {
   newPassword,
@@ -16,7 +16,12 @@ import {
 } from "../controllers/auth/forgotPassword";
 import { login } from "../controllers/auth/login";
 import { logout } from "../controllers/auth/logout";
-import { facebook, google, googleCallback, facebookCallback } from "../controllers/auth/oauth";
+import {
+  facebook,
+  google,
+  googleCallback,
+  facebookCallback,
+} from "../controllers/auth/oauth";
 
 import {
   resendNewPasswordMail,

@@ -1,14 +1,11 @@
 import { Request, Response } from "express";
 import { prisma, redisClient } from "../../config";
 import { sendVerificationMail } from "../../helper/sendVerificationMail";
-// import {CustomSession} from "./register"
 import { v4 as uuidv4 } from "uuid";
 import { generateTokens, setAuthCookies } from "../../helper/generateJWT";
-import { isValidCallbackUrl } from "../../helper/verifyCallbackUrl";
 import rateLimit from "express-rate-limit";
 import RedisStore from "rate-limit-redis";
 
-// if url is from register redirect to login, if from login give jwt and redirect to default login url e.g dashboard
 export const verifyEmail = async (req: Request, res: Response) => {
   try {
     const { token } = req.body;
@@ -45,37 +42,17 @@ export const verifyEmail = async (req: Request, res: Response) => {
       },
     });
 
-    // // Cast session to custom session type
-    // const customSession = req.session as CustomSession;
+    const tokens = await generateTokens(user.id);
+    setAuthCookies(res, tokens);
 
-    // // Clear unverified email from the session
-    // customSession.unverifiedEmail = null;
-
-    // Decide what to do based on the source query parameter
-
-    // Decide redirect based on the 'source' parameter passed down in the verification email.
-    // If the source is "register", redirect to login.
-    // Otherwise, if source is a valid URL, redirect there; else, default to dashboard.
-    const redirectUrl = "/onboarding";
-
-      const tokens = await generateTokens(user.id);
-      setAuthCookies(res, tokens);
-
-
-     
-      res
-        .status(302)
-        .json({
-          message: "Email verified! Redirecting...",
-          user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-          },
-          redirectUrl,
-        })
-       
-    
+    res.status(200).json({
+      message: "Email verified! Redirecting...",
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+    });
   } catch (error: any) {
     console.error("Email verification error:", error);
     res.status(500).json({ error: "Internal server error!" });
