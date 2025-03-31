@@ -58,10 +58,24 @@ export const verifyEmail = async (req: Request, res: Response) => {
     // Otherwise, if source is a valid URL, redirect there; else, default to dashboard.
     const redirectUrl = "/onboarding";
 
-    const tokens = await generateTokens(user.id);
-    setAuthCookies(res, tokens);
+      const tokens = await generateTokens(user.id);
+      setAuthCookies(res, tokens);
 
-    res.redirect(redirectUrl);
+
+     
+      res
+        .status(302)
+        .json({
+          message: "Email verified! Redirecting...",
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+          },
+          redirectUrl,
+        })
+       
+    
   } catch (error: any) {
     console.error("Email verification error:", error);
     res.status(500).json({ error: "Internal server error!" });

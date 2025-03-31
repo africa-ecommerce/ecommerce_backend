@@ -22,7 +22,6 @@ check frontend routes
 
 CALLBACK ERROR
 
-headers in client  ----->  ****
 setup upgrades in website
  
  auth error route frontend ------> ****
@@ -35,10 +34,9 @@ form  --- paul
 
 sessions --- paul
 
-register resend mail routing like modal 
 
 
-check claude
+check claude   -------------------------> ****************
 
 
 the backend can invalidate tokens if the user data changes significantly (like password change), requiring re-authentication.
