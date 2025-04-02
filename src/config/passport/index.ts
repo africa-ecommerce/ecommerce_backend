@@ -103,7 +103,7 @@ passport.use(
     async (req, accessToken, refreshToken, profile, done) => {
       try {
         const email = profile.emails?.[0].value;
-        if (!email) return done(new Error("No email provided by Google"));
+        if (!email) return done(new Error("No email provided by Google!"));
 
         let user = await prisma.user.findUnique({ where: { email } });
 
@@ -122,7 +122,7 @@ passport.use(
         // Return user to be available in req.user
         return done(null, user);
       } catch (error) {
-        return done(error as Error);
+        return done(null, false, { message: "Internal server error!" });
       }
     }
   )

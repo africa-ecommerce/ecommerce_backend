@@ -1,28 +1,42 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
+import { prisma } from "../../config";
 import { AuthRequest } from "../../middleware/auth.middleware";
-
-export const getCurrentUser = async (req: AuthRequest, res: Response) => {
+export const getCurrentUser = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    // If user is not attached to request (shouldn't happen with authenticateJWT middleware)
-    if (!req.user) {
-      res.status(401).json({ error: "Authentication required" });
-      return;
+    // Assuming req.user is populated by your Passport middleware.
+    const userId = req.user?.id;
+    if (!userId) {
+       res.status(401).json({ error: "Authentication required!" });
+       return;
     }
 
-    // Return only necessary, non-sensitive user information
-    const { id, email, name, role, emailVerified } = req.user;
-
-    res.status(200).json({
-      user: {
-        id,
-        email,
-        name,
-        role,
-        emailVerified,
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        emailVerified: true,
+        policy: true,
+        isOnboarded: true,
+        userType: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
+
+    if (!currentUser) {
+       res.status(404).json({ error: "User not found!" });
+       return;
+    }
+
+     res.status(200).json({ user: currentUser });
+     return;
   } catch (error) {
-    console.error("Get current user error:", error);
-    res.status(500).json({ error: "Internal server error" });
+    next(error);
   }
 };

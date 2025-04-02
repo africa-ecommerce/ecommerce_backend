@@ -3,29 +3,39 @@ import { isValidCallbackUrl } from "../../helper/verifyCallbackUrl";
 import { Request, Response, NextFunction } from "express";
 import { generateTokens, setAuthCookies } from "../../helper/generateJWT";
 
+
+
 export const google = (req: Request, res: Response, next: NextFunction) => {
-  const { callbackUrl } = req.query;
+  try {
+    const { callbackUrl } = req.query;
+    const url =
+      callbackUrl &&
+      typeof callbackUrl === "string" &&
+      isValidCallbackUrl(callbackUrl)
+        ? callbackUrl
+        : "/dashboard";
 
-  const url =
-    callbackUrl &&
-    typeof callbackUrl === "string" &&
-    isValidCallbackUrl(callbackUrl)
-      ? callbackUrl
-      : "/dashboard";
+    const decodedCallback = decodeURIComponent(url);
 
-  const decodedCallback = decodeURIComponent(url);
+    // Validate and pass callback URL via state
+    const state = `http://localhost:3000${
+      decodedCallback.startsWith("/") ? decodedCallback : `/${decodedCallback}`
+    }`;
 
-  // Validate and pass callback URL via state
-
-  const state = `http://localhost:3000${
-    decodedCallback.startsWith("/") ? decodedCallback : `/${decodedCallback}`
-  }`;
-
-  passport.authenticate("google", {
-    scope: ["profile", "email"],
-    state,
-  })(req, res, next);
+    // Execute passport.authenticate wrapped in try/catch
+    passport.authenticate("google", {
+      scope: ["profile", "email"],
+      state,
+    })(req, res, next);
+  } catch (error) {
+    console.error("Google authentication error:", error);
+    const errorRedirect = `http://localhost:3000/auth/error?message=${encodeURIComponent(
+      error instanceof Error ? error.message : "Authentication failed"
+    )}`;
+    res.redirect(errorRedirect);
+  }
 };
+
 
 export const googleCallback = async (req: Request, res: Response) => {
   try {
@@ -58,6 +68,16 @@ export const googleCallback = async (req: Request, res: Response) => {
     res.redirect(errorRedirect);
   }
 };
+
+
+
+
+
+
+
+
+
+
 export const facebook = (req: Request, res: Response, next: NextFunction) => {
   const { callbackUrl } = req.query;
 

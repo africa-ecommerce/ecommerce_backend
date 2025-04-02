@@ -4,57 +4,76 @@ import { v4 as uuidv4 } from "uuid";
 import { prisma } from "../../config";
 import { sendVerificationMail } from "../../helper/sendVerificationMail";
 import { generateTokens, setAuthCookies } from "../../helper/generateJWT";
+import { User } from "@prisma/client";
 
 export const login = (req: Request, res: Response, next: NextFunction) => {
   passport.authenticate(
     "local",
     { session: false },
-    async (err: any, user: any) => {
+    async (err: any, user: User) => {
       try {
         // 1. Handle authentication errors
         if (err) return next(err);
         if (!user) {
-          res.status(401).json({ error: "Invalid credentials!" });
-          return;
+          return res.status(401).json({ error: "Invalid credentials!" });
         }
 
         // 2. Check email verification status
         if (!user.emailVerified) {
-          // Check if the token is still valid; if not, generate a new one
-          let tokenToSend = user.verificationToken;
-          if (
-            !tokenToSend ||
-            (user.tokenExpires && user.tokenExpires < new Date())
-          ) {
-            tokenToSend = uuidv4();
-            const tokenExpires = new Date(Date.now() + 60 * 60 * 1000);
+          const verification = await prisma.emailVerification.findUnique({
+            where: { userId: user.id },
+          });
 
-            await prisma.user.update({
-              where: { id: user.id },
-              data: {
-                verificationToken: tokenToSend,
-                tokenExpires,
+          // Regenerate token if expired
+          if (!verification || verification.expires < new Date()) {
+            const newToken = uuidv4();
+            const newExpires = new Date(Date.now() + 3600000);
+
+            await prisma.emailVerification.upsert({
+              where: { userId: user.id },
+              create: {
+                token: newToken,
+                expires: newExpires,
+                userId: user.id,
+              },
+              update: {
+                token: newToken,
+                expires: newExpires,
               },
             });
+
+            await sendVerificationMail(user.email, newToken);
+          } else {
+            await sendVerificationMail(user.email, verification.token);
           }
 
-          await sendVerificationMail(user.email, tokenToSend);
-          res.status(403).json({ message: "Verification email sent!" });
-          return;
+          return res.status(403).json({ message: "Verification email sent!" });
         }
 
-        // Generate a JWT for the user
+        // 3. Generate tokens and set authentication cookies
         const tokens = await generateTokens(user.id);
         setAuthCookies(res, tokens);
 
-        // Redirect the user to the dashboard or another authenticated page
-        res.status(200).json({
-          message: "Login successful!",
-          user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
+        // 4. Re-query the user and select only the required fields (omit password)
+        const currentUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            emailVerified: true,
+            policy: true,
+            isOnboarded: true,
+            userType: true,
+            createdAt: true,
+            updatedAt: true,
           },
+        });
+
+        // 5. Return a sanitized user object
+        return res.status(200).json({
+          message: "Login successful!",
+          user: currentUser,
         });
       } catch (error) {
         next(error);

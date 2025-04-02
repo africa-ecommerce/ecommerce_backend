@@ -5,6 +5,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { port, redisClient } from "./config";
 import authRoutes from "./routes/auth.routes";
+import onboardingRoutes from "./routes/onboarding.routes";
 import merchantRoutes from "./routes/merchant.routes";
 import productRoutes from "./routes/product.routes";
 import orderRoutes from "./routes/order.routes";
@@ -27,6 +28,7 @@ import { RedisStore } from "connect-redis";
 import session from "express-session";
 import  authenticateJWT  from "./middleware/auth.middleware";
 import passport from "./config/passport";
+import { Request, Response, NextFunction } from "express";
 
 
 const app = express();
@@ -97,6 +99,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 // // API Routes
 app.use("/auth", authRoutes);
+app.use("/onboarding", onboardingRoutes);
 // New current user endpoint - protected route
 // app.use("/merchants", merchantRoutes);
 // app.use("/products", productRoutes);
@@ -116,13 +119,20 @@ app.use("/auth", authRoutes);
 // app.use("/affiliates", affiliateRoutes);
 
 
-// Health Check
-app.get("/health", (req, res) => {
-  res.json({ message: "AfriConnect API is running" });
-});
+
 
 // Catch-all for subdomain website requests (proxy)
 // app.use("*", subscriptionCheck, dynamicHugoProxy);
+
+
+
+// Global error handling middleware
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  console.error("Unhandled error:", err);
+  res
+    .status(500)
+    .json({ error: "Internal server error, please try again later." });
+});
 
 app.listen(port, () => {
   console.log(`Server is listening on port ${port}`);

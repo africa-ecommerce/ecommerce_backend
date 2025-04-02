@@ -56,18 +56,25 @@ export const register = async (req: Request, res: Response) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // create a user with unverified email
-    await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        verificationToken,
-        tokenExpires,
-        emailVerified: false,
-        policy: true,
-      },
-    });
+     const user = await prisma.user.create({
+       data: {
+         name,
+         email,
+         password: hashedPassword,
+         emailVerified: false,
+         policy: true,
+       },
+     });
 
+    
+
+     await prisma.emailVerification.create({
+       data: {
+         token: verificationToken,
+         expires: tokenExpires,
+         userId: user.id,
+       },
+     });
     // Send verification email
     await sendVerificationMail(email, verificationToken);
 
@@ -76,6 +83,5 @@ export const register = async (req: Request, res: Response) => {
     // Log the error for internal debugging
     console.error("Registration error:", error);
     res.status(500).json({ error: "Internal server error!" });
-    return;
   }
 };

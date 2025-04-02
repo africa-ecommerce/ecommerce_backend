@@ -37,11 +37,21 @@ sessions --- paul
 
 
 check claude   -------------------------> ****************
-
+OAUTH REDIRECT IN THE FRONTEND
 
 the backend can invalidate tokens if the user data changes significantly (like password change), requiring re-authentication.
 
 : When a user logs out or resets their password, delete their refresh token from the DB.
+
+VALIDATE THE ONBOARDING FORM, CHECK DATABASE SCHEMA FOR ENUMS AND REQUIRED, FOR FILE UPLOADS CHECK AI TOOLS 
+
+DEFAULT UI FOR BUSINESS TYPE
+
+ONBOARDING IS COMPULSORY IF USER IS NOT ONBOARDED THEY CANNOT VISIT OTHER PAGES, AND ONCE ONBOARDED THEY CANNOT VISIT ONBOARDING
+
+handle oauth prisma error or so
+
+fix oauth a lot
 
 
 

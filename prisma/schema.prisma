@@ -13,8 +13,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
-
 // model User {
 //   id                 String   @id @default(uuid())
 //   name               String
@@ -185,59 +183,101 @@ datasource db {
 //   merchantId String
 // }
 
-
-
-
-
 // Unified User Model with Role-Based Access
 
-
-
-
 model User {
-  id                String    @id @default(uuid())
-  email             String    @unique
-  password          String
-  name              String
-  // role              UserRole  @default(CUSTOMER) ----> RELATE TABLES
-  emailVerified        Boolean   @default(false)
-  verificationToken String?
-  tokenExpires      DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  refreshToken      String?
-  policy     Boolean   @default(false)
-   passwordTokens  PasswordToken[]
-   isOnboarded     Boolean   @default(false)
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  name          String
+  emailVerified Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  refreshToken  String?
+  policy        Boolean   @default(false)
+  isOnboarded   Boolean   @default(false)
+  userType      UserType  @default(UNSET)
+  supplier      Supplier?
+  plug          Plug?
 
-  // // Customer Features
-  // addresses Address[]
-  // orders    Order[]    @relation("CustomerOrders")
-  // cart      CartItem[]
-  // reviews   Review[]
-
-  // // Merchant Features
-  // merchantProfile MerchantProfile?
-  // products        Product[]        @relation("MerchantProducts")
-  // receivedOrders  Order[]          @relation("MerchantOrders")
-  // qrCodes         QRCode[]
-  // subscriptions   Subscription[]
+  // Relations
+  emailVerifications EmailVerification[]
+  passwordTokens     PasswordToken[]
 
   @@index([email, name])
 }
 
+model EmailVerification {
+  id      String   @id @default(cuid())
+  token   String   @unique
+  expires DateTime
+  userId  String   @unique
+  user    User     @relation(fields: [userId], references: [id])
 
-
+  @@index([token])
+}
 
 model PasswordToken {
   id      String   @id @default(cuid())
   email   String
   token   String   @unique
   expires DateTime
-   userId    String
-   user      User     @relation(fields: [userId], references: [id])
+  userId  String
+  user    User     @relation(fields: [userId], references: [id])
 
   @@unique([email, token])
+}
+
+enum UserType {
+  UNSET
+  SUPPLIER
+  PLUG
+}
+
+enum BusinessType {
+  WAREHOUSE
+  WHOLESALER
+  IMPORTER
+  LOCAL_STORE
+}
+
+model Supplier {
+  id           String       @id @default(cuid())
+  businessType BusinessType
+  userId       String       @unique
+  user         User         @relation(fields: [userId], references: [id])
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Plug {
+  id            String   @id @default(cuid())
+  businessName  String
+  phone   String?
+  state         String?
+  aboutBusiness String?
+  niches        String[] // Array of strings
+  // customNiche    String? 
+  // generalMerchant Boolean
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([businessName])
+}
+
+model Product {
+  id              String  @id @default(cuid())
+  name            String
+  description     String
+  price           Float
+  quantity        Int
+  category        String?
+  shippingRegions String?
+  images          String? // Typically would store JSON or comma-separated strings with image paths
+  supplierId      String
+  // supplier        Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
 }
 
 // // Merchant-Specific Business Details
