@@ -128,17 +128,12 @@
 //   next();
 // };
 
-
-
-
-
-
 // // src/middleware/auth.middleware.ts
 // import { Request, Response, NextFunction } from "express";
 // import { prisma } from "../config";
-// import { 
-//   generateTokens, 
-//   verifyAccessToken, 
+// import {
+//   generateTokens,
+//   verifyAccessToken,
 //   verifyRefreshToken,
 //   setAuthCookies,
 //   cookieConfig
@@ -194,7 +189,7 @@
 // ) => {
 //   req.user = { userId };
 //   res.locals.user = { userId };
-  
+
 //   // Rotate refresh token periodically (every 24 hours)
 //   const lastRefresh = res.locals.lastRefresh || 0;
 //   if (Date.now() - lastRefresh > 24 * 60 * 60 * 1000) {
@@ -221,7 +216,7 @@
 //   try {
 //     const decoded = verifyRefreshToken(refreshToken);
 //     const user = await validateUserSession(decoded.userId);
-    
+
 //     if (user.refreshToken !== refreshToken) {
 //       throw new Error("Invalid refresh token");
 //     }
@@ -233,7 +228,7 @@
 //     // Update request with new token
 //     req.cookies.accessToken = tokens.accessToken;
 //     res.locals.user = { userId: user.id };
-    
+
 //     // Retry original request
 //     next();
 //   } catch (error) {
@@ -263,9 +258,6 @@
 //   }
 //   next();
 // };
-
-
-
 
 // import { Request, Response, NextFunction } from "express";
 // import { prisma } from "../config";
@@ -403,24 +395,6 @@
 
 // export default  authenticateJWT ;
 
-
-
-
-// auth.middleware.ts
-import { Request, Response, NextFunction } from "express";
-import { prisma } from "../config";
-import {
-  generateTokens,
-  verifyAccessToken,
-  verifyRefreshToken,
-  setAuthCookies,
-  shouldRotateRefreshToken,
-} from "../helper/generateJWT";
-
-export interface AuthRequest extends Request {
-  user?: any;
-}
-
 // const authenticateJWT = async (req: AuthRequest, res: Response, next: NextFunction) => {
 //   try {
 //     const accessToken = getAccessToken(req);
@@ -435,7 +409,7 @@ export interface AuthRequest extends Request {
 //       try {
 //         const decoded = verifyAccessToken(accessToken);
 //       const user = await validateUser(decoded.userId);
-      
+
 //         req.user = user;
 //         return handleActiveSession(req, res, next, decoded.userId);
 //       } catch (error: any) {
@@ -456,8 +430,6 @@ export interface AuthRequest extends Request {
 //     clearSession(res, "Invalid session");
 //   }
 // };
-
-
 
 // const authenticateJWT = async (
 //   req: AuthRequest,
@@ -507,7 +479,20 @@ export interface AuthRequest extends Request {
 //   }
 // };
 
+// auth.middleware.ts
+import { Request, Response, NextFunction } from "express";
+import { prisma } from "../config";
+import {
+  generateTokens,
+  verifyAccessToken,
+  verifyRefreshToken,
+  setAuthCookies,
+  shouldRotateRefreshToken,
+} from "../helper/generateJWT";
 
+export interface AuthRequest extends Request {
+  user?: any;
+}
 
 const authenticateJWT = async (
   req: AuthRequest,
@@ -601,15 +586,14 @@ const handleTokenRenewal = async (
 //   return authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : req.cookies.accessToken;
 // };
 
-
 const getAccessToken = (req: Request): string | null => {
   try {
     // Safely access cookies with optional chaining
     const cookies = req.cookies || {};
     const authHeader = req.headers.authorization;
-    
-    return authHeader?.startsWith("Bearer ") 
-      ? authHeader.split(" ")[1] 
+
+    return authHeader?.startsWith("Bearer ")
+      ? authHeader.split(" ")[1]
       : cookies.accessToken || null;
   } catch (error) {
     console.error("Error accessing cookies:", error);
@@ -634,7 +618,7 @@ const validateUser = async (userId: string) => {
       password: true
     },
   });
-  
+
   if (!user?.emailVerified) {
     throw new Error("Unauthorized");
   }
@@ -691,3 +675,125 @@ const clearSession = (res: Response, message: string) => {
 };
 
 export default authenticateJWT;
+
+// server/middleware/auth.ts
+
+
+// import { Request, Response, NextFunction } from "express";
+// import { prisma } from "../config";
+// import {
+//   handleTokenRenewal,
+//   clearSession,
+//   getAccessToken,
+//   renewSession,
+//   updateUserLastActivity,
+//   setAuthCookies,
+//   verifyAccessToken,
+// } from "../helper/generateJWT";
+
+// // Extended Request interface with user property
+// export interface AuthRequest extends Request {
+//   user?: any;
+// }
+
+// /**
+//  * Main authentication middleware
+//  */
+// const authenticateJWT = async (
+//   req: AuthRequest,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+//     const accessToken = getAccessToken(req);
+//     const refreshToken = req.cookies?.refreshToken;
+
+//     // 1. Check for existing valid access token
+//     if (accessToken) {
+//       try {
+//         const decoded = verifyAccessToken(accessToken);
+//         const user = await validateUser(decoded.userId);
+//         req.user = user;
+
+//         // Extend the session by updating the last activity timestamp
+//         await updateUserLastActivity(user.id);
+
+//         // Handle token renewal if needed before proceeding
+//         await handleTokenRenewal(req, res, user.id);
+//         return next();
+//       } catch (error: any) {
+//         if (error.name !== "TokenExpiredError") {
+//           console.error("Access token validation error:", error);
+//           throw error;
+//         }
+//         // Access token expired, will try refresh token
+//       }
+//     }
+
+//     // 2. Handle refresh token if access token is invalid/missing
+//     if (refreshToken) {
+//       try {
+//         const { user, newTokens } = await renewSession(refreshToken);
+//         req.user = user;
+
+//         if (newTokens) {
+//           setAuthCookies(res, newTokens);
+//         }
+
+//         return next();
+//       } catch (error: any) {
+//         if (error.message === "Session expired due to inactivity") {
+//           clearSession(
+//             res,
+//             "Your session expired due to inactivity. Please log in again."
+//           );
+//         } else {
+//           console.error("Refresh token validation error:", error);
+//           clearSession(res, "Session expired");
+//         }
+//         return;
+//       }
+//     }
+
+//     // If no valid tokens found
+//     console.warn("No valid authentication tokens found");
+//     clearSession(res, "Authentication required");
+//   } catch (error) {
+//     console.error("Authentication error:", error);
+//     clearSession(res, "Invalid session");
+//   }
+// };
+
+// /**
+//  * Validate user from database
+//  */
+// export const validateUser = async (userId: string) => {
+//   const user = await prisma.user.findUnique({
+//     where: { id: userId },
+//     select: {
+//       id: true,
+//       email: true,
+//       name: true,
+//       refreshToken: true,
+//       emailVerified: true,
+//       policy: true,
+//       isOnboarded: true,
+//       userType: true,
+//       createdAt: true,
+//       updatedAt: true,
+//       lastActivity: true,
+//     },
+//   });
+
+//   if (!user) {
+//     throw new Error("User not found");
+//   }
+
+//   if (!user.emailVerified) {
+//     throw new Error("Unauthorized");
+//   }
+
+//   return user;
+// };
+
+// export default authenticateJWT;

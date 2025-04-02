@@ -47,9 +47,11 @@ DEFAULT UI FOR BUSINESS TYPE
 ONBOARDING IS COMPULSORY IF USER IS NOT ONBOARDED THEY CANNOT VISIT OTHER PAGES, AND ONCE ONBOARDED THEY CANNOT VISIT ONBOARDING
 
 handle oauth prisma error or so
+protect auth page and onboarding and onboarding/sucess
 
 fix oauth a lot
 
+this means if you are logged in and after 15 minutes if you want to go to a new page after it has expired you will be redirected to auth page, which should not be so, as long as you are logged in and you are on the page or not, if there is no interaction within fifteen minute or so, the user will no longer be authenticate, needing to login, i need a complete performance of something like facebook, give full implementation of how this will be done
 
 
 
