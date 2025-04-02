@@ -29,9 +29,7 @@ export const google = (req: Request, res: Response, next: NextFunction) => {
     })(req, res, next);
   } catch (error) {
     console.error("Google authentication error:", error);
-    const errorRedirect = `http://localhost:3000/auth/error?message=${encodeURIComponent(
-      error instanceof Error ? error.message : "Authentication failed"
-    )}`;
+    const errorRedirect = `http://localhost:3000/auth/error`;
     res.redirect(errorRedirect);
   }
 };
@@ -62,9 +60,7 @@ export const googleCallback = async (req: Request, res: Response) => {
     res.redirect(redirectUrl);
   } catch (error) {
     console.error("Google callback error:", error);
-    const errorRedirect = `http://localhost:3000/auth/error?message=${encodeURIComponent(
-      error instanceof Error ? error.message : "Authentication failed"
-    )}`;
+    const errorRedirect = `http://localhost:3000/auth/error`;
     res.redirect(errorRedirect);
   }
 };

@@ -3,54 +3,36 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { prisma } from "../config";
 import { BusinessType, UserType } from "@prisma/client";
 
-interface Profile {
-  businessName: string;
-  phone: string;
-  aboutBusiness: string;
-  state: string;
-}
+// interface Profile {
+//   businessName: string;
+//   phone: string;
+//   aboutBusiness: string;
+//   state: string;
+// }
 
-interface OnboardingRequest {
-  userType: UserType;
+// interface OnboardingRequest {
+//   userType: UserType;
 
-  // Supplier-specific
-  businessType?: BusinessType;
+//   // Supplier-specific
+//   businessType?: BusinessType;
 
-  // Plug-specific
-  profile: Profile;
-  niches: string[];
-  generalMerchant: boolean;
-}
+//   // Plug-specific
+//   profile: Profile;
+//   niches: string[];
+//   generalMerchant: boolean;
+// }
 
 export const onboarding = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized!" });
+      res.status(401).json({ error: "Unauthorized!" }); // ---->
       return;
     }
 
-    const {
-      userType,
-      businessType,
-      profile: { businessName, phone, aboutBusiness, state },
-      niches,
-      //   customNiche,
-      //   generalMerchant,
-    } = req.body as OnboardingRequest;
+    const { userType } = req.body;
 
-    // Validate required fields
-    if (userType === UserType.SUPPLIER && !businessType) {
-      res
-        .status(400)
-        .json({ error: "Business type is required for suppliers!" });
-      return;
-    }
-
-    if (userType === UserType.PLUG && !businessName) {
-      res.status(400).json({ error: "Business name is required for plugs!" });
-      return;
-    }
+    console.log("userType", userType);
 
     await prisma.$transaction(async (tx) => {
       // Update user type and onboarding status
@@ -64,7 +46,17 @@ export const onboarding = async (req: AuthRequest, res: Response) => {
 
       // Handle supplier creation
       if (userType === UserType.SUPPLIER) {
-        return tx.supplier.upsert({
+        const { supplierInfo: {businessType} } = req.body;
+        console.log("businessType", businessType);
+        // Validate required fields
+        if (userType === UserType.SUPPLIER && !businessType) {
+          res
+            .status(400)
+            .json({ error: "Business type is required for suppliers!" });
+          return;
+        }
+
+         tx.supplier.upsert({
           where: { userId },
           create: {
             businessType: businessType!,
@@ -76,26 +68,41 @@ export const onboarding = async (req: AuthRequest, res: Response) => {
         });
       }
 
-      // Handle plug creation
-      return tx.plug.upsert({
-        where: { userId },
-        create: {
-          businessName: businessName!,
-          phone,
-          state,
-          aboutBusiness,
-          niches: niches, // Direct array storage
+      else {
+         const {
+           profile: { businessName, phone, aboutBusiness, state },
+           niches,
+         } = req.body;
 
-          userId,
-        },
-        update: {
-          businessName: businessName!,
-          phone,
-          state,
-          aboutBusiness,
-          niches: niches, // Direct array storage
-        },
-      });
+         if (userType === UserType.PLUG && !businessName) {
+           res
+             .status(400)
+             .json({ error: "Business name is required for plugs!" });
+           return;
+         }
+
+         // Handle plug creation
+         tx.plug.upsert({
+           where: { userId },
+           create: {
+             businessName: businessName!,
+             phone,
+             state,
+             aboutBusiness,
+             niches: niches, // Direct array storage
+
+             userId,
+           },
+           update: {
+             businessName: businessName!,
+             phone,
+             state,
+             aboutBusiness,
+             niches: niches, // Direct array storage
+           },
+         });
+      }
+     
     });
 
     // // Format response data

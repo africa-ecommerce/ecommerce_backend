@@ -12,7 +12,6 @@ ON EVERY LOGIN ROUTE CHECK CALLBACK URL AND PASS TO BACKEND
 
 env 
 
-google and whatsapp
 ONBOARDING ONCE AND OTHER TIME DASHBOARD
 
 current user
@@ -32,12 +31,10 @@ GOOGLE REDIRECT  ------> maybe
 
 form  --- paul
 
-sessions --- paul
 
 
 
 check claude   -------------------------> ****************
-OAUTH REDIRECT IN THE FRONTEND
 
 the backend can invalidate tokens if the user data changes significantly (like password change), requiring re-authentication.
 

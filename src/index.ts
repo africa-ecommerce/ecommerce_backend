@@ -29,9 +29,11 @@ import session from "express-session";
 import  authenticateJWT  from "./middleware/auth.middleware";
 import passport from "./config/passport";
 import { Request, Response, NextFunction } from "express";
+import cookieParser from "cookie-parser";
 
 
 const app = express();
+app.use(cookieParser());
 
 // Global Middleware
 app.use(express.json());
@@ -39,6 +41,7 @@ app.use(express.json());
 const corsOptions = {
   origin: process.env.APP_URL, // Replace with your frontend's URL
   optionsSuccessStatus: 200, // Some legacy browsers choke on 204
+  credentials: true, // Required for cookies
 };
 
 app.use(cors(corsOptions));
@@ -129,9 +132,9 @@ app.use("/onboarding", onboardingRoutes);
 // Global error handling middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error("Unhandled error:", err);
-  res
-    .status(500)
-    .json({ error: "Internal server error, please try again later." });
+  // res
+  //   .status(500)
+  //   .json({ error: "Internal server error, please try again later." });
 });
 
 app.listen(port, () => {
