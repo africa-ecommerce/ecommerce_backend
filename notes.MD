@@ -19,7 +19,6 @@ current user
 
 check frontend routes
 
-CALLBACK ERROR
 
 setup upgrades in website
  
@@ -55,6 +54,18 @@ this means if you are logged in and after 15 minutes if you want to go to a new 
 
 
 
+WEBSITE CRUD OPERATION TWO UPGRADES OUR UPGRADES AND USER UPDATES
 
+
+CHECK TOKEN AGAIN
+
+IF YOU ARE NOT ONBOARDED YOU SHOULDNOT BE ABLE TO SEE OTHER PRIVATE ROUTE, REDIRECT TO ONBOARDING
+
+IF YOU ARE ONBOARDED YOU CANT SEE ONBOARDING AND ONBOARDING SUCCESS ROUTE AGAIN
+
+CHECK PHONE NOTES, HOW DO WE WORK WITH ESCROW
+
+
+IN CLIENT LOGOUT, SHOULD CLEAR OUT ALL CACHES
 <!-- 
 redirect to onboarding as callbackurl in register, it will redirect to login as a callbackurl, so as on subsequent login redirect it either goes to callbackuri or dashboard, if user escapes this onboarding either by skipping or cancelling the page after login, always like notify them in dashboard to do the onboarding -->

@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { prisma } from "../../config";
 import { sendVerificationMail } from "../../helper/sendVerificationMail";
-import { generateTokens, setAuthCookies } from "../../helper/generateJWT";
+import { generateTokens, setAuthCookies } from "../../helper/token";
 import { User } from "@prisma/client";
 
 export const login = (req: Request, res: Response, next: NextFunction) => {

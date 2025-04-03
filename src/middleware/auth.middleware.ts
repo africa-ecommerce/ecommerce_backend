@@ -479,16 +479,209 @@
 //   }
 // };
 
-// auth.middleware.ts
+// LAST CORRECT
+// // auth.middleware.ts
+// import { Request, Response, NextFunction } from "express";
+// import { prisma } from "../config";
+// import {
+//   generateTokens,
+//   verifyAccessToken,
+//   verifyRefreshToken,
+//   setAuthCookies,
+//   shouldRotateRefreshToken,
+// } from "../helper/generateJWT";
+
+// export interface AuthRequest extends Request {
+//   user?: any;
+// }
+
+// const authenticateJWT = async (
+//   req: AuthRequest,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+//     const accessToken = getAccessToken(req);
+//     // Safely access refresh token with optional chaining
+//     const refreshToken = req.cookies?.refreshToken;
+
+//     // 1. Check for existing valid access token
+//     if (accessToken) {
+//       try {
+//         const decoded = verifyAccessToken(accessToken);
+//         const user = await validateUser(decoded.userId);
+//         req.user = user;
+
+//         // Renew tokens if needed before proceeding
+//         await handleTokenRenewal(req, res, user.id);
+//         return next();
+//       } catch (error: any) {
+//         if (error.name !== "TokenExpiredError") {
+//           console.error("Access token validation error:", error);
+//           throw error;
+//         }
+//       }
+//     }
+
+//     // 2. Handle refresh token if access token is invalid/missing
+//     if (refreshToken) {
+//       try {
+//         const { user, newTokens } = await renewSession(refreshToken);
+//         req.user = user;
+
+//         if (newTokens) {
+//           setAuthCookies(res, newTokens);
+//         }
+
+//         return next();
+//       } catch (error) {
+//         console.error("Refresh token validation error:", error);
+//         clearSession(res, "Session expired");
+//         return;
+//       }
+//     }
+
+//     // If no valid tokens found
+//     console.warn("No valid authentication tokens found");
+//     clearSession(res, "Authentication required");
+//   } catch (error) {
+//     console.error("Authentication error:", error);
+//     clearSession(res, "Invalid session");
+//   }
+// };
+
+// const renewSession = async (refreshToken: string) => {
+//   const decoded = verifyRefreshToken(refreshToken);
+//   const user = await validateUser(decoded.userId);
+
+//   // Verify refresh token matches database
+//   if (user.refreshToken !== refreshToken) {
+//     throw new Error("Invalid refresh token");
+//   }
+
+//   // Rotate refresh token if needed
+//   if (shouldRotateRefreshToken(refreshToken)) {
+//     const newTokens = await generateTokens(user.id);
+//     return { user, newTokens };
+//   }
+
+//   return { user };
+// };
+
+// const handleTokenRenewal = async (
+//   req: AuthRequest,
+//   res: Response,
+//   userId: string
+// ) => {
+//   const refreshToken = req.cookies.refreshToken;
+
+//   if (refreshToken && shouldRotateRefreshToken(refreshToken)) {
+//     const newTokens = await generateTokens(userId);
+//     setAuthCookies(res, newTokens);
+//     res.locals.newTokens = newTokens;
+//   }
+// };
+
+// // const getAccessToken = (req: Request): string | null => {
+// //   const authHeader = req.headers.authorization;
+// //   return authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : req.cookies.accessToken;
+// // };
+
+// const getAccessToken = (req: Request): string | null => {
+//   try {
+//     // Safely access cookies with optional chaining
+//     const cookies = req.cookies || {};
+//     const authHeader = req.headers.authorization;
+
+//     return authHeader?.startsWith("Bearer ")
+//       ? authHeader.split(" ")[1]
+//       : cookies.accessToken || null;
+//   } catch (error) {
+//     console.error("Error accessing cookies:", error);
+//     return null;
+//   }
+// };
+
+// const validateUser = async (userId: string) => {
+//   const user = await prisma.user.findUnique({
+//     where: { id: userId },
+//     select: {
+//       id: true,
+//       email: true,
+//       name: true,
+//       refreshToken: true,
+//       emailVerified: true,
+//       policy: true,
+//       isOnboarded: true,
+//       userType: true,
+//       createdAt: true,
+//       updatedAt: true,
+//       password: true
+//     },
+//   });
+
+//   if (!user?.emailVerified) {
+//     throw new Error("Unauthorized");
+//   }
+//   return user;
+// };
+
+// const handleActiveSession = async (
+//   req: AuthRequest,
+//   res: Response,
+//   next: NextFunction,
+//   userId: string
+// ) => {
+//   // Rotate tokens only if refresh token is nearing expiration
+//   if (shouldRotateRefreshToken(req.cookies.refreshToken)) {
+//     const tokens = await generateTokens(userId);
+//     setAuthCookies(res, tokens);
+//     res.locals.newTokens = tokens;
+//   }
+
+//   next();
+// };
+
+// const handleRefreshTokenRotation = async (res:Response, refreshToken: string) => {
+//   const decoded = verifyRefreshToken(refreshToken);
+//   const user = await validateUser(decoded.userId);
+
+//   if (user.refreshToken !== refreshToken) {
+//     throw new Error("Invalid refresh token");
+//   }
+
+//   // Only rotate refresh token if it's in the last 7 days of its lifespan
+//   if (shouldRotateRefreshToken(refreshToken)) {
+//     const tokens = await generateTokens(user.id);
+//     setAuthCookies(res, tokens);
+//     return { user: user, tokens };
+//   }
+
+//   // Return existing valid refresh token
+//   return { user: user };
+// };
+
+// // Update clearSession to handle missing cookies
+// const clearSession = (res: Response, message: string) => {
+//   try {
+//     res
+//       .clearCookie("accessToken")
+//       .clearCookie("refreshToken")
+//       .status(401)
+//       .json({ error: message });
+//   } catch (clearError) {
+//     console.error("Error clearing cookies:", clearError);
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// };
+
+// export default authenticateJWT;
+
+// backend/middleware/auth.ts
 import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
 import { prisma } from "../config";
-import {
-  generateTokens,
-  verifyAccessToken,
-  verifyRefreshToken,
-  setAuthCookies,
-  shouldRotateRefreshToken,
-} from "../helper/generateJWT";
+import { refreshSession, verifyAccessToken } from "../helper/token";
 
 export interface AuthRequest extends Request {
   user?: any;
@@ -500,108 +693,55 @@ const authenticateJWT = async (
   next: NextFunction
 ) => {
   try {
-    const accessToken = getAccessToken(req);
-    // Safely access refresh token with optional chaining
-    const refreshToken = req.cookies?.refreshToken;
+    // Skip middleware for auth routes
+    if (req.path.startsWith("/auth")) return next();
 
-    // 1. Check for existing valid access token
+    // 1. Check access token first
+    const accessToken = req.cookies.accessToken;
     if (accessToken) {
       try {
         const decoded = verifyAccessToken(accessToken);
-        const user = await validateUser(decoded.userId);
-        req.user = user;
-
-        // Renew tokens if needed before proceeding
-        await handleTokenRenewal(req, res, user.id);
+        req.user = await validateUser(decoded.userId);
         return next();
-      } catch (error: any) {
-        if (error.name !== "TokenExpiredError") {
-          console.error("Access token validation error:", error);
-          throw error;
-        }
+      } catch (accessError) {
+        if ((accessError as jwt.JsonWebTokenError).name !== "TokenExpiredError")
+          throw accessError;
       }
     }
 
-    // 2. Handle refresh token if access token is invalid/missing
-    if (refreshToken) {
-      try {
-        const { user, newTokens } = await renewSession(refreshToken);
-        req.user = user;
+    // 2. Attempt refresh token flow
+    const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken) throw new Error("No authentication tokens found");
 
-        if (newTokens) {
-          setAuthCookies(res, newTokens);
-        }
+    // Verify refresh token and get new tokens
+    const { user, newTokens } = await refreshSession(refreshToken);
+    req.user = user;
 
-        return next();
-      } catch (error) {
-        console.error("Refresh token validation error:", error);
-        clearSession(res, "Session expired");
-        return;
-      }
-    }
+    // Set new tokens in cookies
+    res.cookie("accessToken", newTokens.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
 
-    // If no valid tokens found
-    console.warn("No valid authentication tokens found");
-    clearSession(res, "Authentication required");
+    res.cookie("refreshToken", newTokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
+
+    next();
   } catch (error) {
-    console.error("Authentication error:", error);
-    clearSession(res, "Invalid session");
+    // Clear invalid credentials
+    res.clearCookie("accessToken");
+    res.clearCookie("refreshToken");
+    res.status(401).json({ error: "Authentication required" });
   }
 };
 
-const renewSession = async (refreshToken: string) => {
-  const decoded = verifyRefreshToken(refreshToken);
-  const user = await validateUser(decoded.userId);
-
-  // Verify refresh token matches database
-  if (user.refreshToken !== refreshToken) {
-    throw new Error("Invalid refresh token");
-  }
-
-  // Rotate refresh token if needed
-  if (shouldRotateRefreshToken(refreshToken)) {
-    const newTokens = await generateTokens(user.id);
-    return { user, newTokens };
-  }
-
-  return { user };
-};
-
-const handleTokenRenewal = async (
-  req: AuthRequest,
-  res: Response,
-  userId: string
-) => {
-  const refreshToken = req.cookies.refreshToken;
-
-  if (refreshToken && shouldRotateRefreshToken(refreshToken)) {
-    const newTokens = await generateTokens(userId);
-    setAuthCookies(res, newTokens);
-    res.locals.newTokens = newTokens;
-  }
-};
-
-// const getAccessToken = (req: Request): string | null => {
-//   const authHeader = req.headers.authorization;
-//   return authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : req.cookies.accessToken;
-// };
-
-const getAccessToken = (req: Request): string | null => {
-  try {
-    // Safely access cookies with optional chaining
-    const cookies = req.cookies || {};
-    const authHeader = req.headers.authorization;
-
-    return authHeader?.startsWith("Bearer ")
-      ? authHeader.split(" ")[1]
-      : cookies.accessToken || null;
-  } catch (error) {
-    console.error("Error accessing cookies:", error);
-    return null;
-  }
-};
-
-const validateUser = async (userId: string) => {
+async function validateUser(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -615,69 +755,16 @@ const validateUser = async (userId: string) => {
       userType: true,
       createdAt: true,
       updatedAt: true,
-      password: true
     },
   });
 
-  if (!user?.emailVerified) {
-    throw new Error("Unauthorized");
-  }
+  if (!user) throw new Error("User not found");
   return user;
-};
-
-const handleActiveSession = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction,
-  userId: string
-) => {
-  // Rotate tokens only if refresh token is nearing expiration
-  if (shouldRotateRefreshToken(req.cookies.refreshToken)) {
-    const tokens = await generateTokens(userId);
-    setAuthCookies(res, tokens);
-    res.locals.newTokens = tokens;
-  }
-
-  next();
-};
-
-const handleRefreshTokenRotation = async (res:Response, refreshToken: string) => {
-  const decoded = verifyRefreshToken(refreshToken);
-  const user = await validateUser(decoded.userId);
-
-  if (user.refreshToken !== refreshToken) {
-    throw new Error("Invalid refresh token");
-  }
-
-  // Only rotate refresh token if it's in the last 7 days of its lifespan
-  if (shouldRotateRefreshToken(refreshToken)) {
-    const tokens = await generateTokens(user.id);
-    setAuthCookies(res, tokens);
-    return { user: user, tokens };
-  }
-
-  // Return existing valid refresh token
-  return { user: user };
-};
-
-// Update clearSession to handle missing cookies
-const clearSession = (res: Response, message: string) => {
-  try {
-    res
-      .clearCookie("accessToken")
-      .clearCookie("refreshToken")
-      .status(401)
-      .json({ error: message });
-  } catch (clearError) {
-    console.error("Error clearing cookies:", clearError);
-    res.status(500).json({ error: "Internal server error" });
-  }
-};
+}
 
 export default authenticateJWT;
 
 // server/middleware/auth.ts
-
 
 // import { Request, Response, NextFunction } from "express";
 // import { prisma } from "../config";

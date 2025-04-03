@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { prisma, redisClient } from "../../config";
 import { sendVerificationMail } from "../../helper/sendVerificationMail";
 import { v4 as uuidv4 } from "uuid";
-import { generateTokens, setAuthCookies } from "../../helper/generateJWT";
+import { generateTokens, setAuthCookies } from "../../helper/token";
 import rateLimit from "express-rate-limit";
 import RedisStore from "rate-limit-redis";
 
@@ -18,7 +18,6 @@ export const verifyEmail = async (req: Request, res: Response) => {
       return;
     }
 
-    
     const verification = await prisma.emailVerification.findFirst({
       where: {
         token,
@@ -97,7 +96,7 @@ export const resendVerificationEmail = async (req: Request, res: Response) => {
     }
 
     // Check if the verification token is still valid; if not, generate a new one
-   
+
     let verification = await prisma.emailVerification.findUnique({
       where: { userId: user.id },
     });

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { prisma } from "../config";
-import { BusinessType, UserType } from "@prisma/client";
+import { UserType } from "@prisma/client";
 
 // interface Profile {
 //   businessName: string;
@@ -56,14 +56,14 @@ export const onboarding = async (req: AuthRequest, res: Response) => {
           return;
         }
 
-         tx.supplier.upsert({
+        await tx.supplier.upsert({
           where: { userId },
           create: {
-            businessType: businessType!,
+            businessType,
             userId,
           },
           update: {
-            businessType: businessType!,
+            businessType,
           },
         });
       }
@@ -72,6 +72,7 @@ export const onboarding = async (req: AuthRequest, res: Response) => {
          const {
            profile: { businessName, phone, aboutBusiness, state },
            niches,
+           generalMerchant,
          } = req.body;
 
          if (userType === UserType.PLUG && !businessName) {
@@ -82,25 +83,26 @@ export const onboarding = async (req: AuthRequest, res: Response) => {
          }
 
          // Handle plug creation
-         tx.plug.upsert({
-           where: { userId },
-           create: {
-             businessName: businessName!,
-             phone,
-             state,
-             aboutBusiness,
-             niches: niches, // Direct array storage
-
-             userId,
-           },
-           update: {
-             businessName: businessName!,
-             phone,
-             state,
-             aboutBusiness,
-             niches: niches, // Direct array storage
-           },
-         });
+        await tx.plug.upsert({
+          where: { userId },
+          create: {
+            businessName,
+            phone,
+            state,
+            aboutBusiness,
+            niches,
+            generalMerchant,
+            userId,
+          },
+          update: {
+            businessName,
+            phone,
+            state,
+            aboutBusiness,
+            niches,
+            generalMerchant,
+          },
+        });
       }
      
     });

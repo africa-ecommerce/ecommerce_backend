@@ -62,6 +62,12 @@ router.post(
   resendNewPasswordMail
 );
 
+
+// Refresh token endpoint (already handled in middleware)
+router.post("/refresh", authenticateJWT, (req, res) => {
+  res.status(200).json({ success: true });
+});
+
 router.get("/current-user", authenticateJWT, getCurrentUser);
 
 // Google OAuth Routes

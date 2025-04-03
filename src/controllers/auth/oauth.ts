@@ -1,9 +1,7 @@
 import passport from "passport";
 import { isValidCallbackUrl } from "../../helper/verifyCallbackUrl";
 import { Request, Response, NextFunction } from "express";
-import { generateTokens, setAuthCookies } from "../../helper/generateJWT";
-
-
+import { generateTokens, setAuthCookies } from "../../helper/token";
 
 export const google = (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -34,7 +32,6 @@ export const google = (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-
 export const googleCallback = async (req: Request, res: Response) => {
   try {
     let redirectUrl;
@@ -64,15 +61,6 @@ export const googleCallback = async (req: Request, res: Response) => {
     res.redirect(errorRedirect);
   }
 };
-
-
-
-
-
-
-
-
-
 
 export const facebook = (req: Request, res: Response, next: NextFunction) => {
   const { callbackUrl } = req.query;

@@ -197,7 +197,8 @@ model User {
   policy        Boolean   @default(false)
   isOnboarded   Boolean   @default(false)
   userType      UserType  @default(UNSET)
-  supplier      Supplier?
+  //  EITHER SUPPLIER OR PLUG
+  supplier      Supplier? 
   plug          Plug?
 
   // Relations
@@ -234,16 +235,11 @@ enum UserType {
   PLUG
 }
 
-enum BusinessType {
-  WAREHOUSE
-  WHOLESALER
-  IMPORTER
-  LOCAL_STORE
-}
+
 
 model Supplier {
   id           String       @id @default(cuid())
-  businessType BusinessType
+  businessType String
   userId       String       @unique
   user         User         @relation(fields: [userId], references: [id])
   createdAt    DateTime     @default(now())
@@ -258,7 +254,7 @@ model Plug {
   aboutBusiness String?
   niches        String[] // Array of strings
   // customNiche    String? 
-  // generalMerchant Boolean
+  generalMerchant Boolean
   userId        String   @unique
   user          User     @relation(fields: [userId], references: [id])
   createdAt     DateTime @default(now())

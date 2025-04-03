@@ -56,7 +56,7 @@ interface Tokens {
 
 
 // Token expiration times
-const ACCESS_TOKEN_EXPIRY = 7 * 24 * 60 * 60; // 7 days (in seconds)
+const ACCESS_TOKEN_EXPIRY = 15 * 60 * 60; // 15 mins (in seconds)
 const REFRESH_TOKEN_EXPIRY = 30 * 24 * 60 * 60; // 30 days (in seconds)
 const REFRESH_TOKEN_ROTATION_WINDOW = 3 * 24 * 60 * 60; // 3 days before expiration
 
@@ -112,18 +112,38 @@ export const cookieConfig = {
     process.env.NODE_ENV === "development" ? "localhost" : ".yourdomain.com",
 };
 
-// export const setAuthCookies = (res: Response, tokens: Tokens) => {
-//   res
-//     .cookie("accessToken", tokens.accessToken, {
-//       ...cookieConfig,
-//       maxAge: ACCESS_TOKEN_EXPIRY * 1000,
-//     })
-//     .cookie("refreshToken", tokens.refreshToken, {
-//       ...cookieConfig,
-//       maxAge: REFRESH_TOKEN_EXPIRY * 1000,
-//       path: "/auth/refresh",
-//     });
-// };
+ export const refreshSession = async (refreshToken: string) => {
+  // Verify refresh token
+  const decoded = verifyRefreshToken(refreshToken);
+  
+  // Get user with refresh token
+  const user = await prisma.user.findUnique({
+    where: { id: decoded.userId },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      refreshToken: true,
+      emailVerified: true,
+      policy: true,
+      isOnboarded: true,
+      userType: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  if (!user || user.refreshToken !== refreshToken) {
+    throw new Error('Invalid refresh token');
+  }
+
+  // Generate new tokens
+  const newTokens = await generateTokens(user.id);
+  
+  
+  return { user, newTokens };
+}
+
 
 
 
