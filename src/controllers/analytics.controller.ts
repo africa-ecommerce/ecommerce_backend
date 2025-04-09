@@ -4,11 +4,12 @@ import {
   getSalesAnalytics,
   getInventoryAnalytics,
 } from "../services/analytics.service";
-import { AuthRequest } from "../middleware/auth.middleware";
+import { AuthRequest } from "../types";
+
 
 export const salesAnalytics = async (req: AuthRequest, res: Response) => {
   try {
-    const merchantId = req.merchant.id;
+    const merchantId = req.user.id;
     const analytics = await getSalesAnalytics(merchantId);
     res.json(analytics);
   } catch (error: any) {

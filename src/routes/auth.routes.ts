@@ -27,6 +27,7 @@ import {
   resendNewPasswordMail,
   resendPasswordLimiter,
 } from "../controllers/auth/forgotPassword";
+import { refreshToken } from "../controllers/auth/refreshToken";
 
 const router = Router();
 
@@ -64,9 +65,7 @@ router.post(
 
 
 // Refresh token endpoint (already handled in middleware)
-router.post("/refresh", authenticateJWT, (req, res) => {
-  res.status(200).json({ success: true });
-});
+router.post("/refresh", refreshToken);
 
 router.get("/current-user", authenticateJWT, getCurrentUser);
 
