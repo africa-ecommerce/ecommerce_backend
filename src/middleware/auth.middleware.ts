@@ -125,7 +125,14 @@ const authenticateJWT = async (
     // Handle failed refresh
     if (!result.success) {
       // Re-throw as a standard error to be caught by the outer catch block
-      throw new Error(result.error || "Refresh token validation failed");
+      res.status(401).json({
+        error: "Refresh failed"
+      });
+
+      // Clear invalid credentials
+      res.clearCookie("accessToken");
+      res.clearCookie("refreshToken");
+      return; //
     }
     
     // At this point we have a successful refresh
@@ -138,14 +145,14 @@ const authenticateJWT = async (
   } catch (error) {
     // More specific error handling
     if (error instanceof jwt.TokenExpiredError) {
-      res.status(401).json({ error: "Token expired", code: "TOKEN_EXPIRED" });
+      res.status(401).json({ error: "Token expired" });
     } else if (error instanceof jwt.JsonWebTokenError) {
-      res.status(401).json({ error: "Invalid token", code: "INVALID_TOKEN" });
+      res.status(401).json({ error: "Invalid token" });
     } else {
       console.error("Authentication error:", error);
       res
         .status(401)
-        .json({ error: "Authentication required", code: "AUTH_REQUIRED" });
+        .json({ error: "Authentication required"});
     }
 
     // Clear invalid credentials
