@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../config";
-import { AuthRequest } from "../../middleware/auth.middleware";
+import { AuthRequest } from "../../types";
 export const getCurrentUser = async (
   req: AuthRequest,
   res: Response,

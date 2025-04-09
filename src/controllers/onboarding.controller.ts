@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
-import { AuthRequest } from "../middleware/auth.middleware";
 import { prisma } from "../config";
 import { UserType } from "@prisma/client";
+import { AuthRequest } from "../types";
 
 // interface Profile {
 //   businessName: string;
