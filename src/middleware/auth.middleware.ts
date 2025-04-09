@@ -117,14 +117,23 @@ const authenticateJWT = async (
 
     // 2. Attempt refresh token flow
     const refreshToken = req.cookies.refreshToken;
-    if (!refreshToken) throw new Error("No authentication tokens found");
+    if (!refreshToken) {
+      res.status(401).json({
+        error: "No authentication tokens found",
+      });
+
+      // Clear invalid credentials
+      res.clearCookie("accessToken");
+      res.clearCookie("refreshToken");
+      return; //
+    } 
 
     // Get result from refresh session
     const result = await refreshSession(refreshToken);
     
     // Handle failed refresh
     if (!result.success) {
-      // Re-throw as a standard error to be caught by the outer catch block
+      
       res.status(401).json({
         error: "Refresh failed"
       });
