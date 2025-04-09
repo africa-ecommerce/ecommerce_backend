@@ -14,11 +14,24 @@ import jwt from "jsonwebtoken";
        return;
      }
 
-     // This will throw an error if refresh fails
-     const { user, newTokens } = await refreshSession(refreshToken);
+      // Now we have a structured response
+    const result = await refreshSession(refreshToken);
+    
+    if (!result.success) {
+      // Handle different types of failures differently if needed
+      res.status(401).json({ 
+        error: result.error, 
+        code: "INVALID_REFRESH" 
+      });
+      
+      // Clear cookies on authentication failure
+      res.clearCookie("accessToken");
+      res.clearCookie("refreshToken");
+      return;
+    }
 
      // Set new tokens in cookies
-     setAuthCookies(res, newTokens);
+     setAuthCookies(res, result.newTokens!);
 
      res.status(200).json({ success: true });
    } catch (error) {
