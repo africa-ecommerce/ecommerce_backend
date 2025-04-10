@@ -89,85 +89,85 @@ const uploadToMinio = async (files: Express.Multer.File[]): Promise<string[]> =>
 // Controller methods
 export const productController = {
   // Create a new product
-  createProduct: [
-    upload.array("images", 10), // Allow up to 10 images
-    async (req: AuthRequest, res: Response) => {
-      try {
-        // Check if supplier exists and is authorized
-        const supplierId = req.body.supplierId;
-        const supplier = await prisma.supplier.findUnique({
-          where: { id: supplierId },
-          include: { user: true },
+ createProduct: [
+  upload.array("images", 10), // Allow up to 10 images
+  async (req: AuthRequest, res: Response) => {
+    try {
+      // Get user ID from authenticated request
+      const userId = req.user?.id;
+      
+      if (!userId) {
+         res.status(401).json({
+          error: "Authentication required",
         });
-
-        if (!supplier) {
-           res.status(404).json({
-            error: "Supplier not found!",
-          });
-          return;
-        }
-
-        // Ensure the logged-in user owns this supplier account
-        // This assumes you have user authentication middleware that adds userId to the request
-        const userId = req.user?.id;
-        if (supplier.userId !== userId) {
-           res.status(403).json({
-             error: "Unauthorized to add products for this supplier!",
-           });
-          return;
-        }
-
-        // Validate request body
-        const validatedData = productSchema.safeParse({
-          name: req.body.name,
-          description: req.body.description,
-          price: parseFloat(req.body.price),
-          quantity: parseInt(req.body.quantity),
-          category: req.body.category,
-        });
-
-        if (!validatedData.success) {
-           res.status(400).json({
-            error: "Validation failed!"
-          });
-          return;
-        }
-
-        // Upload images to MinIO
-        const files = req.files as Express.Multer.File[];
-        const imageUrls =
-          files && files.length > 0 ? await uploadToMinio(files) : [];
-
-        // Create product in database
-        const product = await prisma.product.create({
-          data: {
-            name: validatedData.data.name,
-            description: validatedData.data.description,
-            price: validatedData.data.price,
-            quantity: validatedData.data.quantity,
-            category: validatedData.data.category,
-            images: JSON.stringify(imageUrls), // Store URLs as JSON string
-            supplierId: supplierId,
-          },
-        });
-
-         res.status(201).json({
-          message: "Product created successfully",
-          data: {
-            ...product,
-            images: imageUrls, // Return as array
-          },
-        });
-        return;
-      } catch (error) {
-        console.error("Error creating product:", error);
-         res.status(500).json({
-           error: "Internal server error"
-         });
         return;
       }
-    },
-  ],
+
+      // Find supplier associated with the logged-in user
+      const supplier = await prisma.supplier.findFirst({
+        where: { userId: userId },
+        include: { user: true },
+      });
+
+      if (!supplier) {
+         res.status(404).json({
+          error: "No supplier account found for this user",
+        });
+        return;
+      }
+
+      // Validate request body
+      const validatedData = productSchema.safeParse({
+        name: req.body.name,
+        description: req.body.description,
+        price: parseFloat(req.body.price),
+        quantity: parseInt(req.body.quantity),
+        category: req.body.category,
+      });
+
+      if (!validatedData.success) {
+         res.status(400).json({
+          error: "Validation failed",
+          details: validatedData.error.format()
+        });
+        return;
+      }
+
+      // Upload images to MinIO
+      const files = req.files as Express.Multer.File[];
+      const imageUrls =
+        files && files.length > 0 ? await uploadToMinio(files) : [];
+
+      // Create product in database using the supplier ID from the found supplier
+      const product = await prisma.product.create({
+        data: {
+          name: validatedData.data.name,
+          description: validatedData.data.description,
+          price: validatedData.data.price,
+          quantity: validatedData.data.quantity,
+          category: validatedData.data.category,
+          images: JSON.stringify(imageUrls), // Store URLs as JSON string
+          supplierId: supplier.id, // Use the supplier ID from the authenticated user
+        },
+      });
+
+       res.status(201).json({
+        message: "Product created successfully",
+        data: {
+          ...product,
+          images: imageUrls, // Return as array
+        },
+      });
+      return;
+    } catch (error) {
+      console.error("Error creating product:", error);
+       res.status(500).json({
+        error: "Internal server error"
+      });
+      return;
+    }
+  },
+],
 
   // Get all products for a supplier
   getSupplierProducts: async (req: Request, res: Response) => {

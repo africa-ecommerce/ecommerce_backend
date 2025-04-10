@@ -75,5 +75,8 @@ mime types and 5mb
 handle video upload
 zod and paul zod positive
 IN CLIENT LOGOUT, SHOULD CLEAR OUT ALL CACHES, clear refresh token , on mobile delete refresh token if user deletes his account
+fetching navbar late
+
+quick access
 <!-- 
 redirect to onboarding as callbackurl in register, it will redirect to login as a callbackurl, so as on subsequent login redirect it either goes to callbackuri or dashboard, if user escapes this onboarding either by skipping or cancelling the page after login, always like notify them in dashboard to do the onboarding -->
