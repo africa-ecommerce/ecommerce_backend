@@ -30,6 +30,7 @@ import  authenticateJWT  from "./middleware/auth.middleware";
 import passport from "./config/passport";
 import { Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
+import { initializeBucket } from "./config/minio";
 
 
 const app = express();
@@ -64,6 +65,11 @@ app.use(
   })
 );
 app.use(morgan("dev"));
+
+// Call MinIO bucket initialization before starting the server.
+initializeBucket().catch(error => {
+  console.error('Failed to initialize MinIO bucket', error);
+});
 
 
 
@@ -103,9 +109,10 @@ app.use(passport.session());
 // // API Routes
 app.use("/auth", authRoutes);
 app.use("/onboarding", onboardingRoutes);
+app.use("/products", productRoutes);
+
 // New current user endpoint - protected route
 // app.use("/merchants", merchantRoutes);
-// app.use("/products", productRoutes);
 // app.use("/orders", orderRoutes);
 // app.use("/payments", paymentRoutes);
 // app.use("/analytics", analyticsRoutes);

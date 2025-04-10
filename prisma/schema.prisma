@@ -193,12 +193,12 @@ model User {
   emailVerified Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  refreshToken  String?    @unique
+  refreshToken  String?   @unique
   policy        Boolean   @default(false)
   isOnboarded   Boolean   @default(false)
   userType      UserType  @default(UNSET)
   //  EITHER SUPPLIER OR PLUG
-  supplier      Supplier? 
+  supplier      Supplier?
   plug          Plug?
 
   // Relations
@@ -235,45 +235,46 @@ enum UserType {
   PLUG
 }
 
-
-
 model Supplier {
-  id           String       @id @default(cuid())
+  id           String    @id @default(cuid())
   businessType String
-  userId       String       @unique
-  user         User         @relation(fields: [userId], references: [id])
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id])
+  products     Product[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 model Plug {
-  id            String   @id @default(cuid())
-  businessName  String
-  phone   String?
-  state         String?
-  aboutBusiness String?
-  niches        String[] // Array of strings
+  id              String   @id @default(cuid())
+  businessName    String
+  phone           String?
+  state           String?
+  aboutBusiness   String?
+  niches          String[] // Array of strings
   // customNiche    String? 
   generalMerchant Boolean
-  userId        String   @unique
-  user          User     @relation(fields: [userId], references: [id])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([businessName])
 }
 
 model Product {
-  id              String  @id @default(cuid())
+  id              String   @id @default(cuid())
   name            String
   description     String
   price           Float
   quantity        Int
   category        String?
-  shippingRegions String?
   images          String? // Typically would store JSON or comma-separated strings with image paths
   supplierId      String
   // supplier        Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplier        Supplier @relation(fields: [supplierId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 // // Merchant-Specific Business Details
