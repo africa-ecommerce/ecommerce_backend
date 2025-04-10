@@ -248,6 +248,116 @@ export const productController = {
     }
   },
 
+
+
+// Get all products on the platform
+getAllProducts: async (req: Request, res: Response) => {
+  try {
+    // Parse query parameters
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const sortBy = (req.query.sortBy as string) || 'createdAt';
+    const order = (req.query.order as string)?.toLowerCase() === 'asc' ? 'asc' : 'desc';
+    const category = req.query.category as string;
+    const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice as string) : undefined;
+    const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice as string) : undefined;
+    const search = req.query.search as string;
+
+    // Calculate pagination values
+    const skip = (page - 1) * limit;
+    
+    // Build where conditions for filtering
+    const whereConditions: any = {};
+    
+    // Add category filter if provided
+    if (category) {
+      whereConditions.category = category;
+    }
+    
+    // Add price range filter if provided
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      whereConditions.price = {};
+      if (minPrice !== undefined) {
+        whereConditions.price.gte = minPrice;
+      }
+      if (maxPrice !== undefined) {
+        whereConditions.price.lte = maxPrice;
+      }
+    }
+    
+    // Add search filter if provided
+    if (search) {
+      whereConditions.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+    
+    // Get total count for pagination
+    const totalCount = await prisma.product.count({
+      where: whereConditions
+    });
+    
+    // Get products with filtering, sorting and pagination
+    const products = await prisma.product.findMany({
+      where: whereConditions,
+      orderBy: {
+        [sortBy]: order
+      },
+      skip,
+      take: limit,
+      include: {
+        supplier: {
+          select: {
+            id: true,
+            businessType: true,
+            user: {
+              select: {
+                name: true
+              }
+            }
+          }
+        }
+      }
+    });
+    
+    // Parse the images JSON for each product
+    const formattedProducts = products.map(product => ({
+      ...product,
+      images: product.images ? JSON.parse(product.images as string) : [],
+      supplier: {
+        ...product.supplier,
+        businessName: product.supplier.user.name
+      }
+    }));
+    
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+    
+     res.status(200).json({
+      message: "Products fetched successfully!",
+      data: formattedProducts,
+      meta: {
+        currentPage: page,
+        totalPages,
+        totalItems: totalCount,
+        itemsPerPage: limit,
+        hasNextPage,
+        hasPrevPage
+      }
+    });
+    return;
+  } catch (error) {
+    console.error('Error fetching all products:', error);
+     res.status(500).json({
+      error: "Internal server error!"
+    });
+    return;
+  }
+},
+
   // Update product
   updateProduct: [
     upload.array("images", 10),

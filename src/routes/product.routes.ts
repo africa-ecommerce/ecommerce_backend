@@ -12,6 +12,9 @@ router.use(authenticateJWT);
 // Create a new product
 router.post("/", productController.createProduct);
 
+// Public route for getting all products - no authentication required
+router.get("/", productController.getAllProducts);
+
 // Get products by supplier ID
 router.get("/supplier/:supplierId", productController.getSupplierProducts);
 
