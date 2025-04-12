@@ -1,13 +1,13 @@
-// src/routes/marketplace.routes.ts
-import { Router } from "express";
-import {
-  getMerchants,
-  getMarketplaceProducts,
-} from "../controllers/marketplace.controller";
+// // src/routes/marketplace.routes.ts
+// import { Router } from "express";
+// import {
+//   getMerchants,
+//   getMarketplaceProducts,
+// } from "../controllers/marketplace.controller";
 
-const router = Router();
+// const router = Router();
 
-router.get("/merchants", getMerchants);
-router.get("/products", getMarketplaceProducts);
+// router.get("/merchants", getMerchants);
+// router.get("/products", getMarketplaceProducts);
 
-export default router;
+// export default router;

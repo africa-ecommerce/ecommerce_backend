@@ -1,9 +1,10 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { prisma } from "../../config";
 import { addToDenylist } from "../../helper/addToDenyList";
 import jwt from "jsonwebtoken";
+import { AuthRequest } from "../../types";
 
-export const logout = async (req: Request, res: Response) => {
+export const logout = async (req: AuthRequest, res: Response) => {
   try {
     const token = req.cookies.accessToken;
     const refreshToken = req.cookies.refreshToken;
@@ -30,12 +31,12 @@ export const logout = async (req: Request, res: Response) => {
       .clearCookie("accessToken")
       .clearCookie("refreshToken")
       .status(200)
-      .json({ success: true, message: "Logged out successfully" });
+      .json({ message: "Logged out successfully!" });
   } catch (error) {
     console.error("Logout error:", error);
     res.status(500).json({
       success: false,
-      error: "Internal server error during logout",
+      error: "Internal server error!",
     });
   }
 };

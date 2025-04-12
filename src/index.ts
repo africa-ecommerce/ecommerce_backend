@@ -6,24 +6,21 @@ import morgan from "morgan";
 import { port, redisClient } from "./config";
 import authRoutes from "./routes/auth.routes";
 import onboardingRoutes from "./routes/onboarding.routes";
-import merchantRoutes from "./routes/merchant.routes";
 import productRoutes from "./routes/product.routes";
-import orderRoutes from "./routes/order.routes";
-import paymentRoutes from "./routes/payment.routes";
+import plugProductRoutes from "./routes/plugProduct.routes";
+// import orderRoutes from "./routes/order.routes";
+// import paymentRoutes from "./routes/payment.routes";
 import analyticsRoutes from "./routes/analytics.routes";
-import notificationRoutes from "./routes/notification.routes";
-import subscriptionRoutes from "./routes/subscription.routes";
-import qrcodeRoutes from "./routes/qrcode.routes";
-import logisticsRoutes from "./routes/logistics.routes";
-import websiteRoutes from "./routes/website.routes";
+// import notificationRoutes from "./routes/notification.routes";
+// import qrcodeRoutes from "./routes/qrcode.routes";
+// import logisticsRoutes from "./routes/logistics.routes";
+// import websiteRoutes from "./routes/website.routes";
 // import customerRoutes from "./routes/customer.routes";
-import marketplaceRoutes from "./routes/marketplace.routes";
-import searchRoutes from "./routes/search.routes";
-import whatsappRoutes from "./routes/whatsapp.routes"; // Existing WhatsApp-to-Web Store Builder routes
+// import marketplaceRoutes from "./routes/marketplace.routes";
+// import searchRoutes from "./routes/search.routes";
+// import whatsappRoutes from "./routes/whatsapp.routes"; // Existing WhatsApp-to-Web Store Builder routes
 // import whatsappMessageRoutes from "./routes/whatsapp.message.routes"; // New WhatsApp messaging routes
 // import affiliateRoutes from "./routes/affiliate.routes";
-import { subscriptionCheck } from "./middleware/subscription.middleware";
-import { dynamicHugoProxy } from "./middleware/hugoProxy.middleware";
 import { RedisStore } from "connect-redis";
 import session from "express-session";
 import  authenticateJWT  from "./middleware/auth.middleware";
@@ -110,6 +107,7 @@ app.use(passport.session());
 app.use("/auth", authRoutes);
 app.use("/onboarding", onboardingRoutes);
 app.use("/products", productRoutes);
+app.use("/plug/products", plugProductRoutes);
 
 // New current user endpoint - protected route
 // app.use("/merchants", merchantRoutes);

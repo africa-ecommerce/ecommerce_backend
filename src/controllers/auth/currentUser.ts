@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express";
+import { Response, NextFunction } from "express";
 import { prisma } from "../../config";
 import { AuthRequest } from "../../types";
 export const getCurrentUser = async (
@@ -7,11 +7,10 @@ export const getCurrentUser = async (
   next: NextFunction
 ) => {
   try {
-    // Assuming req.user is populated by your Passport middleware.
     const userId = req.user?.id;
     if (!userId) {
-       res.status(401).json({ error: "Authentication required!" });
-       return;
+      res.status(401).json({ error: "Authentication required!" });
+      return;
     }
 
     const currentUser = await prisma.user.findUnique({
@@ -30,12 +29,12 @@ export const getCurrentUser = async (
     });
 
     if (!currentUser) {
-       res.status(404).json({ error: "User not found!" });
-       return;
+      res.status(404).json({ error: "User not found!" });
+      return;
     }
 
-     res.status(200).json({ user: currentUser });
-     return;
+    res.status(200).json({ user: currentUser });
+    return;
   } catch (error) {
     next(error);
   }

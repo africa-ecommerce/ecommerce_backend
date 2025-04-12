@@ -1,522 +1,417 @@
 // src/controllers/product.controller.ts
-import { Request, Response } from 'express';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import { z } from 'zod';
-import { v4 as uuidv4 } from 'uuid';
-import { BUCKET_NAME, minioClient } from '../config/minio';
+import { Response } from "express";
 import { prisma } from "../config";
-import { AuthRequest } from '../types';
+import { AuthRequest } from "../types";
+import { productSchema } from "../lib/zod/schema";
+import {
+  deleteFromMinio,
+  upload,
+  uploadToMinio,
+} from "../helper/minioObjectStore/productImage";
 
-
-
-
- //Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueFilename = `${uuidv4()}${path.extname(file.originalname)}`;
-    cb(null, uniqueFilename);
-  }
-});
-
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  const allowedMimeTypes = [
-    'image/jpeg', 
-    'image/png', 
-    'image/webp', 
-    'image/jpg',
-    'image/svg+xml', // allow SVG files
-    'image/gif'      // allow GIF files (if desired)
-  ];
-
-  if (allowedMimeTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Invalid file type. Allowed types: JPEG, PNG, JPG, WebP, SVG, and GIF.'));
-  }
-};
-
-const upload = multer({
-  storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB
-  },
-  fileFilter
-});
-
-// Zod validation schema for product
-const productSchema = z.object({
-  name: z.string().min(3, "Product name must be at least 3 characters long"),
-  description: z.string().min(10, "Description must be at least 10 characters long"),
-  price: z.number().positive("Price must be positive"),
-  quantity: z.number().int().nonnegative("Quantity must be a non-negative integer"),
-  category: z.string().optional(),
-});
-
-// Upload images to MinIO and return URLs
-const uploadToMinio = async (files: Express.Multer.File[]): Promise<string[]> => {
-  const imageUrls: string[] = [];
-  
-  for (const file of files) {
-    const objectName = `products/${Date.now()}-${path.basename(file.path)}`;
-    
-    await minioClient.fPutObject(
-      BUCKET_NAME,
-      objectName,
-      file.path,
-      { 'Content-Type': file.mimetype }
-    );
-    
-    // Generate URL to the uploaded file
-    const imageUrl = `${process.env.MINIO_BASE_URL || `http://${process.env.MINIO_ENDPOINT || 'localhost'}:${process.env.MINIO_PORT || '9000'}`}/${BUCKET_NAME}/${objectName}`;
-    imageUrls.push(imageUrl);
-    
-    // Remove the temporary file
-    fs.unlinkSync(file.path);
-  }
-  
-  return imageUrls;
+// Helper function to format products with parsed images
+const formatProductWithImages = (product: any) => {
+  return {
+    ...product,
+    images: product.images ? JSON.parse(product.images as string) : [],
+  };
 };
 
 // Controller methods
 export const productController = {
   // Create a new product
- createProduct: [
-  upload.array("images", 10), // Allow up to 10 images
-  async (req: AuthRequest, res: Response) => {
-    try {
-      // Get user ID from authenticated request
-      const userId = req.user?.id;
-      
-      if (!userId) {
-         res.status(401).json({
-          error: "Authentication required",
+  createProduct: [
+    upload.array("images", 10), // Allow up to 10 images
+    async (req: AuthRequest, res: Response) => {
+      let imageUrls: string[] = []; // Track keys for rollback
+
+      try {
+        const supplier = req.supplier!;
+
+        // Parse the product data from FormData
+        let productData;
+        try {
+          productData = JSON.parse(req.body.productData);
+        } catch (error) {
+          res.status(400).json({ error: "Invalid product data format!" }); // ---->
+          return;
+        }
+
+        // Validate request body
+        const validatedData = productSchema.safeParse({
+          name: productData.name,
+          description: productData.description,
+          price: parseFloat(productData.price),
+          category: productData.category,
         });
+
+        if (!validatedData.success) {
+          res.status(400).json({
+            error: "Validation failed!"
+          }); // ---->
+          return;
+        }
+
+        // Process the request within a transaction
+        const result = await prisma.$transaction(async (tx) => {
+          // Upload images to MinIO
+          const files = req.files as Express.Multer.File[];
+          imageUrls =
+            files && files.length > 0 ? await uploadToMinio(files) : [];
+
+          // Create product in database using the supplier ID
+          const product = await tx.product.create({
+            data: {
+              name: validatedData.data.name,
+              description: validatedData.data.description,
+              price: validatedData.data.price,
+              category: validatedData.data.category,
+              images: JSON.stringify(imageUrls), // Store URLs as JSON string
+              supplierId: supplier.id,
+            },
+          });
+
+          return formatProductWithImages(product);
+        });
+
+        res.status(201).json({
+          message: "Product created successfully!",
+          data: result,
+        }); // ---->
+        return;
+      } catch (error) {
+        console.error("Error creating product:", error);
+
+        // Rollback: Delete uploaded images if transaction failed
+        if (imageUrls.length > 0) {
+          await deleteFromMinio(imageUrls);
+        }
+
+        res.status(500).json({ error: "Internal server error!" }); // ---->
         return;
       }
-
-      // Find supplier associated with the logged-in user
-      const supplier = await prisma.supplier.findFirst({
-        where: { userId: userId },
-        include: { user: true },
-      });
-
-      if (!supplier) {
-         res.status(404).json({
-          error: "No supplier account found for this user",
-        });
-        return;
-      }
-
-      // Validate request body
-      const validatedData = productSchema.safeParse({
-        name: req.body.name,
-        description: req.body.description,
-        price: parseFloat(req.body.price),
-        quantity: parseInt(req.body.quantity),
-        category: req.body.category,
-      });
-
-      if (!validatedData.success) {
-         res.status(400).json({
-          error: "Validation failed",
-          details: validatedData.error.format()
-        });
-        return;
-      }
-
-      // Upload images to MinIO
-      const files = req.files as Express.Multer.File[];
-      const imageUrls =
-        files && files.length > 0 ? await uploadToMinio(files) : [];
-
-      // Create product in database using the supplier ID from the found supplier
-      const product = await prisma.product.create({
-        data: {
-          name: validatedData.data.name,
-          description: validatedData.data.description,
-          price: validatedData.data.price,
-          quantity: validatedData.data.quantity,
-          category: validatedData.data.category,
-          images: JSON.stringify(imageUrls), // Store URLs as JSON string
-          supplierId: supplier.id, // Use the supplier ID from the authenticated user
-        },
-      });
-
-       res.status(201).json({
-        message: "Product created successfully",
-        data: {
-          ...product,
-          images: imageUrls, // Return as array
-        },
-      });
-      return;
-    } catch (error) {
-      console.error("Error creating product:", error);
-       res.status(500).json({
-        error: "Internal server error"
-      });
-      return;
-    }
-  },
-],
+    },
+  ],
 
   // Get all products for a supplier
-  getSupplierProducts: async (req: Request, res: Response) => {
+  getSupplierProducts: async (req: AuthRequest, res: Response) => {
     try {
-      const supplierId = req.params.supplierId;
-
-      // Ensure supplier exists
-      const supplier = await prisma.supplier.findUnique({
-        where: { id: supplierId },
-      });
-
-      if (!supplier) {
-         res.status(404).json({
-          error: "Supplier not found",
-        });
-        return;
-      }
+      const supplier = req.supplier!;
 
       // Get all products
       const products = await prisma.product.findMany({
-        where: { supplierId },
+        where: { supplierId: supplier.id },
         orderBy: { createdAt: "desc" },
       });
 
-      // Parse the images JSON for each product
-      const formattedProducts = products.map((product) => ({
-        ...product,
-        images: product.images ? JSON.parse(product.images as string) : [],
-      }));
+      // Format products with parsed images
+      const formattedProducts = products.map(formatProductWithImages);
 
-       res.status(200).json({
-         message: "Products fetched successfully",
-         data: formattedProducts,
-       });
+      res.status(200).json({
+        message: "Products fetched successfully!",
+        data: formattedProducts,
+      }); // ---->
       return;
     } catch (error) {
       console.error("Error fetching supplier products:", error);
-       res.status(500).json({
-         error: "Internal server error"
-       });
+      res.status(500).json({ error: "Internal server error!" }); // ---->
       return;
     }
   },
 
   // Get product by ID
-  getProductById: async (req: Request, res: Response) => {
+  getProductById: async (req: AuthRequest, res: Response) => {
     try {
-      const productId = req.params.id;
+      const productId = req.params.productId;
 
       const product = await prisma.product.findUnique({
         where: { id: productId },
       });
 
       if (!product) {
-         res.status(404).json({
-          error: "Product not found",
-        });
+        res.status(404).json({ error: "Product not found!" }); // ---->
         return;
       }
 
-      // Parse the images JSON
-      const formattedProduct = {
-        ...product,
-        images: product.images ? JSON.parse(product.images as string) : [],
-      };
-
-       res.status(200).json({
-         message: "Product fetched successfully",
-         data: formattedProduct,
-       });
+      res.status(200).json({
+        message: "Product fetched successfully!",
+        data: formatProductWithImages(product),
+      }); // ---->
       return;
     } catch (error) {
       console.error("Error fetching product:", error);
-       res.status(500).json({
-        error: "Internal server error",
-      });
+      res.status(500).json({ error: "Internal server error!" }); // ---->
       return;
     }
   },
 
+  // Get all products with efficient pagination for infinite scrolling
+  getAllProducts: async (req: AuthRequest, res: Response) => {
+    try {
+      // Parse pagination parameters
+      const limit = parseInt(req.query.limit as string) || 20;
+      const cursor = req.query.cursor as string; // For cursor-based pagination
+      const plug = req.plug!;
 
+      // Basic sorting
+      const sortBy = (req.query.sortBy as string) || "createdAt";
+      const order =
+        (req.query.order as string)?.toLowerCase() === "asc" ? "asc" : "desc";
 
-// Get all products on the platform
-getAllProducts: async (req: Request, res: Response) => {
-  try {
-    // Parse query parameters
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
-    const sortBy = (req.query.sortBy as string) || 'createdAt';
-    const order = (req.query.order as string)?.toLowerCase() === 'asc' ? 'asc' : 'desc';
-    const category = req.query.category as string;
-    const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice as string) : undefined;
-    const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice as string) : undefined;
-    const search = req.query.search as string;
+      // Build query options
+      const queryOptions: any = {
+        take: limit + 1, // Take one extra to determine if there are more items
+        orderBy: {
+          [sortBy]: order,
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          price: true,
+          category: true,
+          images: true,
+          supplierId: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      };
 
-    // Calculate pagination values
-    const skip = (page - 1) * limit;
-    
-    // Build where conditions for filtering
-    const whereConditions: any = {};
-    
-    // Add category filter if provided
-    if (category) {
-      whereConditions.category = category;
-    }
-    
-    // Add price range filter if provided
-    if (minPrice !== undefined || maxPrice !== undefined) {
-      whereConditions.price = {};
-      if (minPrice !== undefined) {
-        whereConditions.price.gte = minPrice;
+      // Add cursor for efficient pagination if provided
+      if (cursor) {
+        queryOptions.cursor = { id: cursor };
+        queryOptions.skip = 1; // Skip the cursor
       }
-      if (maxPrice !== undefined) {
-        whereConditions.price.lte = maxPrice;
-      }
-    }
-    
-    // Add search filter if provided
-    if (search) {
-      whereConditions.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } }
-      ];
-    }
-    
-    // Get total count for pagination
-    const totalCount = await prisma.product.count({
-      where: whereConditions
-    });
-    
-    // Get products with filtering, sorting and pagination
-    const products = await prisma.product.findMany({
-      where: whereConditions,
-      orderBy: {
-        [sortBy]: order
-      },
-      skip,
-      take: limit,
-      include: {
-        supplier: {
-          select: {
-            id: true,
-            businessType: true,
-            user: {
-              select: {
-                name: true
+
+      // Use transaction for complex operations
+      const result = await prisma.$transaction(async (tx) => {
+        // Execute query
+        let products = await tx.product.findMany(queryOptions);
+
+        // Check if we have more results
+        const hasNextPage = products.length > limit;
+        if (hasNextPage) {
+          products = products.slice(0, limit); // Remove the extra item
+        }
+
+        // Get the next cursor
+        const nextCursor = hasNextPage
+          ? products[products.length - 1].id
+          : null;
+
+        // Parse images and add plugStatus for each product
+        const formattedProducts = await Promise.all(
+          products.map(async (product) => {
+            // Check if this product is already plugged by the current plug
+            let plugStatus;
+
+            if (plug.id) {
+              const plugProduct = await tx.plugProduct.findFirst({
+                where: {
+                  originalId: product.id,
+                  plugId: plug.id,
+                },
+                select: { id: true, status: true },
+              });
+
+              if (plugProduct) {
+                plugStatus = plugProduct.status;
               }
             }
-          }
-        }
-      }
-    });
-    
-    // Parse the images JSON for each product
-    const formattedProducts = products.map(product => ({
-      ...product,
-      images: product.images ? JSON.parse(product.images as string) : [],
-      supplier: {
-        ...product.supplier,
-        businessName: product.supplier.user.name
-      }
-    }));
-    
-    // Calculate pagination metadata
-    const totalPages = Math.ceil(totalCount / limit);
-    const hasNextPage = page < totalPages;
-    const hasPrevPage = page > 1;
-    
-     res.status(200).json({
-      message: "Products fetched successfully!",
-      data: formattedProducts,
-      meta: {
-        currentPage: page,
-        totalPages,
-        totalItems: totalCount,
-        itemsPerPage: limit,
-        hasNextPage,
-        hasPrevPage
-      }
-    });
-    return;
-  } catch (error) {
-    console.error('Error fetching all products:', error);
-     res.status(500).json({
-      error: "Internal server error!"
-    });
-    return;
-  }
-},
+
+            return {
+              ...product,
+              images: product.images
+                ? JSON.parse(product.images as string)
+                : [],
+              plugStatus,
+            };
+          })
+        );
+
+        return {
+          products: formattedProducts,
+          meta: {
+            hasNextPage,
+            nextCursor,
+            count: formattedProducts.length,
+          },
+        };
+      });
+
+      res.status(200).json({
+        message: "Products fetched successfully!",
+        data: result.products,
+        meta: result.meta,
+      }); // ---->
+      return;
+    } catch (error) {
+      console.error("Error fetching all products:", error);
+      res.status(500).json({ error: "Internal server error!" }); // ---->
+      return;
+    }
+  },
 
   // Update product
   updateProduct: [
     upload.array("images", 10),
     async (req: AuthRequest, res: Response) => {
-      try {
-        const productId = req.params.id;
+      let newImageUrls: string[] = [];
+      let imagesToDelete: string[] = [];
 
-        // Check if product exists
-        const existingProduct = await prisma.product.findUnique({
-          where: { id: productId },
-          include: { supplier: true },
+      try {
+        const productId = req.params.productId;
+        const supplier = req.supplier!;
+
+        // Parse the product data from FormData
+        let productData;
+        try {
+          productData = JSON.parse(req.body.productData);
+        } catch (error) {
+          res.status(400).json({ error: "Invalid product data format!" }); // ---->
+          return;
+        }
+
+        // Check if product exists and belongs to this supplier
+        const existingProduct = await prisma.product.findFirst({
+          where: {
+            id: productId,
+            supplierId: supplier.id,
+          },
         });
 
         if (!existingProduct) {
-           res.status(404).json({
-            error: "Product not found",
-          });
+          res.status(404).json({ error: "Product not found!" }); // ---->
           return;
         }
 
-        // Ensure the logged-in user owns this product
-        const userId = req.user?.id;
-
-
-        if (existingProduct.supplier.userId !== userId) {
-          res.status(403).json({
-            error: "Unauthorized to update this product",
-          });
-          return;
-        }
-
-        // Validate request data
+        // Validate request body
         const validatedData = productSchema.safeParse({
-          name: req.body.name,
-          description: req.body.description,
-          price: parseFloat(req.body.price),
-          quantity: parseInt(req.body.quantity),
-          category: req.body.category,
-          shippingRegions: req.body.shippingRegions,
+          name: productData.name,
+          description: productData.description,
+          price: parseFloat(productData.price),
+          category: productData.category,
         });
 
         if (!validatedData.success) {
-           res.status(400).json({
-            error: "Validation failed",            
-          });
+          res.status(400).json({
+            error: "Validation failed!",
+            details: validatedData.error.format(),
+          }); // ---->
           return;
         }
-
-        // Handle image updates
-        let updatedImageUrls: string[] = [];
 
         // Get existing images
         const existingImages = existingProduct.images
           ? JSON.parse(existingProduct.images as string)
           : [];
 
-        // Handle new images if provided
+        // Upload new images first before database changes
         const files = req.files as Express.Multer.File[];
-        if (files && files.length > 0) {
-          const newImageUrls = await uploadToMinio(files);
-          updatedImageUrls = [...existingImages, ...newImageUrls];
-        } else {
-          // Keep existing images unless specifically requested to remove
-          updatedImageUrls = existingImages;
+        if (files?.length) {
+          newImageUrls = await uploadToMinio(files);
         }
 
-        // Handle image removal if specific indices are provided
-        if (
-          req.body.removeImages &&
-          Array.isArray(JSON.parse(req.body.removeImages))
-        ) {
-          const indicesToRemove = JSON.parse(req.body.removeImages);
-          updatedImageUrls = existingImages.filter(
-            (_:any, index:any) => !indicesToRemove.includes(index)
-          );
+        // Calculate images to delete
+        if (req.body.removeImages) {
+          const indices = JSON.parse(req.body.removeImages);
+          imagesToDelete = indices
+            .filter((i) => i >= 0 && i < existingImages.length)
+            .map((i) => existingImages[i]);
         }
 
-        // Update product in database
-        const updatedProduct = await prisma.product.update({
-          where: { id: productId },
-          data: {
-            name: validatedData.data.name,
-            description: validatedData.data.description,
-            price: validatedData.data.price,
-            quantity: validatedData.data.quantity,
-            category: validatedData.data.category,
-            images: JSON.stringify(updatedImageUrls),
-            updatedAt: new Date(),
-          },
+        // Calculate the updated images array
+        const updatedImages = [
+          ...existingImages.filter((url) => !imagesToDelete.includes(url)),
+          ...newImageUrls,
+        ];
+
+        // Use transaction to ensure database consistency
+        const updatedProduct = await prisma.$transaction(async (tx) => {
+          // Update product in database
+          const updated = await tx.product.update({
+            where: { id: productId },
+            data: {
+              name: validatedData.data.name,
+              description: validatedData.data.description,
+              price: validatedData.data.price,
+              category: validatedData.data.category,
+              images: JSON.stringify(updatedImages),
+              updatedAt: new Date(),
+            },
+          });
+
+          return updated;
         });
 
-         res.status(200).json({
-          message: "Product updated successfully",
-          data: {
-            ...updatedProduct,
-            images: updatedImageUrls,
-          },
-        });
+        // Only delete images after successful database transaction
+        if (imagesToDelete.length > 0) {
+          await deleteFromMinio(imagesToDelete);
+        }
+
+        res.status(200).json({
+          message: "Product updated successfully!",
+          data: formatProductWithImages(updatedProduct),
+        }); // ---->
         return;
       } catch (error) {
         console.error("Error updating product:", error);
-         res.status(500).json({
-          error: "Internal server error",
-        });
+
+        // Rollback: Delete uploaded images if transaction failed
+        if (newImageUrls.length > 0) {
+          await deleteFromMinio(newImageUrls);
+        }
+
+        res.status(500).json({ error: "Internal server error!" }); // ---->
         return;
       }
     },
   ],
 
-  // Delete product
+  // Delete product with MinIO cleanup
   deleteProduct: async (req: AuthRequest, res: Response) => {
     try {
-      const productId = req.params.id;
+      const productId = req.params.productId;
+      const supplier = req.supplier!;
 
-      // Check if product exists
-      const existingProduct = await prisma.product.findUnique({
-        where: { id: productId },
-        include: { supplier: true },
-      });
-
-      if (!existingProduct) {
-        res.status(404).json({
-          error: "Product not found",
+      // Use transaction for consistency
+      await prisma.$transaction(async (tx) => {
+        // Check if product exists and belongs to this supplier
+        const existingProduct = await tx.product.findFirst({
+          where: {
+            id: productId,
+            supplierId: supplier.id,
+          },
         });
-        return;
-      }
 
-      // Ensure the logged-in user owns this product
-      const userId = req.user?.id;
-      if (existingProduct.supplier.userId !== userId) {
-        res.status(403).json({
-          error: "Unauthorized to delete this product",
+        if (!existingProduct) {
+          res.status(404).json({ error: "Product not found!" }); // ---->
+          return;
+        }
+
+        // Get existing images to clean up in MinIO
+        const existingImages = existingProduct.images
+          ? JSON.parse(existingProduct.images as string)
+          : [];
+
+        // Delete product from database
+        await tx.product.delete({
+          where: { id: productId },
         });
+
+        // Delete images after successful database transaction
+        if (existingImages.length > 0) {
+          await deleteFromMinio(existingImages);
+        }
+
+        res.status(200).json({
+          message: "Product deleted successfully!",
+        }); // ---->
         return;
-      }
-
-      // Get existing images to potentially clean up in MinIO
-      const existingImages = existingProduct.images
-        ? JSON.parse(existingProduct.images as string)
-        : [];
-
-      // Delete product from database
-      await prisma.product.delete({
-        where: { id: productId },
       });
-
-      // Optional: Clean up images from MinIO
-      // This can be implemented as a background job to not delay the response
-      // For simplicity, we're not implementing the cleanup here
-
-      res.status(200).json({
-        message: "Product deleted successfully",
-      });
-      return;
     } catch (error) {
       console.error("Error deleting product:", error);
-       res.status(500).json({
-         error: "Internal server error"
-       });
+      res.status(500).json({ error: "Internal server error!" }); // ---->
       return;
     }
   },

@@ -254,6 +254,7 @@ model Plug {
   niches          String[] // Array of strings
   // customNiche    String? 
   generalMerchant Boolean
+  plugProduct  PlugProduct[]
   userId          String   @unique
   user            User     @relation(fields: [userId], references: [id])
   createdAt       DateTime @default(now())
@@ -267,7 +268,7 @@ model Product {
   name            String
   description     String
   price           Float
-  quantity        Int
+  // quantity        Int
   category        String?
   images          String? // Typically would store JSON or comma-separated strings with image paths
   supplierId      String
@@ -277,6 +278,31 @@ model Product {
   updatedAt       DateTime @updatedAt
 }
 
+
+// Add this model to your Prisma schema
+
+model PlugProduct {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  price       Float
+  category    String?
+  images      String?  // JSON string of image URLs
+  originalId  String   // Reference to original supplier product
+  plugId      String
+  plug        Plug     @relation(fields: [plugId], references: [id], onDelete: Cascade)
+  status      PlugProductStatus @default(DRAFT)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([plugId])
+  @@index([originalId])
+}
+
+enum PlugProductStatus {
+  DRAFT     // Product is in editing stage
+  PUBLISHED // Product has been published to the plug's store
+}
 // // Merchant-Specific Business Details
 // model MerchantProfile {
 //   id           String   @id @default(uuid())

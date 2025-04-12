@@ -66,10 +66,14 @@ IF YOU ARE ONBOARDED YOU CANT SEE ONBOARDING AND ONBOARDING SUCCESS ROUTE AGAIN,
 CHECK PHONE NOTES, HOW DO WE WORK WITH ESCROW
 
 
+
+
 role based routing
 
 
 enctype="multipart/form-data
+
+image and video amount
 
 mime types and 5mb
 handle video upload
@@ -77,6 +81,40 @@ zod and paul zod positive
 IN CLIENT LOGOUT, SHOULD CLEAR OUT ALL CACHES, clear refresh token , on mobile delete refresh token if user deletes his account
 fetching navbar late
 
+
+ROLE BASED PAGE MIDDLEWARE REDIRECT
+promotion -> discount and flash sales supplier
+
+how to remove a specific image in products after upload -> edit -> things to check-> handle short videos -> there should be checkss to prevent offsite sale
+
+not tags -> keywords for seo
+
+SEARCH KEYWORDS
+
+PIXELS FOR TRACKING
+
+IMPLEMENT FULL TEXT SEARCH,IMAGE SEARCH
+ZOD
+
+LOADING EMPTY STATE
+
+better filtering or so
 quick access
+
+send as transaction
+
+limit file size and amount of file, 4 images 1 video
+submit similar image at a go
+
+PLUG STATUS, IF NULL, DONT SHOW
+validation of frontend
+
+EXTEND FOR VIDEOS WITH LIMIT
+
+
+
+UTILITY RESPONSE AND ZOD FOR OTHERS
+
+infinite scroll for all listing
 <!-- 
 redirect to onboarding as callbackurl in register, it will redirect to login as a callbackurl, so as on subsequent login redirect it either goes to callbackuri or dashboard, if user escapes this onboarding either by skipping or cancelling the page after login, always like notify them in dashboard to do the onboarding -->

@@ -1,13 +1,19 @@
 // src/routes/search.routes.ts
-import { Router } from "express";
-import {
-  productSearch,
-  merchantSearch,
-} from "../controllers/search.controller";
+import express from "express";
+import { searchController } from "../controllers/search.controller";
+import authenticateJWT from "../middleware/auth.middleware";
 
-const router = Router();
+const router = express.Router();
 
-router.get("/products", productSearch);
-router.get("/merchants", merchantSearch);
+router.use(authenticateJWT);
+// Public search routes
+router.get("/products", searchController.searchProducts);
+router.get("/plugs", searchController.searchPlugs);
+
+
+router.get(
+  "/supplier/:supplierId/products",
+  searchController.searchSupplierProducts
+);
 
 export default router;

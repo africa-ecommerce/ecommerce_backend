@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { prisma } from "../config";
 import { UserType } from "@prisma/client";
 import { AuthRequest } from "../types";
@@ -46,7 +46,9 @@ export const onboarding = async (req: AuthRequest, res: Response) => {
 
       // Handle supplier creation
       if (userType === UserType.SUPPLIER) {
-        const { supplierInfo: {businessType} } = req.body;
+        const {
+          supplierInfo: { businessType },
+        } = req.body;
         console.log("businessType", businessType);
         // Validate required fields
         if (userType === UserType.SUPPLIER && !businessType) {
@@ -66,23 +68,21 @@ export const onboarding = async (req: AuthRequest, res: Response) => {
             businessType,
           },
         });
-      }
+      } else {
+        const {
+          profile: { businessName, phone, aboutBusiness, state },
+          niches,
+          generalMerchant,
+        } = req.body;
 
-      else {
-         const {
-           profile: { businessName, phone, aboutBusiness, state },
-           niches,
-           generalMerchant,
-         } = req.body;
+        if (userType === UserType.PLUG && !businessName) {
+          res
+            .status(400)
+            .json({ error: "Business name is required for plugs!" });
+          return;
+        }
 
-         if (userType === UserType.PLUG && !businessName) {
-           res
-             .status(400)
-             .json({ error: "Business name is required for plugs!" });
-           return;
-         }
-
-         // Handle plug creation
+        // Handle plug creation
         await tx.plug.upsert({
           where: { userId },
           create: {
@@ -104,7 +104,6 @@ export const onboarding = async (req: AuthRequest, res: Response) => {
           },
         });
       }
-     
     });
 
     // // Format response data
