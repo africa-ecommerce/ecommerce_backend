@@ -316,13 +316,13 @@ export const productController = {
         if (req.body.removeImages) {
           const indices = JSON.parse(req.body.removeImages);
           imagesToDelete = indices
-            .filter((i) => i >= 0 && i < existingImages.length)
-            .map((i) => existingImages[i]);
+            .filter((i: any) => i >= 0 && i < existingImages.length)
+            .map((i: any) => existingImages[i]);
         }
 
         // Calculate the updated images array
         const updatedImages = [
-          ...existingImages.filter((url) => !imagesToDelete.includes(url)),
+          ...existingImages.filter((url: any) => !imagesToDelete.includes(url)),
           ...newImageUrls,
         ];
 

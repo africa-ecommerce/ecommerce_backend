@@ -5,7 +5,7 @@ import passport from "passport";
 
 import {
   resendVerificationEmail,
-  resendVerificationLimiter,
+  // resendVerificationLimiter,
   verifyEmail,
 } from "../controllers/auth/verifyEmail";
 import authenticateJWT from "../middleware/auth.middleware";
@@ -25,7 +25,7 @@ import {
 
 import {
   resendNewPasswordMail,
-  resendPasswordLimiter,
+  // resendPasswordLimiter,
 } from "../controllers/auth/forgotPassword";
 import { refreshToken } from "../controllers/auth/refreshToken";
 
@@ -52,14 +52,14 @@ router.post("/verify-email", verifyEmail);
 // Resend verification email route with IP-based rate limiter
 router.post(
   "/resend-verification-email",
-  resendVerificationLimiter,
+  // resendVerificationLimiter,
   resendVerificationEmail
 );
 
 // Resend password reset email route with IP-based rate limiter
 router.post(
   "/resend-password-email",
-  resendPasswordLimiter,
+  // resendPasswordLimiter,
   resendNewPasswordMail
 );
 

@@ -8,6 +8,7 @@ import {
 } from "../helper/token";
 import { AuthRequest } from "../types";
 
+
 const authenticateJWT = async (
   req: AuthRequest,
   res: Response,

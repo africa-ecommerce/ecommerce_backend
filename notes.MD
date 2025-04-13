@@ -111,7 +111,7 @@ validation of frontend
 
 EXTEND FOR VIDEOS WITH LIMIT
 
-
+remove try again on auth cerror callbackor or contact us there
 
 UTILITY RESPONSE AND ZOD FOR OTHERS
 

@@ -10,7 +10,7 @@ export const login = (req: Request, res: Response, next: NextFunction) => {
   passport.authenticate(
     "local",
     { session: false },
-    async (err: any, user: User) => {
+    async (err: any, user: Express.User) => {
       try {
         // 1. Handle authentication errors
         if (err) return next(err);
@@ -51,7 +51,7 @@ export const login = (req: Request, res: Response, next: NextFunction) => {
         }
 
         // 3. Generate tokens and set authentication cookies
-        const tokens = await generateTokens(user.id);
+        const tokens = await generateTokens(user.id, user.name, user.isOnboarded, user.userType);
         setAuthCookies(res, tokens);
 
         // 4. Re-query the user and select only the required fields (omit password)

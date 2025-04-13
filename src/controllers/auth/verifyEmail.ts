@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { prisma, redisClient } from "../../config";
+import { prisma,  } from "../../config";
 import { sendVerificationMail } from "../../helper/sendVerificationMail";
 import { v4 as uuidv4 } from "uuid";
 import { generateTokens, setAuthCookies } from "../../helper/token";
@@ -42,9 +42,9 @@ export const verifyEmail = async (req: Request, res: Response) => {
       }),
     ]);
 
-    // Generate tokens and respond
-    const tokens = await generateTokens(verification.user.id);
-    setAuthCookies(res, tokens);
+    // // Generate tokens and respond
+    // const tokens = await generateTokens(verification.user.id);
+    // setAuthCookies(res, tokens);
 
     res.status(200).json({
       message: "Email verified! Redirecting...",
@@ -61,17 +61,17 @@ export const verifyEmail = async (req: Request, res: Response) => {
   }
 };
 
-// IP-based rate limiter for verification email requests
-export const resendVerificationLimiter = rateLimit({
-  store: new RedisStore({
-    // Use sendCommand to execute commands with your redis client.
-    sendCommand: (...args: any[]) => redisClient.sendCommand(args),
-  }),
-  windowMs: 120 * 1000, // 2 minutes
-  max: 3, // Maximum 3 requests per IP per window
-  message: { error: "Too many requests, please try again later!" },
-  keyGenerator: (req) => req.ip || "unknown", // Ensure a string is always returned
-});
+// // IP-based rate limiter for verification email requests
+// export const resendVerificationLimiter = rateLimit({
+//   store: new RedisStore({
+//     // Use sendCommand to execute commands with your redis client.
+//     sendCommand: (...args: any[]) => redisClient.sendCommand(args),
+//   }),
+//   windowMs: 120 * 1000, // 2 minutes
+//   max: 3, // Maximum 3 requests per IP per window
+//   message: { error: "Too many requests, please try again later!" },
+//   keyGenerator: (req) => req.ip || "unknown", // Ensure a string is always returned
+// });
 
 export const resendVerificationEmail = async (req: Request, res: Response) => {
   try {

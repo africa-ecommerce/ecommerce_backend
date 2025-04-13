@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import { port, redisClient } from "./config";
+import { port,  } from "./config";
 import authRoutes from "./routes/auth.routes";
 import onboardingRoutes from "./routes/onboarding.routes";
 import productRoutes from "./routes/product.routes";
@@ -23,11 +23,9 @@ import analyticsRoutes from "./routes/analytics.routes";
 // import affiliateRoutes from "./routes/affiliate.routes";
 import { RedisStore } from "connect-redis";
 import session from "express-session";
-import  authenticateJWT  from "./middleware/auth.middleware";
 import passport from "./config/passport";
 import { Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
-import { initializeBucket } from "./config/minio";
 
 
 const app = express();
@@ -63,20 +61,11 @@ app.use(
 );
 app.use(morgan("dev"));
 
-// Call MinIO bucket initialization before starting the server.
-initializeBucket().catch(error => {
-  console.error('Failed to initialize MinIO bucket', error);
-});
 
 
-
-
-
-
-// Configure session middleware
+// // Configure session middleware -> passport need this internally
 app.use(
   session({
-    store: new RedisStore({ client: redisClient }),
     secret: process.env.SESSION_SECRET! || "yourSecret",
     resave: false,
     saveUninitialized: false,
@@ -92,12 +81,6 @@ app.use(
     },
   })
 );
-
-
-// // app.ts
-// app.use(authenticateJWT); // -----> only on protected routes
-// app.use(refreshToken); // After auth middleware
-
 
 
 // Initialize Passport middleware
@@ -139,7 +122,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error("Unhandled error:", err);
   // res
   //   .status(500)
-  //   .json({ error: "Internal server error, please try again later." });
+  //   .json({ error: "Unexpected error occured!" });
 });
 
 app.listen(port, () => {

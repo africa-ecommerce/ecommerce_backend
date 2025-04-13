@@ -2,6 +2,7 @@ import { Response } from "express";
 import { prisma } from "../config";
 import { UserType } from "@prisma/client";
 import { AuthRequest } from "../types";
+import { generateTokens, setAuthCookies } from "../helper/token";
 
 // interface Profile {
 //   businessName: string;
@@ -24,7 +25,8 @@ import { AuthRequest } from "../types";
 
 export const onboarding = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const user = req.user;
+    const userId = user?.id;
     if (!userId) {
       res.status(401).json({ error: "Unauthorized!" }); // ---->
       return;
@@ -105,6 +107,12 @@ export const onboarding = async (req: AuthRequest, res: Response) => {
         });
       }
     });
+
+
+    //  Generate tokens and set authentication cookies, as user data has changed
+      const tokens = await generateTokens(user.id, user.name, user.isOnboarded, user.userType);
+        setAuthCookies(res, tokens);
+    
 
     // // Format response data
     // const responseData =

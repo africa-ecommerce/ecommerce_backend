@@ -227,13 +227,13 @@ export const plugProductController = {
         if (req.body.removeImages) {
           const indices = JSON.parse(req.body.removeImages);
           imagesToDelete = indices
-            .filter((i) => i >= 0 && i < existingImages.length)
-            .map((i) => existingImages[i]);
+            .filter((i: any) => i >= 0 && i < existingImages.length)
+            .map((i: any) => existingImages[i]);
         }
 
         // Calculate the updated images array
         const updatedImages = [
-          ...existingImages.filter((url) => !imagesToDelete.includes(url)),
+          ...existingImages.filter((url: any) => !imagesToDelete.includes(url)),
           ...newImageUrls,
         ];
 
@@ -355,7 +355,7 @@ removePlugProduct: async (req: AuthRequest, res: Response) => {
 
         // Find images that were uploaded by the plug (not in original product)
         imagesToDelete = existingImages.filter(
-          (img) => !originalImages.includes(img)
+          (img: any) => !originalImages.includes(img)
         );
       }
 
@@ -454,7 +454,7 @@ removePlugProduct: async (req: AuthRequest, res: Response) => {
             : [];
 
           // Find images that were uploaded by the plug (not in original product)
-          return existingImages.filter((img) => !originalImages.includes(img));
+          return existingImages.filter((img: any) => !originalImages.includes(img));
         });
 
         const customImagesArrays = await Promise.all(customImagesPromises);

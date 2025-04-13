@@ -15,3 +15,9 @@ export interface AuthRequest extends Request {
   plug?: Plug;
   supplier?: Supplier;
 }
+
+
+export type Tokens = {
+  accessToken: string;
+  refreshToken: string;
+};

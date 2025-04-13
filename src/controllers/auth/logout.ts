@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { prisma } from "../../config";
-import { addToDenylist } from "../../helper/addToDenyList";
+// import { addToDenylist } from "../../helper/addToDenyList";
 import jwt from "jsonwebtoken";
 import { AuthRequest } from "../../types";
 
@@ -9,14 +9,14 @@ export const logout = async (req: AuthRequest, res: Response) => {
     const token = req.cookies.accessToken;
     const refreshToken = req.cookies.refreshToken;
 
-    // 1. Invalidate access token
-    if (token) {
-      const decoded = jwt.decode(token) as { exp: number } | null;
-      if (decoded?.exp) {
-        const ttl = Math.max(0, decoded.exp * 1000 - Date.now());
-        await addToDenylist(token, ttl);
-      }
-    }
+    // // 1. Invalidate access token
+    // if (token) {
+    //   const decoded = jwt.decode(token) as { exp: number } | null;
+    //   if (decoded?.exp) {
+    //     const ttl = Math.max(0, decoded.exp * 1000 - Date.now());
+    //     await addToDenylist(token, ttl);
+    //   }
+    // }
 
     // 2. Invalidate refresh token from database
     if (refreshToken) {

@@ -3,26 +3,40 @@ import jwt from "jsonwebtoken";
 import { jwtSecret, refreshTokenSecret, prisma } from "../config";
 import { Response } from "express";
 import { Tokens } from "../types";
+import { UserType } from "@prisma/client";
 
 // Token expiration times
 const ACCESS_TOKEN_EXPIRY = 15 * 60 * 60; // 15 mins (in seconds)
 const REFRESH_TOKEN_EXPIRY = 30 * 24 * 60 * 60; // 30 days (in seconds)
 const REFRESH_TOKEN_ROTATION_WINDOW = 3 * 24 * 60 * 60; // 3 days before expiration
 
-export const generateTokens = async (userId: string): Promise<Tokens> => {
-  const accessToken = jwt.sign({ userId }, jwtSecret, { 
-    expiresIn: ACCESS_TOKEN_EXPIRY 
-  });
-  
+export const generateTokens = async (
+  userId: string,
+  name: string,
+  isOnboarded: boolean,
+  userType: UserType
+): Promise<Tokens> => {
+  const accessToken = jwt.sign(
+    { userId, name, isOnboarded, userType },
+    jwtSecret,
+    {
+      expiresIn: ACCESS_TOKEN_EXPIRY,
+    }
+  );
+
   // Generate refresh token that can be renewed
-  const refreshToken = jwt.sign({ userId }, refreshTokenSecret, {
-    expiresIn: REFRESH_TOKEN_EXPIRY
-  });
+  const refreshToken = jwt.sign(
+    { userId, name, isOnboarded, userType },
+    refreshTokenSecret,
+    {
+      expiresIn: REFRESH_TOKEN_EXPIRY,
+    }
+  );
 
   // Update refresh token in database with new expiration
   await prisma.user.update({
     where: { id: userId },
-    data: { refreshToken }
+    data: { refreshToken },
   });
 
   return { accessToken, refreshToken };
@@ -89,7 +103,7 @@ export const cookieConfig = {
      }
 
      // Generate new tokens
-     const newTokens = await generateTokens(user.id);
+     const newTokens = await generateTokens(user.id, user.name, user.isOnboarded, user.userType);
 
      return { success: true, user, newTokens };
    } catch (error: any) {

@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import { sendResetPasswordMail } from "../../helper/sendResetPasswordMail";
 import rateLimit from "express-rate-limit";
 import RedisStore from "rate-limit-redis";
-import { redisClient } from "../../config";
+// import { redisClient } from "../../config";
 
 export const newPassword = async (req: Request, res: Response) => {
   const { token, newPassword } = req.body;
@@ -112,17 +112,17 @@ export const sendNewPasswordMail = async (req: Request, res: Response) => {
   });
 };
 
-// IP-based rate limiter for verification email requests
-export const resendPasswordLimiter = rateLimit({
-  store: new RedisStore({
-    // Use sendCommand to execute commands with your redis client.
-    sendCommand: (...args: any[]) => redisClient.sendCommand(args),
-  }),
-  windowMs: 120 * 1000, // 2 minutes
-  max: 3, // Maximum 3 requests per IP per window
-  message: { error: "Too many requests, please try again later!" },
-  keyGenerator: (req) => req.ip || "unknown", // Ensure a string is always returned
-});
+// // IP-based rate limiter for verification email requests
+// export const resendPasswordLimiter = rateLimit({
+//   store: new RedisStore({
+//     // Use sendCommand to execute commands with your redis client.
+//     sendCommand: (...args: any[]) => redisClient.sendCommand(args),
+//   }),
+//   windowMs: 120 * 1000, // 2 minutes
+//   max: 3, // Maximum 3 requests per IP per window
+//   message: { error: "Too many requests, please try again later!" },
+//   keyGenerator: (req) => req.ip || "unknown", // Ensure a string is always returned
+// });
 
 export const resendNewPasswordMail = async (req: Request, res: Response) => {
   try {
