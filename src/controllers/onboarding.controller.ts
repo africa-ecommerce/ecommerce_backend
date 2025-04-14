@@ -110,7 +110,7 @@ export const onboarding = async (req: AuthRequest, res: Response) => {
 
 
     //  Generate tokens and set authentication cookies, as user data has changed
-      const tokens = await generateTokens(user.id, user.name, user.isOnboarded, user.userType);
+      const tokens = await generateTokens(user.id, user.name, true, userType);
         setAuthCookies(res, tokens);
     
 
@@ -128,6 +128,8 @@ export const onboarding = async (req: AuthRequest, res: Response) => {
     //         niches: result.niches?.split(","),
     //       };
 
+
+    
     res.status(200).json({
       message: "Onboarding completed successfully!",
       //   data: responseData,

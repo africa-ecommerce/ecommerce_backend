@@ -110,10 +110,12 @@ passport.use(
           user = await prisma.user.create({
             data: {
               email,
-              name: profile.displayName,
+              name: profile.displayName || email.split("@")[0] || "User",
               password: "",
               emailVerified: true,
               policy: true,
+              isOnboarded: false, // Explicit default
+              userType: "UNSET", // Explicit default
             },
           });
         }
@@ -126,6 +128,7 @@ passport.use(
     }
   )
 );
+
 
 
 passport.use(
@@ -151,6 +154,8 @@ passport.use(
               name: profile.displayName,
               password: "",
               emailVerified: true,
+              policy: true,
+
             },
           });
         }

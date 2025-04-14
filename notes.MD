@@ -115,6 +115,16 @@ remove try again on auth cerror callbackor or contact us there
 
 UTILITY RESPONSE AND ZOD FOR OTHERS
 
-infinite scroll for all listing
+infinite scroll for all listingl
+
+loading, signing in, for submitting
+
+register toast
+
+login toast together with onboarded successful
+
+/marketplace
+
+oauth failure redirect
 <!-- 
 redirect to onboarding as callbackurl in register, it will redirect to login as a callbackurl, so as on subsequent login redirect it either goes to callbackuri or dashboard, if user escapes this onboarding either by skipping or cancelling the page after login, always like notify them in dashboard to do the onboarding -->
