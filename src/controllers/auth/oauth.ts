@@ -52,7 +52,7 @@ export const googleCallback = async (req: Request, res: Response) => {
     }
 
     // Generate tokens and set cookies
-    const tokens = await generateTokens(user.id, user.name, user.isOnboarded, user.userType);
+    const tokens = await generateTokens(user.id, user.isOnboarded, user.userType);
     setAuthCookies(res, tokens);
 
     res.redirect(redirectUrl);

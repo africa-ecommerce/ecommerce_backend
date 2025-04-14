@@ -87,7 +87,7 @@ promotion -> discount and flash sales supplier
 
 how to remove a specific image in products after upload -> edit -> things to check-> handle short videos -> there should be checkss to prevent offsite sale
 
-not tags -> keywords for seo
+not tags -> keywords for seo, search
 
 SEARCH KEYWORDS
 
@@ -123,8 +123,20 @@ register toast
 
 login toast together with onboarded successful
 
-/marketplace
+/marketplace  -> public or private
 
 oauth failure redirect
+
+readjust middleware
+remove draft
+
+remove null in usertype
+checl jwt
+
+check search and infinite scroll
+
+remove name from jwt
+
+
 <!-- 
 redirect to onboarding as callbackurl in register, it will redirect to login as a callbackurl, so as on subsequent login redirect it either goes to callbackuri or dashboard, if user escapes this onboarding either by skipping or cancelling the page after login, always like notify them in dashboard to do the onboarding -->

@@ -110,7 +110,7 @@ export const onboarding = async (req: AuthRequest, res: Response) => {
 
 
     //  Generate tokens and set authentication cookies, as user data has changed
-      const tokens = await generateTokens(user.id, user.name, true, userType);
+      const tokens = await generateTokens(user.id, true, userType);
         setAuthCookies(res, tokens);
     
 

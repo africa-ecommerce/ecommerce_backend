@@ -12,12 +12,11 @@ const REFRESH_TOKEN_ROTATION_WINDOW = 3 * 24 * 60 * 60; // 3 days before expirat
 
 export const generateTokens = async (
   userId: string,
-  name: string,
   isOnboarded: boolean,
   userType: UserType
 ): Promise<Tokens> => {
   const accessToken = jwt.sign(
-    { userId, name, isOnboarded, userType },
+    { userId, isOnboarded, userType },
     jwtSecret,
     {
       expiresIn: ACCESS_TOKEN_EXPIRY,
@@ -26,7 +25,7 @@ export const generateTokens = async (
 
   // Generate refresh token that can be renewed
   const refreshToken = jwt.sign(
-    { userId, name, isOnboarded, userType },
+    { userId, isOnboarded, userType },
     refreshTokenSecret,
     {
       expiresIn: REFRESH_TOKEN_EXPIRY,
@@ -103,7 +102,7 @@ export const cookieConfig = {
      }
 
      // Generate new tokens
-     const newTokens = await generateTokens(user.id, user.name, user.isOnboarded, user.userType);
+     const newTokens = await generateTokens(user.id, user.isOnboarded, user.userType);
 
      return { success: true, user, newTokens };
    } catch (error: any) {

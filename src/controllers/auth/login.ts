@@ -51,7 +51,7 @@ export const login = (req: Request, res: Response, next: NextFunction) => {
         }
 
         // 3. Generate tokens and set authentication cookies
-        const tokens = await generateTokens(user.id, user.name, user.isOnboarded, user.userType);
+        const tokens = await generateTokens(user.id, user.isOnboarded, user.userType);
         setAuthCookies(res, tokens);
 
         // 4. Re-query the user and select only the required fields (omit password)
