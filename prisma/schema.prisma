@@ -279,7 +279,6 @@ model Product {
 }
 
 
-// Add this model to your Prisma schema
 
 model PlugProduct {
   id          String   @id @default(cuid())
@@ -291,17 +290,11 @@ model PlugProduct {
   originalId  String   // Reference to original supplier product
   plugId      String
   plug        Plug     @relation(fields: [plugId], references: [id], onDelete: Cascade)
-  status      PlugProductStatus @default(DRAFT)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([plugId])
   @@index([originalId])
-}
-
-enum PlugProductStatus {
-  DRAFT     // Product is in editing stage
-  PUBLISHED // Product has been published to the plug's store
 }
 // // Merchant-Specific Business Details
 // model MerchantProfile {

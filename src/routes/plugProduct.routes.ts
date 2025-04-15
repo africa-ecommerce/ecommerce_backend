@@ -14,7 +14,7 @@ router.use(plugAuth);
 
 /**
  * @route   POST /api/plug/products/:productId
- * @desc    Add a supplier product to plug's draft products
+ * @desc    Add a supplier product to plug's products
  * @access  Private (Plug only)
  */
 router.post(
@@ -22,19 +22,16 @@ router.post(
   plugProductController.addProductToPlug
 );
 
-/**
- * @route   GET /api/plug/products/drafts
- * @desc    Get all draft products for a plug
- * @access  Private (Plug only)
- */
-router.get("/drafts",  plugProductController.getDraftProducts);
 
 /**
- * @route   GET /api/plug/products/published
- * @desc    Get all published products for a plug
+ * @route   GET /api/plug/products
+ * @desc    Get all  products for a plug
  * @access  Private (Plug only)
  */
-router.get("/published",  plugProductController.getPublishedProducts);
+router.get("/",  plugProductController.getPlugProducts);
+
+
+
 
 /**
  * @route   GET /api/plug/products/:productId
@@ -45,21 +42,14 @@ router.get("/:productId",  plugProductController.getPlugProductById);
 
 /**
  * @route   PUT /api/plug/products/:productId
- * @desc    Update a draft product
+ * @desc    Update a plug product
  * @access  Private (Plug only)
  */
-router.put("/:productId",  plugProductController.updateDraftProduct);
-
-/**
- * @route   POST /api/plug/products/publish
- * @desc    Publish selected draft products
- * @access  Private (Plug only)
- */
-router.post("/publish",  plugProductController.publishDraftProducts);
+router.put("/:productId",  plugProductController.updatePlugProduct);
 
 /**
  * @route   DELETE /api/plug/products/:productId
- * @desc    Remove a product from plug's inventory
+ * @desc    Remove a product from plug's store
  * @access  Private (Plug only)
  */
 router.delete("/:productId", plugProductController.removePlugProduct);
@@ -67,7 +57,7 @@ router.delete("/:productId", plugProductController.removePlugProduct);
 
 /**
  * @route   DELETE /api/plug/products
- * @desc    Remove all products from plug's inventory
+ * @desc    Remove all products from plug's store
  * @access  Private (Plug only)
  */
 router.delete("/", plugProductController.removeAllPlugProducts);

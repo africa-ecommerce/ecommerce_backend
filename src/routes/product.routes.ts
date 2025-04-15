@@ -19,7 +19,7 @@ router.use(supplierAuth);
 // Create a new product
 router.post("/", productController.createProduct);
 
-// Get products by supplier ID
+// Get products for a supplier
 router.get("/supplier", productController.getSupplierProducts);
 
 // Update product
@@ -27,5 +27,8 @@ router.put("/:productId", productController.updateProduct);
 
 // Delete product
 router.delete("/:productId", productController.deleteProduct);
+
+// Delete all products
+router.delete("/", productController.deleteAllProducts);
 
 export default router;

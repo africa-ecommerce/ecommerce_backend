@@ -4,17 +4,8 @@ upgrade prisma
 REDIS OR SO prod
 
 
-REDIRECT IN CLIENT
-
-ERROR CODE
-ON EVERY LOGIN ROUTE CHECK CALLBACK URL AND PASS TO BACKEND
-
-
 env 
 
-ONBOARDING ONCE AND OTHER TIME DASHBOARD
-
-current user
 
 
 check frontend routes
@@ -22,18 +13,12 @@ check frontend routes
 
 setup upgrades in website
  
- auth error route frontend ------> ****
 
-auth token expiry TIME ----->  **************
 
-GOOGLE REDIRECT  ------> maybe
 
 form  --- paul
 
 
-
-
-check claude   -------------------------> ****************
 
 the backend can invalidate tokens if the user data changes significantly (like password change), requiring re-authentication.
 
@@ -41,27 +26,18 @@ the backend can invalidate tokens if the user data changes significantly (like p
 
 VALIDATE THE ONBOARDING FORM, CHECK DATABASE SCHEMA FOR ENUMS AND REQUIRED, FOR FILE UPLOADS CHECK AI TOOLS 
 
-DEFAULT UI FOR BUSINESS TYPE
 
-ONBOARDING IS COMPULSORY IF USER IS NOT ONBOARDED THEY CANNOT VISIT OTHER PAGES, AND ONCE ONBOARDED THEY CANNOT VISIT ONBOARDING
 
-handle oauth prisma error or so
-protect auth page and onboarding and onboarding/sucess
 
-fix oauth a lot
 
-this means if you are logged in and after 15 minutes if you want to go to a new page after it has expired you will be redirected to auth page, which should not be so, as long as you are logged in and you are on the page or not, if there is no interaction within fifteen minute or so, the user will no longer be authenticate, needing to login, i need a complete performance of something like facebook, give full implementation of how this will be done
+
 
 
 
 WEBSITE CRUD OPERATION TWO UPGRADES OUR UPGRADES AND USER UPDATES
 
 
-CHECK TOKEN AGAIN
 
-IF YOU ARE NOT ONBOARDED YOU SHOULDNOT BE ABLE TO SEE OTHER PRIVATE ROUTE, REDIRECT TO ONBOARDING
-
-IF YOU ARE ONBOARDED YOU CANT SEE ONBOARDING AND ONBOARDING SUCCESS ROUTE AGAIN, check deepseek in Frontend and Backend Token Management Implementation
 
 CHECK PHONE NOTES, HOW DO WE WORK WITH ESCROW
 
@@ -71,7 +47,6 @@ CHECK PHONE NOTES, HOW DO WE WORK WITH ESCROW
 role based routing
 
 
-enctype="multipart/form-data
 
 image and video amount
 
@@ -79,7 +54,6 @@ mime types and 5mb
 handle video upload
 zod and paul zod positive
 IN CLIENT LOGOUT, SHOULD CLEAR OUT ALL CACHES, clear refresh token , on mobile delete refresh token if user deletes his account
-fetching navbar late
 
 
 ROLE BASED PAGE MIDDLEWARE REDIRECT
@@ -93,18 +67,15 @@ SEARCH KEYWORDS
 
 PIXELS FOR TRACKING
 
-IMPLEMENT FULL TEXT SEARCH,IMAGE SEARCH
 ZOD
 
 LOADING EMPTY STATE
 
-better filtering or so
+better filtering or so full text search
 quick access
 
-send as transaction
 
 limit file size and amount of file, 4 images 1 video
-submit similar image at a go
 
 PLUG STATUS, IF NULL, DONT SHOW
 validation of frontend
@@ -115,28 +86,40 @@ remove try again on auth cerror callbackor or contact us there
 
 UTILITY RESPONSE AND ZOD FOR OTHERS
 
-infinite scroll for all listingl
 
 loading, signing in, for submitting
 
-register toast
 
-login toast together with onboarded successful
+login toast together with onboarded successful ---> some how
 
 /marketplace  -> public or private
 
-oauth failure redirect
+oauth failure redirect --> some how
 
-readjust middleware
-remove draft
 
 remove null in usertype
-checl jwt
 
 check search and infinite scroll
+onboarding/success  ---> some how
 
-remove name from jwt
 
+restock func to increase quantity or so
+
+
+ Buyers track orders via Pluggn’s app (not third-party couriers), even if items come from multiple suppliers. not authenticated just put tracking id and you can see it
+
+
+ A 24/7 support team handles returns, refunds, and disputes—not the individual Plugs.
+
+ Every Plug/supplier is rated publicly (e.g., 4.8/5 stars) based on delivery speed, product quality, and reviews.
+
+
+ Top Plugs become "Pluggn Ambassadors," earning commissions for recruiting new sellers (MLM-style, but compliant).
+
+Example: Amina recruits 50 Plugs in Lagos, earning 2% of their sales.
+
+
+"Get it in 48hrs or get 20% off next order"—only possible with owned logistics.
 
 <!-- 
 redirect to onboarding as callbackurl in register, it will redirect to login as a callbackurl, so as on subsequent login redirect it either goes to callbackuri or dashboard, if user escapes this onboarding either by skipping or cancelling the page after login, always like notify them in dashboard to do the onboarding -->

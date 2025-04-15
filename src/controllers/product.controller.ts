@@ -47,7 +47,7 @@ export const productController = {
 
         if (!validatedData.success) {
           res.status(400).json({
-            error: "Validation failed!"
+            error: "Validation failed!",
           }); // ---->
           return;
         }
@@ -413,6 +413,46 @@ export const productController = {
       console.error("Error deleting product:", error);
       res.status(500).json({ error: "Internal server error!" }); // ---->
       return;
+    }
+  },
+
+  // Add to product.controller.ts
+  deleteAllProducts: async (req: AuthRequest, res: Response) => {
+    try {
+      const supplier = req.supplier!;
+
+      const result = await prisma.$transaction(async (tx) => {
+        // 1. Get all products and their images first
+        const products = await tx.product.findMany({
+          where: { supplierId: supplier.id },
+          select: { images: true },
+        });
+
+        // 2. Extract all image URLs
+        const allImages = products.flatMap((product) =>
+          product.images ? JSON.parse(product.images) : []
+        );
+
+        // 3. Delete all products
+        const deleteResult = await tx.product.deleteMany({
+          where: { supplierId: supplier.id },
+        });
+
+        return { count: deleteResult.count, images: allImages };
+      });
+
+      // 4. Clean up images after successful transaction
+      if (result.images.length > 0) {
+        await deleteFromMinio(result.images);
+      }
+
+      res.status(200).json({
+        message: `Deleted ${result.count} products successfully!`,
+        data: { count: result.count },
+      });
+    } catch (error) {
+      console.error("Error deleting all products:", error);
+      res.status(500).json({ error: "Internal server error!" });
     }
   },
 };
