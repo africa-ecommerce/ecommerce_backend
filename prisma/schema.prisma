@@ -289,6 +289,7 @@ model PlugProduct {
   images      String?  // JSON string of image URLs
   originalId  String   // Reference to original supplier product
   plugId      String
+  status      Boolean   @default(false)
   plug        Plug     @relation(fields: [plugId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

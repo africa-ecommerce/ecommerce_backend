@@ -99,6 +99,9 @@ oauth failure redirect --> some how
 
 remove null in usertype
 
+
+FETCHING CATEGORY MAKE IT STATIC
+
 check search and infinite scroll
 onboarding/success  ---> some how
 

@@ -6,29 +6,31 @@ import { isSupplier } from "../middleware/role.middleware";
 
 const router = express.Router();
 
+
+router.get("/supplier", authenticateJWT, isSupplier, productController.getSupplierProducts);
+
 router.get("/", authenticateJWT, productController.getAllProducts);
 
 // Get product by ID
 router.get("/:productId", authenticateJWT, productController.getProductById);
 
 // Middleware to ensure user is authenticated and is a plug
-const supplierAuth = [authenticateJWT, isSupplier];
+// const supplierAuth = [authenticateJWT, isSupplier];
 
-router.use(supplierAuth);
+// router.use(supplierAuth);
 
 // Create a new product
-router.post("/", productController.createProduct);
+router.post("/", authenticateJWT, isSupplier, productController.createProduct);
 
 // Get products for a supplier
-router.get("/supplier", productController.getSupplierProducts);
 
 // Update product
-router.put("/:productId", productController.updateProduct);
+router.put("/:productId", authenticateJWT, isSupplier, productController.updateProduct);
 
 // Delete product
-router.delete("/:productId", productController.deleteProduct);
+router.delete("/:productId", authenticateJWT, isSupplier, productController.deleteProduct);
 
 // Delete all products
-router.delete("/", productController.deleteAllProducts);
+router.delete("/", authenticateJWT, isSupplier, productController.deleteAllProducts);
 
 export default router;

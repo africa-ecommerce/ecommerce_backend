@@ -107,6 +107,8 @@ export const productController = {
       // Format products with parsed images
       const formattedProducts = products.map(formatProductWithImages);
 
+      console.log("supplierdata", formattedProducts);
+
       res.status(200).json({
         message: "Products fetched successfully!",
         data: formattedProducts,
@@ -375,9 +377,9 @@ export const productController = {
       const supplier = req.supplier!;
 
       // Use transaction for consistency
-      await prisma.$transaction(async (tx) => {
+      // await prisma.$transaction(async (tx) => {
         // Check if product exists and belongs to this supplier
-        const existingProduct = await tx.product.findFirst({
+        const existingProduct = await prisma.product.findFirst({
           where: {
             id: productId,
             supplierId: supplier.id,
@@ -395,7 +397,7 @@ export const productController = {
           : [];
 
         // Delete product from database
-        await tx.product.delete({
+       const remainingProducts = await prisma.product.delete({
           where: { id: productId },
         });
 
@@ -406,9 +408,10 @@ export const productController = {
 
         res.status(200).json({
           message: "Product deleted successfully!",
+          data: formatProductWithImages(remainingProducts),
         }); // ---->
         return;
-      });
+      // });
     } catch (error) {
       console.error("Error deleting product:", error);
       res.status(500).json({ error: "Internal server error!" }); // ---->
@@ -448,7 +451,7 @@ export const productController = {
 
       res.status(200).json({
         message: `Deleted ${result.count} products successfully!`,
-        data: { count: result.count },
+        // data: { count: result.count },
       });
     } catch (error) {
       console.error("Error deleting all products:", error);
