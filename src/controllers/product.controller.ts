@@ -8,9 +8,10 @@ import {
   upload,
   uploadToMinio,
 } from "../helper/minioObjectStore/productImage";
+import { Product } from "@prisma/client";
 
 // Helper function to format products with parsed images
-const formatProductWithImages = (product: any) => {
+const formatProductWithImages = (product: Product) => {
   return {
     ...product,
     images: product.images ? JSON.parse(product.images as string) : [],
@@ -149,109 +150,193 @@ export const productController = {
 
   // Get all products with efficient pagination for infinite scrolling
   getAllProducts: async (req: AuthRequest, res: Response) => {
-    try {
-      // Parse pagination parameters
-      const limit = parseInt(req.query.limit as string) || 20;
-      const cursor = req.query.cursor as string; // For cursor-based pagination
-      const plug = req.plug!;
+     try {
+       // Parse pagination parameters
+       const limit = parseInt(req.query.limit as string) || 20;
+       const cursor = req.query.cursor as string; // For cursor-based pagination
 
-      // Basic sorting
-      const sortBy = (req.query.sortBy as string) || "createdAt";
-      const order =
-        (req.query.order as string)?.toLowerCase() === "asc" ? "asc" : "desc";
+       // Parse sorting parameters
+       const sortBy = (req.query.sortBy as string) || "createdAt";
+       const order =
+         (req.query.order as string)?.toLowerCase() === "asc" ? "asc" : "desc";
 
-      // Build query options
-      const queryOptions: any = {
-        take: limit + 1, // Take one extra to determine if there are more items
-        orderBy: {
-          [sortBy]: order,
-        },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          price: true,
-          category: true,
-          images: true,
-          supplierId: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      };
+       // Parse filtering and search parameters
+       const category = req.query.category as string;
+       const minPrice = req.query.minPrice
+         ? parseFloat(req.query.minPrice as string)
+         : undefined;
+       const maxPrice = req.query.maxPrice
+         ? parseFloat(req.query.maxPrice as string)
+         : undefined;
+       const search = req.query.search as string;
+       const supplierIds = req.query.supplierIds as string | string[];
+       const businessType = req.query.businessType as string;
+       const createdAfter = req.query.createdAfter
+         ? new Date(req.query.createdAfter as string)
+         : undefined;
+       const createdBefore = req.query.createdBefore
+         ? new Date(req.query.createdBefore as string)
+         : undefined;
+       const tags = req.query.tags as string; // For searching product tags/keywords
 
-      // Add cursor for efficient pagination if provided
-      if (cursor) {
-        queryOptions.cursor = { id: cursor };
-        queryOptions.skip = 1; // Skip the cursor
-      }
+       // Build where conditions for filtering and search
+       const whereConditions: any = {};
 
-      // Use transaction for complex operations
-      const result = await prisma.$transaction(async (tx) => {
-        // Execute query
-        let products = await tx.product.findMany(queryOptions);
+       // Text search across name, description, and tags
+       if (search) {
+         whereConditions.OR = [
+           { name: { contains: search, mode: "insensitive" } },
+           { description: { contains: search, mode: "insensitive" } },
+           { tags: { contains: search, mode: "insensitive" } }, // Search in tags field
+         ];
+       }
 
-        // Check if we have more results
-        const hasNextPage = products.length > limit;
-        if (hasNextPage) {
-          products = products.slice(0, limit); // Remove the extra item
-        }
+       // For more advanced full-text search when available in your Postgres setup
+       // This would use the built-in full-text search capabilities of Postgres
+       // if (search) {
+       //   whereConditions.OR = [
+       //     { name: { search: search } },
+       //     { description: { search: search } },
+       //     { tags: { search: search } },
+       //   ];
+       // }
 
-        // Get the next cursor
-        const nextCursor = hasNextPage
-          ? products[products.length - 1].id
-          : null;
+       // Category filter
+       if (category) {
+         whereConditions.category = category;
+       }
 
-        // Parse images and add plugStatus for each product
-        const formattedProducts = await Promise.all(
-          products.map(async (product) => {
-            // Check if this product is already plugged by the current plug
-            let plugStatus;
+       // Tags/keywords filter (exact match or array inclusion)
+       if (tags) {
+         whereConditions.tags = { contains: tags, mode: "insensitive" };
+       }
 
-            if (plug.id) {
-              const plugProduct = await tx.plugProduct.findFirst({
-                where: {
-                  originalId: product.id,
-                  plugId: plug.id,
-                },
-                select: { id: true, status: true },
-              });
+       // Price range filter
+       if (minPrice !== undefined || maxPrice !== undefined) {
+         whereConditions.price = {};
+         if (minPrice !== undefined) {
+           whereConditions.price.gte = minPrice;
+         }
+         if (maxPrice !== undefined) {
+           whereConditions.price.lte = maxPrice;
+         }
+       }
 
-              if (plugProduct) {
-                plugStatus = plugProduct.status;
-              }
-            }
+       // Supplier filters
+       if (supplierIds) {
+         const supplierIdArray = Array.isArray(supplierIds)
+           ? supplierIds
+           : [supplierIds];
+         whereConditions.supplierId = { in: supplierIdArray };
+       }
 
-            return {
-              ...product,
-              images: product.images
-                ? JSON.parse(product.images as string)
-                : [],
-              plugStatus,
-            };
-          })
-        );
+       // Filter by supplier's business type
+       if (businessType) {
+         whereConditions.supplier = {
+           businessType: businessType,
+         };
+       }
 
-        return {
-          products: formattedProducts,
-          meta: {
-            hasNextPage,
-            nextCursor,
-            count: formattedProducts.length,
-          },
-        };
-      });
+       // Date range filters
+       if (createdAfter !== undefined || createdBefore !== undefined) {
+         whereConditions.createdAt = {};
+         if (createdAfter !== undefined) {
+           whereConditions.createdAt.gte = createdAfter;
+         }
+         if (createdBefore !== undefined) {
+           whereConditions.createdAt.lte = createdBefore;
+         }
+       }
 
-      res.status(200).json({
-        message: "Products fetched successfully!",
-        data: result.products,
-        meta: result.meta,
-      }); // ---->
-      return;
-    } catch (error) {
-      console.error("Error fetching all products:", error);
-      res.status(500).json({ error: "Internal server error!" }); // ---->
-      return;
-    }
+       // Build query options
+       const queryOptions: any = {
+         where: whereConditions,
+         take: limit + 1, // Take one extra to determine if there are more items
+         orderBy: {
+           [sortBy]: order,
+         },
+         include: {
+           supplier: {
+             select: {
+               id: true,
+               businessType: true,
+               user: {
+                 select: {
+                   name: true,
+                   id: true,
+                 },
+               },
+             },
+           },
+         },
+       };
+
+       // Add cursor for efficient pagination if provided
+       if (cursor) {
+         queryOptions.cursor = { id: cursor };
+         queryOptions.skip = 1; // Skip the cursor
+       }
+
+       // Execute query with transaction for consistency
+       const result = await prisma.$transaction(async (tx) => {
+         // Execute query
+         let products = await tx.product.findMany(queryOptions);
+
+         // Check if we have more results
+         const hasNextPage = products.length > limit;
+         if (hasNextPage) {
+           products = products.slice(0, limit); // Remove the extra item
+         }
+
+         // Get the next cursor
+         const nextCursor = hasNextPage
+           ? products[products.length - 1].id
+           : null;
+
+         // Get total count when filters are applied (for analytics/UI purposes)
+         let totalCount = null;
+         if (Object.keys(whereConditions).length > 0) {
+           totalCount = await tx.product.count({ where: whereConditions });
+         }
+
+         // Format products for response
+           const formattedProducts = products.map(formatProductWithImages);
+        //  const formattedProducts = products.map((product) => ({
+        //    ...product,
+        //    images: product.images ? JSON.parse(product.images as string) : []
+        //   //  tags: product.tags ? JSON.parse(product.tags as string) : [],
+        //   //  supplier: product.supplier
+        //      ? {
+        //          id: product.supplier.id,
+        //          businessType: product.supplier.businessType,
+        //          businessName: product.supplier.user.name,
+        //          userId: product.supplier.user.id,
+        //        }
+        //      : null,
+        //  }));
+
+         return {
+           products: formattedProducts,
+           meta: {
+             hasNextPage,
+             nextCursor,
+             count: formattedProducts.length,
+             totalCount,
+           },
+         };
+       });
+
+       res.status(200).json({
+         message: "Products fetched successfully!",
+         data: result.products,
+         meta: result.meta,
+       });
+       return;
+     } catch (error) {
+       console.error("Error fetching products:", error);
+       res.status(500).json({ error: "Internal server error!" });
+       return;
+     }
   },
 
   // Update product
@@ -377,7 +462,7 @@ export const productController = {
       const supplier = req.supplier!;
 
       // Use transaction for consistency
-      // await prisma.$transaction(async (tx) => {
+     const result = await prisma.$transaction(async (tx) => {
         // Check if product exists and belongs to this supplier
         const existingProduct = await prisma.product.findFirst({
           where: {
@@ -397,21 +482,27 @@ export const productController = {
           : [];
 
         // Delete product from database
-       const remainingProducts = await prisma.product.delete({
+        const remainingProducts = await prisma.product.delete({
           where: { id: productId },
         });
+        return {existingImages, remainingProducts};
+      });
 
         // Delete images after successful database transaction
-        if (existingImages.length > 0) {
-          await deleteFromMinio(existingImages);
+        if (result?.existingImages.length > 0) {
+          await deleteFromMinio(result?.existingImages);
         }
+
+        const data =
+          result?.remainingProducts &&
+          formatProductWithImages(result?.remainingProducts);
 
         res.status(200).json({
           message: "Product deleted successfully!",
-          data: formatProductWithImages(remainingProducts),
+          data,
         }); // ---->
         return;
-      // });
+     
     } catch (error) {
       console.error("Error deleting product:", error);
       res.status(500).json({ error: "Internal server error!" }); // ---->
@@ -451,7 +542,7 @@ export const productController = {
 
       res.status(200).json({
         message: `Deleted ${result.count} products successfully!`,
-        // data: { count: result.count },
+        data: [],
       });
     } catch (error) {
       console.error("Error deleting all products:", error);

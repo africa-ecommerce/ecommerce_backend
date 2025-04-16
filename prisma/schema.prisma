@@ -272,6 +272,7 @@ model Product {
   category        String?
   images          String? // Typically would store JSON or comma-separated strings with image paths
   supplierId      String
+  //  tags            String? // JSON string containing keywords and name alternatives
   // supplier        Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   supplier        Supplier @relation(fields: [supplierId], references: [id])
   createdAt       DateTime @default(now())

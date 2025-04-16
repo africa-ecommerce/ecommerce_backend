@@ -7,9 +7,10 @@ import {
   upload,
   uploadToMinio,
 } from "../helper/minioObjectStore/productImage";
+import { PlugProduct } from "@prisma/client";
 
 // Helper function to format products with parsed images
-const formatProductWithImages = (product: any) => {
+const formatProductWithImages = (product: PlugProduct) => {
   return {
     ...product,
     images: product.images ? JSON.parse(product.images as string) : [],
@@ -202,7 +203,7 @@ export const plugProductController = {
       const plug = req.plug!;
 
       // Use transaction to handle both database and file operations
-      const customImages = await prisma.$transaction(async (tx) => {
+      const result = await prisma.$transaction(async (tx) => {
         // Check if product exists and belongs to this plug
         const existingProduct = await tx.plugProduct.findFirst({
           where: {
@@ -237,26 +238,28 @@ export const plugProductController = {
         }
 
         // Delete the product from database
-        await tx.plugProduct.delete({
+       const remainingProducts = await tx.plugProduct.delete({
           where: { id: productId },
         });
 
-        return imagesToDelete;
+        return {imagesToDelete, remainingProducts};
       });
 
       // Handle case where product wasn't found
-      if (customImages === null) {
+      if (result?.imagesToDelete === null) {
         res.status(404).json({ error: "Product not found!" });
         return;
       }
 
       // Delete any custom images after successful transaction
-      if (customImages.length > 0) {
-        await deleteFromMinio(customImages);
+      if (result?.imagesToDelete && result?.imagesToDelete.length > 0) {
+        await deleteFromMinio(result?.imagesToDelete);
       }
 
+      const data = result?.remainingProducts &&  formatProductWithImages(result?.remainingProducts);
       res.status(200).json({
         message: "Product removed successfully!",
+        data
       });
     } catch (error) {
       console.error("Error removing plug product:", error);
@@ -347,6 +350,7 @@ export const plugProductController = {
         return {
           status: 200,
           message: `Successfully removed ${deleteResult.count} products!`,
+          deleteResult,
           customImages,
         };
       });
@@ -354,10 +358,11 @@ export const plugProductController = {
       // Delete images after successful transaction
       if (result.customImages && result.customImages.length > 0) {
         await deleteFromMinio(result.customImages);
-      }
+     }
 
-      res.status(result.status).json({
+        res.status(result.status).json({
         message: result.message,
+        data: []
       }); // ---->
       return;
     } catch (error) {
