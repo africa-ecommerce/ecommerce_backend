@@ -237,7 +237,10 @@ enum UserType {
 
 model Supplier {
   id           String    @id @default(cuid())
-  businessType String
+   businessName   String   @default("")                
+  businessType String? 
+   pickupLocation String    @default("")                  
+  avatar         String?   
   userId       String    @unique
   user         User      @relation(fields: [userId], references: [id])
   products     Product[]

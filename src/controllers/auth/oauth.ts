@@ -16,7 +16,7 @@ export const google = (req: Request, res: Response, next: NextFunction) => {
     const decodedCallback = decodeURIComponent(url);
 
     // Validate and pass callback URL via state
-    const state = `http://localhost:3000${
+    const state = `${process.env.APP_URL}${
       decodedCallback.startsWith("/") ? decodedCallback : `/${decodedCallback}`
     }`;
 
@@ -28,7 +28,7 @@ export const google = (req: Request, res: Response, next: NextFunction) => {
     })(req, res, next);
   } catch (error) {
     console.error("Google authentication error:", error);
-    const errorRedirect = `http://localhost:3000/auth/error`;
+    const errorRedirect = `${process.env.APP_URL}/auth/error`;
     res.redirect(errorRedirect);
   }
 };
@@ -48,7 +48,7 @@ export const googleCallback = async (req: Request, res: Response) => {
     // ✅ Adjusted: If the user is linking their account for the first time (not onboarded), override redirect URL
     // Here we assume new users have isOnboarded === false (or undefined) and later you'll update it to true after onboarding.
     if (!user.isOnboarded) {
-      redirectUrl = "http://localhost:3000/onboarding";
+      redirectUrl = `${process.env.APP_URL}/onboarding`;
     }
 
     // Generate tokens and set cookies
@@ -58,7 +58,7 @@ export const googleCallback = async (req: Request, res: Response) => {
     res.redirect(redirectUrl);
   } catch (error) {
     console.error("Google callback error:", error);
-    const errorRedirect = `http://localhost:3000/auth/error`;
+    const errorRedirect = `${process.env.APP_URL}/auth/error`;
     res.redirect(errorRedirect);
   }
 };

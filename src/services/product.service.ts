@@ -1,60 +1,60 @@
-// src/services/product.service.ts
-import { prisma } from "../config";
+// // src/services/product.service.ts
+// import { prisma } from "../config";
 
-export const createProduct = async (
-  merchantId: string,
-  title: string,
-  description: string,
-  price: number,
-  inventory: number
-) => {
-  return await prisma.product.create({
-    data: {
-      title,
-      description,
-      price,
-      inventory,
-      merchantId,
-    },
-  });
-
-//   // Sync with physical store inventory
-//   await prisma.physicalInventory.upsert({
-//     where: { productId: product.id },
-//     update: { stock: inventory },
-//     create: {
-//       productId: product.id,
+// export const createProduct = async (
+//   merchantId: string,
+//   title: string,
+//   description: string,
+//   price: number,
+//   inventory: number
+// ) => {
+//   return await prisma.product.create({
+//     data: {
+//       title,
+//       description,
+//       price,
+//       inventory,
 //       merchantId,
-//       stock: inventory,
 //     },
 //   });
 
-//   res.status(201).json(product);
-};
+// //   // Sync with physical store inventory
+// //   await prisma.physicalInventory.upsert({
+// //     where: { productId: product.id },
+// //     update: { stock: inventory },
+// //     create: {
+// //       productId: product.id,
+// //       merchantId,
+// //       stock: inventory,
+// //     },
+// //   });
 
-export const getProductsByMerchant = async (merchantId: string) => {
-  return await prisma.product.findMany({
-    where: { merchantId },
-  });
-};
+// //   res.status(201).json(product);
+// };
 
-export const updateProduct = async (
-  id: string,
-  data: {
-    title?: string;
-    description?: string;
-    price?: number;
-    inventory?: number;
-  }
-) => {
-  return await prisma.product.update({
-    where: { id },
-    data,
-  });
-};
+// export const getProductsByMerchant = async (merchantId: string) => {
+//   return await prisma.product.findMany({
+//     where: { merchantId },
+//   });
+// };
 
-export const deleteProduct = async (id: string) => {
-  return await prisma.product.delete({
-    where: { id },
-  });
-};
+// export const updateProduct = async (
+//   id: string,
+//   data: {
+//     title?: string;
+//     description?: string;
+//     price?: number;
+//     inventory?: number;
+//   }
+// ) => {
+//   return await prisma.product.update({
+//     where: { id },
+//     data,
+//   });
+// };
+
+// export const deleteProduct = async (id: string) => {
+//   return await prisma.product.delete({
+//     where: { id },
+//   });
+// };

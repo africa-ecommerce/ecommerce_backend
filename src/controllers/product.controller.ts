@@ -9,7 +9,7 @@ import {
   uploadToMinio,
 } from "../helper/minioObjectStore/productImage";
 import { Product } from "@prisma/client";
-import { createHash } from "crypto";
+// import { createHash } from "crypto";
 
 // Helper function to format products with parsed images
 const formatProductWithImages = (product: Product) => {

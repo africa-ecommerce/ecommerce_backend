@@ -96,7 +96,7 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      callbackURL: "http://localhost:5000/auth/google/callback",
+      callbackURL: `${process.env.BACKEND_URL}/auth/google/callback`,
       passReqToCallback: true, 
     },
     async (req, accessToken, refreshToken, profile, done) => {
@@ -131,40 +131,40 @@ passport.use(
 
 
 
-passport.use(
-  new FacebookStrategy(
-    {
-      clientID: process.env.FACEBOOK_CLIENT_ID!,
-      clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
-      callbackURL: "/auth/facebook/callback",
-      profileFields: ["id", "displayName", "emails"],
-    },
-    async (accessToken, refreshToken, profile, done) => {
-      try {
-        // Extract email; note: Facebook may not always return an email!
-        const email = profile.emails?.[0].value;
-        if (!email) {
-          return done(new Error("No email provided by Facebook"), null);
-        }
-        let user = await prisma.user.findUnique({ where: { email } });
-        if (!user) {
-          user = await prisma.user.create({
-            data: {
-              email,
-              name: profile.displayName,
-              password: "",
-              emailVerified: true,
-              policy: true,
+// passport.use(
+//   new FacebookStrategy(
+//     {
+//       clientID: process.env.FACEBOOK_CLIENT_ID!,
+//       clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
+//       callbackURL: "/auth/facebook/callback",
+//       profileFields: ["id", "displayName", "emails"],
+//     },
+//     async (accessToken, refreshToken, profile, done) => {
+//       try {
+//         // Extract email; note: Facebook may not always return an email!
+//         const email = profile.emails?.[0].value;
+//         if (!email) {
+//           return done(new Error("No email provided by Facebook"), null);
+//         }
+//         let user = await prisma.user.findUnique({ where: { email } });
+//         if (!user) {
+//           user = await prisma.user.create({
+//             data: {
+//               email,
+//               name: profile.displayName,
+//               password: "",
+//               emailVerified: true,
+//               policy: true,
 
-            },
-          });
-        }
-        return done(null, user);
-      } catch (error) {
-        return done(error as Error);
-      }
-    }
-  )
-);
+//             },
+//           });
+//         }
+//         return done(null, user);
+//       } catch (error) {
+//         return done(error as Error);
+//       }
+//     }
+//   )
+// );
 
-export default passport;
+ export default passport;

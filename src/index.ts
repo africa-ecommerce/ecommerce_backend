@@ -10,7 +10,7 @@ import productRoutes from "./routes/product.routes";
 import plugProductRoutes from "./routes/plugProduct.routes";
 // import orderRoutes from "./routes/order.routes";
 // import paymentRoutes from "./routes/payment.routes";
-import analyticsRoutes from "./routes/analytics.routes";
+// import analyticsRoutes from "./routes/analytics.routes";
 // import notificationRoutes from "./routes/notification.routes";
 // import qrcodeRoutes from "./routes/qrcode.routes";
 // import logisticsRoutes from "./routes/logistics.routes";

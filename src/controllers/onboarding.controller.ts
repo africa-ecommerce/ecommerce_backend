@@ -1,270 +1,178 @@
+
+// src/controllers/onboarding.controller.ts
 import { Response } from "express";
 import { prisma } from "../config";
 import { UserType } from "@prisma/client";
 import { AuthRequest } from "../types";
 import { generateTokens, setAuthCookies } from "../helper/token";
+import { supplierInfoSchema, plugInfoSchema } from "../lib/zod/schema";
+import { upload } from "../helper/minioObjectStore/productImage";
+import {
+  uploadToMinio,
+  deleteFromMinio,
+} from "../helper/minioObjectStore/productImage";
+import { z } from "zod";
 
-// // interface Profile {
-// //   businessName: string;
-// //   phone: string;
-// //   aboutBusiness: string;
-// //   state: string;
-// // }
+export const onboarding = [
+  // accept one optional file called "avatar"
+  upload.single("avatar"),
 
-// // interface OnboardingRequest {
-// //   userType: UserType;
+  async (req: AuthRequest, res: Response) => {
+    let avatarUrl: string | null = null;
 
-// //   // Supplier-specific
-// //   businessType?: BusinessType;
-
-// //   // Plug-specific
-// //   profile: Profile;
-// //   niches: string[];
-// //   generalMerchant: boolean;
-// // }
-
-// export const onboarding = async (req: AuthRequest, res: Response) => {
-//   try {
-//     const user = req.user;
-//     const userId = user?.id;
-//     if (!userId) {
-//       res.status(401).json({ error: "Unauthorized!" }); // ---->
-//       return;
-//     }
-
-//     const { userType } = req.body;
-
-//     console.log("userType", userType);
-
-//     await prisma.$transaction(async (tx) => {
-//       // Update user type and onboarding status
-//       await tx.user.update({
-//         where: { id: userId },
-//         data: {
-//           userType,
-//           isOnboarded: true,
-//         },
-//       });
-
-//       // Handle supplier creation
-//       if (userType === UserType.SUPPLIER) {
-//         const {
-//           supplierInfo: { businessType },
-//         } = req.body;
-//         console.log("businessType", businessType);
-//         // Validate required fields
-//         if (userType === UserType.SUPPLIER && !businessType) {
-//           res
-//             .status(400)
-//             .json({ error: "Business type is required for suppliers!" });
-//           return;
-//         }
-
-//         await tx.supplier.upsert({
-//           where: { userId },
-//           create: {
-//             businessType,
-//             userId,
-//           },
-//           update: {
-//             businessType,
-//           },
-//         });
-//       } else {
-//         const {
-//           profile: { businessName, phone, aboutBusiness, state },
-//           niches,
-//           generalMerchant,
-//         } = req.body;
-
-//         if (userType === UserType.PLUG && !businessName) {
-//           res
-//             .status(400)
-//             .json({ error: "Business name is required for plugs!" });
-//           return;
-//         }
-
-//         // Handle plug creation
-//         await tx.plug.upsert({
-//           where: { userId },
-//           create: {
-//             businessName,
-//             phone,
-//             state,
-//             aboutBusiness,
-//             niches,
-//             generalMerchant,
-//             userId,
-//           },
-//           update: {
-//             businessName,
-//             phone,
-//             state,
-//             aboutBusiness,
-//             niches,
-//             generalMerchant,
-//           },
-//         });
-//       }
-//     });
-
-
-//     //  Generate tokens and set authentication cookies, as user data has changed
-//       const tokens = await generateTokens(user.id, true, userType);
-//         setAuthCookies(res, tokens);
-    
-
-//     // // Format response data
-//     // const responseData =
-//     //   userType === UserType.SUPPLIER
-//     //     ? {
-//     //         businessType: result.businessType,
-//     //       }
-//     //     : {
-//     //         businessName: result.businessName,
-//     //         phoneNumber: result.phoneNumber,
-//     //         state: result.state,
-//     //         aboutBusiness: result.aboutBusiness,
-//     //         niches: result.niches?.split(","),
-//     //       };
-
-
-    
-//     res.status(200).json({
-//       message: "Onboarding completed successfully!",
-//       //   data: responseData,
-//     });
-//   } catch (error) {
-//     console.error("Onboarding error:", error);
-//     res.status(500).json({
-//       error: "Internal server error!",
-//     });
-//   }
-// };
-
-
-
-export const onboarding = async (req: AuthRequest, res: Response) => {
-  try {
-    // Step 1: Authenticate user
-    const user = req.user;
-    const userId = user?.id;
-    if (!userId) {
-       res.status(401).json({ error: "Unauthorized!" });
-       return;
-    }
-
-    // Step 2: Extract and validate request data
-    const { userType } = req.body;
-
-    // Validate user type
-    if (!Object.values(UserType).includes(userType)) {
-       res.status(400).json({ error: "Invalid user type!" });
-       return;
-    }
-
-    // Step 3: Type-specific validation before starting transaction
-    if (userType === UserType.SUPPLIER) {
-      const supplierInfo = req.body.supplierInfo;
-      if (!supplierInfo || !supplierInfo.businessType) {
-         res
-          .status(400)
-          .json({ error: "Business type is required for suppliers!" });
-          return
-      }
-
-      // Check if supplier record already exists
-      const existingSupplier = await prisma.supplier.findUnique({
-        where: { userId },
-      });
-
-      if (existingSupplier) {
-         res
-          .status(409)
-          .json({ error: "User already onboarded!" });
-          return
-      }
-    } else if (userType === UserType.PLUG) {
-      const { profile } = req.body;
-
-      if (!profile || !profile.businessName) {
-         res
-          .status(400)
-          .json({ error: "Business name is required for plugs!" });
-          return;
-      }
-
-      // Check if plug record already exists
-      const existingPlug = await prisma.plug.findUnique({
-        where: { userId },
-      });
-
-      if (existingPlug) {
-         res.status(409).json({ error: "User already onboarded!" });
-          return;
-      }
-    } else {
-       res
-        .status(400)
-        .json({ error: "Invalid user type!" });
+    try {
+      // 1) Auth check
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized!" });
         return;
-    }
+      }
 
-    // Step 4: All validations passed, execute database changes in a transaction
-    await prisma.$transaction(async (tx) => {
-      // Update user type and onboarding status
-      await tx.user.update({
-        where: { id: userId },
-        data: {
-          userType,
-          isOnboarded: true,
-        },
+      // 2) userType check
+      const { userType } = req.body;
+      if (!Object.values(UserType).includes(userType as UserType)) {
+        res.status(400).json({ error: "Invalid user type!" });
+        return;
+      }
+
+      //
+      // 3a) SUPPLIER branch
+      //
+      let supplierData: z.infer<typeof supplierInfoSchema> | null = null;
+      if (userType === UserType.SUPPLIER) {
+        // pull directly from req.body
+        const supParse = supplierInfoSchema.safeParse({
+          businessName: req.body.supplierInfo.businessName,
+          businessType: req.body.supplierInfo.businessType,
+          pickupLocation: req.body.supplierInfo.pickupLocation,
+        });
+
+        if (!supParse.success) {
+          res.status(400).json({
+            error: "Supplier validation failed!",
+          });
+          return;
+        }
+        supplierData = supParse.data;
+
+       
+        const existingSupplier = await prisma.supplier.findUnique({
+          where: { userId },
+        });
+        if (existingSupplier) {
+          res
+            .status(409)
+            .json({ error: "User already onboarded as supplier!" });
+          return;
+        }
+
+        // optional avatar upload
+        if (req.file) {
+          const [url] = await uploadToMinio([req.file] as any);
+          avatarUrl = url;
+        }
+      }
+
+      //
+      // 3b) PLUG branch
+      //
+      let plugData: z.infer<typeof plugInfoSchema> | null = null;
+      if (userType === UserType.PLUG) {
+        // assume your form posts:
+        //   generalMerchant, niches (array), and profile as an object
+        const plugParse = plugInfoSchema.safeParse({
+          generalMerchant: req.body.generalMerchant === "true" || req.body.generalMerchant === true,
+          niches: Array.isArray(req.body.niches)
+            ? req.body.niches
+            : req.body.niches
+            ? [req.body.niches]
+            : [],
+          profile: req.body.profile,
+        });
+
+        if (!plugParse.success) {
+          res.status(400).json({
+            error: "Plug validation failed!",
+          });
+          return;
+        }
+        plugData = plugParse.data;
+
+        
+        const existingPlug = await prisma.plug.findUnique({
+          where: { userId },
+        });
+        if (existingPlug) {
+          res.status(409).json({ error: "User already onboarded as plug!" });
+          return;
+        }
+      }
+
+      //
+      // 4) Commit everything in one transaction
+      //
+      await prisma.$transaction(async (tx) => {
+        // mark user onboarded
+        await tx.user.update({
+          where: { id: userId },
+          data: { userType, isOnboarded: true },
+        });
+
+        // create supplier row
+        if (userType === UserType.SUPPLIER && supplierData) {
+          const { businessName, businessType, pickupLocation } = supplierData;
+          await tx.supplier.create({
+            data: {
+              userId,
+              businessName,
+              businessType: businessType ?? "",
+              pickupLocation,
+              avatar: avatarUrl,
+            },
+          });
+        }
+
+        // create plug row
+        if (userType === UserType.PLUG && plugData) {
+          const {
+            generalMerchant,
+            niches,
+            profile: { businessName, phone, state, aboutBusiness },
+          } = plugData;
+
+          await tx.plug.create({
+            data: {
+              userId,
+              businessName,
+              phone,
+              state,
+              aboutBusiness,
+              niches,
+              generalMerchant,
+            },
+          });
+        }
       });
 
-      // Create type-specific record
-      if (userType === UserType.SUPPLIER) {
-        const {
-          supplierInfo: { businessType },
-        } = req.body;
+      // 5) Return success with cookies/tokens
+      const tokens = await generateTokens(
+        userId,
+        true,
+        userType as UserType
+      );
+      setAuthCookies(res, tokens);
+      res.status(200).json({ message: "Onboarding completed successfully!" });
+      return;
+    } catch (err) {
+      console.error("Onboarding error:", err);
 
-        await tx.supplier.create({
-          data: {
-            businessType,
-            userId,
-          },
-        });
-      } else if (userType === UserType.PLUG) {
-        const {
-          profile: { businessName, phone, aboutBusiness, state },
-          niches,
-          generalMerchant,
-        } = req.body;
-
-        await tx.plug.create({
-          data: {
-            businessName,
-            phone,
-            state,
-            aboutBusiness,
-            niches,
-            generalMerchant,
-            userId,
-          },
-        });
+      // rollback avatar
+      if (avatarUrl) {
+        await deleteFromMinio([avatarUrl]);
       }
-    });
 
-    // Step 5: Transaction completed successfully, handle auth and response
-    const tokens = await generateTokens(user.id, true, userType);
-    setAuthCookies(res, tokens);
-
-    res.status(200).json({
-      message: "Onboarding completed successfully!",
-    });
-  } catch (error) {
-    console.error("Onboarding error:", error);
-    res.status(500).json({
-      error: "Internal server error!",
-    });
-  }
-};
+      res.status(500).json({ error: "Internal server error!" });
+      return;
+    }
+  },
+];
