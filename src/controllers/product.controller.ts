@@ -9,6 +9,7 @@ import {
   uploadToMinio,
 } from "../helper/minioObjectStore/productImage";
 import { Product } from "@prisma/client";
+import { createHash } from "crypto";
 
 // Helper function to format products with parsed images
 const formatProductWithImages = (product: Product) => {
@@ -339,6 +340,153 @@ export const productController = {
      }
   },
 
+
+  // Get all products with efficient pagination and query optimization
+// getAllProducts: async (req: AuthRequest, res: Response) => {
+//   try {
+//     // Create ETag fingerprint from query parameters for HTTP caching
+//     const queryFingerprint = JSON.stringify(req.query);
+//     const etag = createHash('md5').update(queryFingerprint).digest('hex');
+    
+//     // Check if client has this data cached (HTTP 304 handling)
+//     if (req.headers['if-none-match'] === etag) {
+//       res.status(304).end();
+//       return;
+//     }
+
+//     // Parse pagination parameters
+//     const limit = parseInt(req.query.limit as string) || 20;
+//     const cursor = req.query.cursor as string; // For cursor-based pagination
+
+//     // Parse sorting parameters
+//     const sortBy = (req.query.sortBy as string) || "createdAt";
+//     const order = (req.query.order as string)?.toLowerCase() === "asc" ? "asc" : "desc";
+
+//     // Parse filtering and search parameters
+//     const category = req.query.category as string;
+//     const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice as string) : undefined;
+//     const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice as string) : undefined;
+//     const search = req.query.search as string;
+//     const supplierIds = req.query.supplierIds as string | string[];
+//     const businessType = req.query.businessType as string;
+//     const createdAfter = req.query.createdAfter ? new Date(req.query.createdAfter as string) : undefined;
+//     const createdBefore = req.query.createdBefore ? new Date(req.query.createdBefore as string) : undefined;
+//     const tags = req.query.tags as string;
+
+//     // Build where conditions for filtering and search
+//     const whereConditions: any = {};
+
+//     // Text search across name, description, and tags
+//     if (search) {
+//       whereConditions.OR = [
+//         { name: { contains: search, mode: "insensitive" } },
+//         { description: { contains: search, mode: "insensitive" } },
+//         { tags: { contains: search, mode: "insensitive" } },
+//       ];
+//     }
+
+//     // Apply other filters
+//     if (category) whereConditions.category = category;
+//     if (tags) whereConditions.tags = { contains: tags, mode: "insensitive" };
+    
+//     // Price range filter
+//     if (minPrice !== undefined || maxPrice !== undefined) {
+//       whereConditions.price = {};
+//       if (minPrice !== undefined) whereConditions.price.gte = minPrice;
+//       if (maxPrice !== undefined) whereConditions.price.lte = maxPrice;
+//     }
+
+//     // Supplier filters
+//     if (supplierIds) {
+//       const supplierIdArray = Array.isArray(supplierIds) ? supplierIds : [supplierIds];
+//       whereConditions.supplierId = { in: supplierIdArray };
+//     }
+
+//     // Filter by supplier's business type
+//     if (businessType) {
+//       whereConditions.supplier = { businessType: businessType };
+//     }
+
+//     // Date range filters
+//     if (createdAfter !== undefined || createdBefore !== undefined) {
+//       whereConditions.createdAt = {};
+//       if (createdAfter !== undefined) whereConditions.createdAt.gte = createdAfter;
+//       if (createdBefore !== undefined) whereConditions.createdAt.lte = createdBefore;
+//     }
+
+//     // Build query options with lean supplier inclusion
+//     const queryOptions: any = {
+//       where: whereConditions,
+//       take: limit + 1, // Take one extra to determine if there are more items
+//       orderBy: {
+//         [sortBy]: order,
+//       },
+//       include: {
+//         supplier: {
+//           select: {
+//             id: true,
+//             businessType: true,
+//             user: {
+//               select: {
+//                 name: true,
+//                 id: true,
+//               },
+//             },
+//           },
+//         },
+//       },
+//     };
+
+//     // Add cursor for efficient pagination if provided
+//     if (cursor) {
+//       queryOptions.cursor = { id: cursor };
+//       queryOptions.skip = 1; // Skip the cursor
+//     }
+
+//     // Execute query with optimization for counting
+//     let products = await prisma.product.findMany(queryOptions);
+
+//     // Check if we have more results
+//     const hasNextPage = products.length > limit;
+//     if (hasNextPage) {
+//       products = products.slice(0, limit); // Remove the extra item
+//     }
+
+//     // Get the next cursor
+//     const nextCursor = hasNextPage ? products[products.length - 1].id : null;
+
+//     // Get total count only when needed (first page of a filtered set)
+//     // To avoid unnecessary counts on every request
+//     let totalCount = null;
+//     if (!cursor && Object.keys(whereConditions).length > 0) {
+//       // Only count on first page (no cursor) of filtered results
+//       totalCount = await prisma.product.count({ where: whereConditions });
+//     }
+
+//     // Format products for response
+//     const formattedProducts = products.map(formatProductWithImages);
+
+//     // Set ETag for client-side caching
+//     res.setHeader('ETag', etag);
+//     res.setHeader('Cache-Control', 'private, max-age=0');
+
+//     res.status(200).json({
+//       message: "Products fetched successfully!",
+//       data: formattedProducts,
+//       meta: {
+//         hasNextPage,
+//         nextCursor,
+//         count: formattedProducts.length,
+//         totalCount,
+//       },
+//     });
+//     return;
+//   } catch (error) {
+//     console.error("Error fetching products:", error);
+//     res.status(500).json({ error: "Internal server error!" });
+//     return;
+//   }
+// },
   // Update product
   updateProduct: [
     upload.array("images", 10),

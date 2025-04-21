@@ -7,8 +7,8 @@ import { UserType } from "@prisma/client";
 
 // Token expiration times
 const ACCESS_TOKEN_EXPIRY = 15 * 60 * 60; // 15 mins (in seconds)
-const REFRESH_TOKEN_EXPIRY = 30 * 24 * 60 * 60; // 30 days (in seconds)
-const REFRESH_TOKEN_ROTATION_WINDOW = 3 * 24 * 60 * 60; // 3 days before expiration
+const REFRESH_TOKEN_EXPIRY = 7 * 24 * 60 * 60; // 30 days (in seconds)
+const REFRESH_TOKEN_ROTATION_WINDOW = 1 * 24 * 60 * 60; // 3 days before expiration
 
 export const generateTokens = async (
   userId: string,

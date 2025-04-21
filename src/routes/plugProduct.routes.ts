@@ -19,7 +19,7 @@ router.use(plugAuth);
  */
 router.post(
   "/:productId",
-  plugProductController.addProductToPlug
+  plugProductController.addProductsToPlug
 );
 
 

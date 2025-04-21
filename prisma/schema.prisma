@@ -241,6 +241,7 @@ model Supplier {
   userId       String    @unique
   user         User      @relation(fields: [userId], references: [id])
   products     Product[]
+  verified     Boolean   @default(false)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 }
@@ -277,6 +278,14 @@ model Product {
   supplier        Supplier @relation(fields: [supplierId], references: [id])
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+   // indexes to improve query performance
+  @@index([price])
+  @@index([category])
+  @@index([createdAt])
+  @@index([supplierId])
+  // Compound index for common filter combinations
+  @@index([category, price])
 }
 
 
@@ -294,6 +303,9 @@ model PlugProduct {
   plug        Plug     @relation(fields: [plugId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+    // Add this unique constraint to prevent duplicates
+  @@unique([plugId, originalId])
 
   @@index([plugId])
   @@index([originalId])
