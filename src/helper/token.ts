@@ -66,14 +66,22 @@ export const shouldRotateRefreshToken = (token: string): boolean => {
 };
 
 // Cookie configuration
+// export const cookieConfig = {
+//   httpOnly: true,
+//   secure: process.env.NODE_ENV === "production",
+//   sameSite: "lax" as const,
+//   domain:
+//     process.env.NODE_ENV === "development"
+//       ? "localhost"
+//       : `${process.env.DOMAIN}`,
+// };
+
+
 export const cookieConfig = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
-  domain:
-    process.env.NODE_ENV === "development"
-      ? "localhost"
-      : `${process.env.DOMAIN}`,
+  secure: true, // Always true for Vercel deployments
+  sameSite: "none" as const, // Type assertion to fix the error
+  path: "/", // Ensure cookies are available across your entire app
 };
 
  export const refreshSession = async (refreshToken: string) => {
@@ -114,6 +122,21 @@ export const cookieConfig = {
  };
 
 
+// export const setAuthCookies = (res: Response, tokens: Tokens) => {
+//   res
+//     .cookie("accessToken", tokens.accessToken, {
+//       ...cookieConfig,
+//       maxAge: ACCESS_TOKEN_EXPIRY * 1000,
+//     })
+//     .cookie("refreshToken", tokens.refreshToken, {
+//       ...cookieConfig,
+//       maxAge: REFRESH_TOKEN_EXPIRY * 1000,
+//       path: "/auth/refresh",
+//     });
+// };
+
+
+
 export const setAuthCookies = (res: Response, tokens: Tokens) => {
   res
     .cookie("accessToken", tokens.accessToken, {
@@ -123,10 +146,8 @@ export const setAuthCookies = (res: Response, tokens: Tokens) => {
     .cookie("refreshToken", tokens.refreshToken, {
       ...cookieConfig,
       maxAge: REFRESH_TOKEN_EXPIRY * 1000,
-      path: "/auth/refresh",
+      path: "/auth/refresh", // Keep this specific path for refresh token
     });
 };
-
-
 
 
