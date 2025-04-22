@@ -26,6 +26,7 @@ import session from "express-session";
 import passport from "./config/passport";
 import { Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
+import { cookieConfig } from "./helper/token";
 
 
 const app = express();
@@ -70,14 +71,8 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      domain:
-        process.env.NODE_ENV === "development"
-          ? "localhost"
-          : `${process.env.DOMAIN}`,
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      ...cookieConfig,
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
     },
   })
 );
