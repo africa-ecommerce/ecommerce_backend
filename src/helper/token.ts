@@ -71,7 +71,9 @@ export const cookieConfig = {
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax" as const,
   domain:
-    process.env.NODE_ENV === "development" ? "localhost" : `${process.env.APP_URL}`,
+    process.env.NODE_ENV === "development"
+      ? "localhost"
+      : `${process.env.BACKEND_URL}`,
 };
 
  export const refreshSession = async (refreshToken: string) => {
