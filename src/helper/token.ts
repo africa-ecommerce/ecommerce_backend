@@ -73,7 +73,7 @@ export const cookieConfig = {
   domain:
     process.env.NODE_ENV === "development"
       ? "localhost"
-      : `${process.env.BACKEND_URL}`,
+      : `${process.env.DOMAIIN}`,
 };
 
  export const refreshSession = async (refreshToken: string) => {
