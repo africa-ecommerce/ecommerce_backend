@@ -125,6 +125,9 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   //   .json({ error: "Unexpected error occured!" });
 });
 
-app.listen(port, () => {
-  console.log(`Server is listening on port ${port}`);
-});
+// app.listen(port, () => {
+//   console.log(`Server is listening on port ${port}`);
+// });
+
+
+export default app;
