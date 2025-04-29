@@ -568,23 +568,27 @@ const formatPlugProductWithDetails = async (plugProduct: PlugProduct, tx?: any) 
   try {
     // Fetch the original product details from the supplier's product
      originalProduct = await db.product.findUnique({
-      where: { id: plugProduct.originalId },
-      include: { supplier: true } // Include supplier details if needed
+      where: { id: plugProduct.originalId }
     });
 
     if (!originalProduct) {
-      console.warn(`Original product not found for PlugProduct ${plugProduct.id}`);
-      return {
-        ...plugProduct,
-        images: originalProduct.images
-          ? JSON.parse(originalProduct.images as string)
-          : [],
-        // Set default values for missing product data
-        name: "Product Not Found",
-        description: "",
-        category: "",
-        originalPrice: 0,
-      };
+      // If this is being called inside a transaction, update the status
+      if (tx && plugProduct.status === "ACTIVE") {
+        await tx.plugProduct.update({
+          where: { id: plugProduct.id },
+          data: { status: "INACTIVE" },
+        });
+        plugProduct.status = "INACTIVE";
+      }
+
+       return {
+         ...plugProduct,
+         name: "Invalid Product",
+         description: "This product has been discontinued by the supplier.",
+         category: "",
+         originalPrice: 0,
+         images: [],
+       };
     }
 
     // Combine the plug product data with the original product details
@@ -596,9 +600,6 @@ const formatPlugProductWithDetails = async (plugProduct: PlugProduct, tx?: any) 
       category: originalProduct.category,
       originalPrice: originalProduct.price, // Keep the original price for reference
       images: originalProduct.images ? JSON.parse(originalProduct.images as string) : [],
-      // Include supplier info if needed
-      supplierName: originalProduct.supplier?.businessName,
-      supplierId: originalProduct.supplierId,
     };
   } catch (error) {
     console.error(`Error formatting plug product ${plugProduct.id}:`, error);
@@ -621,9 +622,10 @@ export const plugProductController = {
       
       // Basic validation
       if (!Array.isArray(products) || products.length === 0) {
-        return res.status(400).json({
-          error: "Please provide a list of product IDs!",
+         res.status(400).json({
+          error: "Please provide a list of products!",
         });
+        return;
       }
       
       // Prepare products by mapping each product object to create a plug product entry
@@ -631,7 +633,7 @@ export const plugProductController = {
         originalId: product.id, // Use the ID from the frontend
         price: product.price,   // Use the price from the frontend
         plugId: plug.id,        // add the plug ID
-      }));
+      })); 
       
       // Create the products in the database and get complete details
       const result = await prisma.$transaction(async (tx) => {
@@ -658,13 +660,15 @@ export const plugProductController = {
         return formattedProducts;
       });
       
-      return res.status(201).json({
+       res.status(201).json({
         message: `Added ${result.length} products to your store!`,
         data: result,
       });
+      return;
     } catch (error) {
       console.error("Error adding products:", error);
-      return res.status(500).json({ error: "Internal server error!" });
+       res.status(500).json({ error: "Internal server error!" });
+       return;
     }
   },
 
@@ -682,13 +686,15 @@ export const plugProductController = {
         plugProducts.map(product => formatPlugProductWithDetails(product))
       );
 
-      return res.status(200).json({
+       res.status(200).json({
         message: "Products fetched successfully!",
         data: formattedProducts,
       });
+      return
     } catch (error) {
       console.error("Error fetching products:", error);
-      return res.status(500).json({ error: "Internal server error!" });
+       res.status(500).json({ error: "Internal server error!" });
+       return
     }
   },
 
@@ -705,12 +711,14 @@ export const plugProductController = {
       });
 
       if (!existingProduct) {
-        return res.status(404).json({ error: "Product not found!" });
+         res.status(404).json({ error: "Product not found!" });
+         return;
       }
 
       // Simple validation
       if (price !== undefined && (isNaN(parseFloat(price)) || parseFloat(price) < 0)) {
-        return res.status(400).json({ error: "Price is invalid!" });
+         res.status(400).json({ error: "Price is invalid!" });
+         return;
       }
 
       // Update product
@@ -726,13 +734,15 @@ export const plugProductController = {
       // Format the product with complete details
       const formattedProduct = await formatPlugProductWithDetails(updatedProduct);
 
-      return res.status(200).json({
+       res.status(200).json({
         message: "Product updated successfully!",
         data: formattedProduct,
       });
+      return
     } catch (error) {
       console.error("Error updating product:", error);
-      return res.status(500).json({ error: "Internal server error!" });
+       res.status(500).json({ error: "Internal server error!" });
+       return
     }
   },
 
@@ -751,7 +761,8 @@ export const plugProductController = {
       });
 
       if (!existingProduct) {
-        return res.status(404).json({ error: "Product not found!" });
+         res.status(404).json({ error: "Product not found!" });
+         return
       }
 
       // Delete the product from database
@@ -759,12 +770,14 @@ export const plugProductController = {
         where: { id: productId },
       });
 
-      return res.status(200).json({
+       res.status(200).json({
         message: "Product removed successfully!",
       });
+      return;
     } catch (error) {
       console.error("Error removing plug product:", error);
-      return res.status(500).json({ error: "Internal server error!" });
+       res.status(500).json({ error: "Internal server error!" });
+       return;
     }
   },
 
@@ -783,19 +796,22 @@ export const plugProductController = {
       });
 
       if (!plugProduct) {
-        return res.status(404).json({ error: "Product not found!" });
+         res.status(404).json({ error: "Product not found!" });
+         return;
       }
 
       // Format the product with complete details
       const formattedProduct = await formatPlugProductWithDetails(plugProduct);
 
-      return res.status(200).json({
+       res.status(200).json({
         message: "Product fetched successfully!",
         data: formattedProduct,
       });
+      return;
     } catch (error) {
       console.error("Error fetching plug product:", error);
-      return res.status(500).json({ error: "Internal server error!" });
+       res.status(500).json({ error: "Internal server error!" });
+       return;
     }
   },
 
@@ -810,19 +826,22 @@ export const plugProductController = {
       });
 
       if (deleteResult.count === 0) {
-        return res.status(200).json({
+         res.status(200).json({
           message: "No products to remove!",
           data: [],
         });
+        return
       }
 
-      return res.status(200).json({
+       res.status(200).json({
         message: `Successfully removed ${deleteResult.count} products!`,
         data: [],
       });
+      return;
     } catch (error) {
       console.error("Error removing all plug products:", error);
-      return res.status(500).json({ error: "Internal server error!" });
+       res.status(500).json({ error: "Internal server error!" });
+       return;
     }
   },
 };

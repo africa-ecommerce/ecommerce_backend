@@ -77,7 +77,6 @@ quick access
 
 limit file size and amount of file, 4 images 1 video
 
-PLUG STATUS, IF NULL, DONT SHOW
 validation of frontend
 
 EXTEND FOR VIDEOS WITH LIMIT
@@ -104,6 +103,10 @@ FETCHING CATEGORY MAKE IT STATIC
 
 check search and infinite scroll
 onboarding/success  ---> some how
+
+
+PLUG STATUS, TO SHOW IF ACTIVE OR INACTIVE ------------------------->
+
 
 
 restock func to increase quantity or so
