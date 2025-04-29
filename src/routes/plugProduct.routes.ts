@@ -45,7 +45,7 @@ router.get("/:productId",  plugProductController.getPlugProductById);
  * @desc    Update a plug product
  * @access  Private (Plug only)
  */
-router.put("/:productId",  plugProductController.updatePlugProduct);
+router.put("/:productId", plugProductController.updatePlugProductPrice);
 
 /**
  * @route   DELETE /api/plug/products/:productId

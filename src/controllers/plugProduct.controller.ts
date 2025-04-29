@@ -560,55 +560,134 @@ import { PlugProduct } from "@prisma/client";
 
 
 // Helper function to format products with parsed images and complete details
+// const formatPlugProductWithDetails = async (plugProduct: PlugProduct, tx?: any) => {
+//   // Use the provided transaction or default to prisma
+//   const db = tx || prisma;
+//   let originalProduct;
+  
+//   try {
+//     // Fetch the original product details from the supplier's product
+//      originalProduct = await db.product.findUnique({
+//       where: { id: plugProduct.originalId }
+//     });
+
+//     if (!originalProduct) {
+//       // If this is being called inside a transaction, update the status
+//       if (tx && plugProduct.status === "ACTIVE") {
+//         await tx.plugProduct.update({
+//           where: { id: plugProduct.id },
+//           data: { status: "INACTIVE" },
+//         });
+//         plugProduct.status = "INACTIVE";
+//       }
+
+//        return {
+//          ...plugProduct,
+//          name: "Invalid Product",
+//          description: "This product has been removed by the supplier.",
+//          category: "",
+//          originalPrice: 0,
+//          images: [],
+//        };
+//     }
+
+//     // Combine the plug product data with the original product details
+//     return {
+//       ...plugProduct,
+//       // Original product details
+//       name: originalProduct.name,
+//       description: originalProduct.description,
+//       category: originalProduct.category,
+//       originalPrice: originalProduct.price, // Keep the original price for reference
+//       images: originalProduct.images ? JSON.parse(originalProduct.images as string) : [],
+//     };
+//   } catch (error) {
+//     console.error(`Error formatting plug product ${plugProduct.id}:`, error);
+//     // Return basic product data if there's an error
+//     return {
+//       ...plugProduct,
+//       images: originalProduct.images
+//         ? JSON.parse(originalProduct.images as string)
+//         : [],
+//     };
+//   }
+// };
+
+
+
+// Helper function to format products with parsed images and complete details
 const formatPlugProductWithDetails = async (plugProduct: PlugProduct, tx?: any) => {
   // Use the provided transaction or default to prisma
   const db = tx || prisma;
   let originalProduct;
   
+  // Destructure fields we might modify
+  const { priceEffectiveAt: rawEffectiveDate, pendingPrice, ...restPlugProduct } = plugProduct;
+
   try {
     // Fetch the original product details from the supplier's product
-     originalProduct = await db.product.findUnique({
+    originalProduct = await db.product.findUnique({
       where: { id: plugProduct.originalId }
     });
 
     if (!originalProduct) {
-      // If this is being called inside a transaction, update the status
+      // Handle invalid product (existing logic)
       if (tx && plugProduct.status === "ACTIVE") {
         await tx.plugProduct.update({
           where: { id: plugProduct.id },
           data: { status: "INACTIVE" },
         });
-        plugProduct.status = "INACTIVE";
       }
-
-       return {
-         ...plugProduct,
-         name: "Invalid Product",
-         description: "This product has been discontinued by the supplier.",
-         category: "",
-         originalPrice: 0,
-         images: [],
-       };
+      return {
+        ...restPlugProduct,
+        name: "Invalid Product",
+        description: "This product has been removed by the supplier.",
+        category: "",
+        originalPrice: 0,
+        images: [],
+      };
     }
 
-    // Combine the plug product data with the original product details
-    return {
-      ...plugProduct,
+    // Calculate days left formatting if needed
+    let formattedEffectiveDate = null;
+    if (pendingPrice && rawEffectiveDate) {
+      const now = new Date();
+      const effectiveDate = new Date(rawEffectiveDate);
+      const timeDiff = effectiveDate.getTime() - now.getTime();
+      let daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+      // Handle edge cases
+      if (daysLeft < 0) daysLeft = 0;
+      
+      formattedEffectiveDate = daysLeft === 0 ? "Today" 
+        : `${daysLeft} days left`;
+    }
+
+    // Construct base response
+    const formattedProduct: any = {
+      ...restPlugProduct,
       // Original product details
       name: originalProduct.name,
       description: originalProduct.description,
       category: originalProduct.category,
-      originalPrice: originalProduct.price, // Keep the original price for reference
+      originalPrice: originalProduct.price,
+      currentPrice: restPlugProduct.price,
       images: originalProduct.images ? JSON.parse(originalProduct.images as string) : [],
     };
+
+    // Only add pricing fields if update is pending
+    if (pendingPrice && rawEffectiveDate) {
+      formattedProduct.pendingPrice = pendingPrice;
+      formattedProduct.priceEffectiveAt = formattedEffectiveDate;
+    }
+
+    return formattedProduct;
+    
   } catch (error) {
     console.error(`Error formatting plug product ${plugProduct.id}:`, error);
-    // Return basic product data if there's an error
     return {
-      ...plugProduct,
-      images: originalProduct.images
-        ? JSON.parse(originalProduct.images as string)
-        : [],
+      ...restPlugProduct,
+      images: originalProduct?.images ? JSON.parse(originalProduct.images as string) : [],
     };
   }
 };
@@ -619,22 +698,22 @@ export const plugProductController = {
     try {
       const { products } = req.body; // Array of objects with productId and price from frontend
       const plug = req.plug!;
-      
+
       // Basic validation
       if (!Array.isArray(products) || products.length === 0) {
-         res.status(400).json({
+        res.status(400).json({
           error: "Please provide a list of products!",
         });
         return;
       }
-      
+
       // Prepare products by mapping each product object to create a plug product entry
       const productsToCreate = products.map((product) => ({
         originalId: product.id, // Use the ID from the frontend
-        price: product.price,   // Use the price from the frontend
-        plugId: plug.id,        // add the plug ID
-      })); 
-      
+        price: product.price, // Use the price from the frontend
+        plugId: plug.id, // add the plug ID
+      }));
+
       // Create the products in the database and get complete details
       const result = await prisma.$transaction(async (tx) => {
         // Create all product connections at once
@@ -642,33 +721,35 @@ export const plugProductController = {
           data: productsToCreate,
           skipDuplicates: true, // Skip if the plugId + originalId combination already exists
         });
-        
+
         // Return the latest products for this plug
         const createdPlugProducts = await tx.plugProduct.findMany({
-          where: { 
+          where: {
             plugId: plug.id,
-            originalId: { in: products.map(p => p.id) }
+            originalId: { in: products.map((p) => p.id) },
           },
           orderBy: { createdAt: "desc" },
         });
 
         // Format each product with complete details
         const formattedProducts = await Promise.all(
-          createdPlugProducts.map(product => formatPlugProductWithDetails(product, tx))
+          createdPlugProducts.map((product) =>
+            formatPlugProductWithDetails(product, tx)
+          )
         );
-        
+
         return formattedProducts;
       });
-      
-       res.status(201).json({
+
+      res.status(201).json({
         message: `Added ${result.length} products to your store!`,
         data: result,
       });
       return;
     } catch (error) {
       console.error("Error adding products:", error);
-       res.status(500).json({ error: "Internal server error!" });
-       return;
+      res.status(500).json({ error: "Internal server error!" });
+      return;
     }
   },
 
@@ -683,27 +764,27 @@ export const plugProductController = {
 
       // Format each product with complete details
       const formattedProducts = await Promise.all(
-        plugProducts.map(product => formatPlugProductWithDetails(product))
+        plugProducts.map((product) => formatPlugProductWithDetails(product))
       );
 
-       res.status(200).json({
+      res.status(200).json({
         message: "Products fetched successfully!",
         data: formattedProducts,
       });
-      return
+      return;
     } catch (error) {
       console.error("Error fetching products:", error);
-       res.status(500).json({ error: "Internal server error!" });
-       return
+      res.status(500).json({ error: "Internal server error!" });
+      return;
     }
   },
 
   // Update plug product price or description
-  updatePlugProduct: async (req: AuthRequest, res: Response) => {
+  updatePlugProductPrice: async (req: AuthRequest, res: Response) => {
     try {
       const productId = req.params.productId;
       const plug = req.plug!;
-      const { price, description } = req.body;
+      const { price } = req.body;
 
       // Find the product
       const existingProduct = await prisma.plugProduct.findFirst({
@@ -711,38 +792,41 @@ export const plugProductController = {
       });
 
       if (!existingProduct) {
-         res.status(404).json({ error: "Product not found!" });
-         return;
+        res.status(404).json({ error: "Product not found!" });
+        return;
       }
 
-      // Simple validation
-      if (price !== undefined && (isNaN(parseFloat(price)) || parseFloat(price) < 0)) {
-         res.status(400).json({ error: "Price is invalid!" });
-         return;
+      // Validation
+      if (isNaN(parseFloat(price)) || parseFloat(price) < 0) {
+        res.status(400).json({ error: "Price is invalid!" });
+        return;
       }
 
-      // Update product
+      // Calculate effective date (3 days from now)
+      const priceEffectiveAt = new Date();
+      priceEffectiveAt.setDate(priceEffectiveAt.getDate() + 3);
+
+      // Update with pending price and effective date
       const updatedProduct = await prisma.plugProduct.update({
         where: { id: productId },
         data: {
-          // Only update the price - description will come from the original product
-          price: price !== undefined ? parseFloat(price) : existingProduct.price,
+          pendingPrice: parseFloat(price),
+          priceEffectiveAt,
           updatedAt: new Date(),
-        },
+        }
       });
 
-      // Format the product with complete details
+      // Format response
       const formattedProduct = await formatPlugProductWithDetails(updatedProduct);
-
-       res.status(200).json({
-        message: "Product updated successfully!",
+        
+    
+      res.status(200).json({
+        message: "Price update scheduled. It will take effect in 3 days!",
         data: formattedProduct,
       });
-      return
     } catch (error) {
       console.error("Error updating product:", error);
-       res.status(500).json({ error: "Internal server error!" });
-       return
+      res.status(500).json({ error: "Internal server error!" });
     }
   },
 
@@ -761,8 +845,8 @@ export const plugProductController = {
       });
 
       if (!existingProduct) {
-         res.status(404).json({ error: "Product not found!" });
-         return
+        res.status(404).json({ error: "Product not found!" });
+        return;
       }
 
       // Delete the product from database
@@ -770,14 +854,14 @@ export const plugProductController = {
         where: { id: productId },
       });
 
-       res.status(200).json({
+      res.status(200).json({
         message: "Product removed successfully!",
       });
       return;
     } catch (error) {
       console.error("Error removing plug product:", error);
-       res.status(500).json({ error: "Internal server error!" });
-       return;
+      res.status(500).json({ error: "Internal server error!" });
+      return;
     }
   },
 
@@ -796,22 +880,22 @@ export const plugProductController = {
       });
 
       if (!plugProduct) {
-         res.status(404).json({ error: "Product not found!" });
-         return;
+        res.status(404).json({ error: "Product not found!" });
+        return;
       }
 
       // Format the product with complete details
       const formattedProduct = await formatPlugProductWithDetails(plugProduct);
 
-       res.status(200).json({
+      res.status(200).json({
         message: "Product fetched successfully!",
         data: formattedProduct,
       });
       return;
     } catch (error) {
       console.error("Error fetching plug product:", error);
-       res.status(500).json({ error: "Internal server error!" });
-       return;
+      res.status(500).json({ error: "Internal server error!" });
+      return;
     }
   },
 
@@ -826,22 +910,22 @@ export const plugProductController = {
       });
 
       if (deleteResult.count === 0) {
-         res.status(200).json({
+        res.status(200).json({
           message: "No products to remove!",
           data: [],
         });
-        return
+        return;
       }
 
-       res.status(200).json({
+      res.status(200).json({
         message: `Successfully removed ${deleteResult.count} products!`,
         data: [],
       });
       return;
     } catch (error) {
       console.error("Error removing all plug products:", error);
-       res.status(500).json({ error: "Internal server error!" });
-       return;
+      res.status(500).json({ error: "Internal server error!" });
+      return;
     }
   },
 };

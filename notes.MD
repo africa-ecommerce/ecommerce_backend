@@ -106,12 +106,13 @@ onboarding/success  ---> some how
 
 
 PLUG STATUS, TO SHOW IF ACTIVE OR INACTIVE ------------------------->
+THREE DAYS PENDING TIME WHEN IT GETS UPDATED
 
 
 
 restock func to increase quantity or so
 
-
+DO CUSTOMER SUPPORT FOR PLUGS
 Buyers choose a "Delivery Day" (e.g., "Want it faster? Pay ₦500 extra. Want it cheaper? Wait 3 days.").
 
 If Pluggn delivers earlier than promised, buyer gets ₦200 credit.

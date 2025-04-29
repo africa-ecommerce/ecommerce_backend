@@ -28,13 +28,20 @@ import { Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import { cookieConfig } from "./helper/token";
 import { initializeBuckets } from "./config/minio";
+import cron from "node-cron";
+import { processPendingPrices } from "./helper/workers/priceUpdater";
+
+
 
 
 const app = express();
 app.use(cookieParser());
 
-// Global Middleware
-app.use(express.json());
+// Then: Body parsers
+app.use(express.json()); // For JSON bodies
+app.use(express.urlencoded({ extended: true })); // For URL-encoded bodies
+
+
 // Only allow requests from your frontend URL
 const corsOptions = {
   origin: process.env.APP_URL, // Replace with your frontend's URL
@@ -92,6 +99,13 @@ initializeBuckets()
     console.error("Error initializing MinIO bucket:", error);
   });
 // // API Routes
+
+
+//chronically update pending plug product prices every day at midnight
+cron.schedule("0 0 * * *", () => {
+  console.log("Running price update check...");
+  processPendingPrices();
+});
 app.use("/auth", authRoutes);
 app.use("/onboarding", onboardingRoutes);
 app.use("/products", productRoutes);
