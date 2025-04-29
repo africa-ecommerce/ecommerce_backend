@@ -17,10 +17,8 @@ import {
 import { login } from "../controllers/auth/login";
 import { logout } from "../controllers/auth/logout";
 import {
-  facebook,
   google,
   googleCallback,
-  facebookCallback,
 } from "../controllers/auth/oauth";
 
 import {
@@ -80,13 +78,6 @@ router.get(
   googleCallback
 );
 
-// Facebook OAuth Routes
-router.get("/facebook", facebook);
 
-router.get(
-  "/facebook/callback",
-  passport.authenticate("facebook", { failureRedirect: "/auth/login" }),
-  facebookCallback
-);
 
 export default router;

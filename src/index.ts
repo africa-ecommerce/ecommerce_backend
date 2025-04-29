@@ -27,6 +27,7 @@ import passport from "./config/passport";
 import { Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import { cookieConfig } from "./helper/token";
+import { initializeBuckets } from "./config/minio";
 
 
 const app = express();
@@ -81,6 +82,15 @@ app.use(
 // Initialize Passport middleware
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Initialize MinIO bucket
+initializeBuckets()
+  .then(() => {
+    console.log("MinIO bucket initialized successfully");
+  })
+  .catch((error) => {
+    console.error("Error initializing MinIO bucket:", error);
+  });
 // // API Routes
 app.use("/auth", authRoutes);
 app.use("/onboarding", onboardingRoutes);
@@ -120,9 +130,9 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   //   .json({ error: "Unexpected error occured!" });
 });
 
-// app.listen(port, () => {
-//   console.log(`Server is listening on port ${port}`);
-// });
+app.listen(port, () => {
+  console.log(`Server is listening on port ${port}`);
+});
 
 
 export default app;

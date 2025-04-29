@@ -6,16 +6,16 @@ import { UserType } from "@prisma/client";
 import { AuthRequest } from "../types";
 import { generateTokens, setAuthCookies } from "../helper/token";
 import { supplierInfoSchema, plugInfoSchema } from "../lib/zod/schema";
-import { upload } from "../helper/minioObjectStore/productImage";
+import { uploadMiddleware } from "../helper/minioObjectStore/productImage";
 import {
-  uploadToMinio,
-  deleteFromMinio,
+  uploadImages,
+  deleteImages
 } from "../helper/minioObjectStore/productImage";
 import { z } from "zod";
 
 export const onboarding = [
   // accept one optional file called "avatar"
-  upload.single("avatar"),
+  uploadMiddleware.single("avatar"),
 
   async (req: AuthRequest, res: Response) => {
     let avatarUrl: string | null = null;
@@ -68,7 +68,7 @@ export const onboarding = [
 
         // optional avatar upload
         if (req.file) {
-          const [url] = await uploadToMinio([req.file] as any);
+          const [url] = await uploadImages([req.file] as any);
           avatarUrl = url;
         }
       }
@@ -168,7 +168,7 @@ export const onboarding = [
 
       // rollback avatar
       if (avatarUrl) {
-        await deleteFromMinio([avatarUrl]);
+        await deleteImages([avatarUrl]);
       }
 
       res.status(500).json({ error: "Internal server error!" });

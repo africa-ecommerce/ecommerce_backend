@@ -7,7 +7,7 @@ import { UserType } from "@prisma/client";
 
 // Token expiration times
 const ACCESS_TOKEN_EXPIRY = 15 * 60 * 60; // 15 mins (in seconds)
-const REFRESH_TOKEN_EXPIRY = 7 * 24 * 60 * 60; // 30 days (in seconds)
+const REFRESH_TOKEN_EXPIRY = 7 * 24 * 60 * 60; // 7 days (in seconds)
 const REFRESH_TOKEN_ROTATION_WINDOW = 1 * 24 * 60 * 60; // 3 days before expiration
 
 export const generateTokens = async (
@@ -66,23 +66,24 @@ export const shouldRotateRefreshToken = (token: string): boolean => {
 };
 
 // Cookie configuration
-// export const cookieConfig = {
-//   httpOnly: true,
-//   secure: process.env.NODE_ENV === "production",
-//   sameSite: "lax" as const,
-//   domain:
-//     process.env.NODE_ENV === "development"
-//       ? "localhost"
-//       : `${process.env.DOMAIN}`,
-// };
-
-
 export const cookieConfig = {
   httpOnly: true,
-  secure: true, // Always true for Vercel deployments
-  sameSite: "none" as const, // Type assertion to fix the error
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  domain:
+    process.env.NODE_ENV === "development"
+      ? "localhost"
+      : `${process.env.DOMAIN}`,
   path: "/", // Ensure cookies are available across your entire app
 };
+
+
+// export const cookieConfig = {
+//   httpOnly: true,
+//   secure: true, // Always true for Vercel deployments
+//   sameSite: "none" as const, // Type assertion to fix the error
+//   path: "/", // Ensure cookies are available across your entire app
+// };
 
  export const refreshSession = async (refreshToken: string) => {
    try {

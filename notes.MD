@@ -109,6 +109,42 @@ onboarding/success  ---> some how
 restock func to increase quantity or so
 
 
+Buyers choose a "Delivery Day" (e.g., "Want it faster? Pay ₦500 extra. Want it cheaper? Wait 3 days.").
+
+If Pluggn delivers earlier than promised, buyer gets ₦200 credit.
+
+Public leaderboards show the fastest Plugs/suppliers.
+
+
+How It Works:
+
+Buyers earn "Pluggn Points" for reviews, referrals, and social shares.
+
+Points unlock perks: free delivery, exclusive drops, or cashback.
+
+High-point users get early access to flash sales.
+
+Why It’s Genius:
+
+Turns casual buyers into brand evangelists.
+
+
+
+How It Works:
+
+After purchase, buyers get a unique "Unbox & Earn" link.
+
+If they post a video unboxing the product on social media (tagging Pluggn and the Plug), they earn 10% cashback on their next purchase.
+
+The Plug earns 5% commission on sales generated from the buyer’s post.
+
+Why It’s Genius:
+
+Buyers become salespeople → Viral loop.
+
+Authentic UGC (user-generated content) builds trust better than ads.
+
+
  Buyers track orders via Pluggn’s app (not third-party couriers), even if items come from multiple suppliers. not authenticated just put tracking id and you can see it
 
 

@@ -327,147 +327,414 @@ import { Response } from "express";
 import { prisma } from "../config";
 import { AuthRequest } from "../types";
 import { plugProductSchema } from "../lib/zod/schema";
-import {
-  deleteFromMinio,
-  uploadToMinio,
-} from "../helper/minioObjectStore/productImage";
+
 import { PlugProduct } from "@prisma/client";
 
-// Helper function to format products with parsed images
-const formatProductWithImages = (product: PlugProduct) => {
-  return {
-    ...product,
-    images: product.images ? JSON.parse(product.images as string) : [],
-  };
+// // Helper function to format products with parsed images
+// const formatProductWithImages = (product: PlugProduct) => {
+//   return {
+//     ...product,
+//     images: product.images ? JSON.parse(product.images as string) : [],
+//   };
+// };
+
+// export const plugProductController = {
+//   // Add one or more customized supplier products to plug's inventory
+
+//   addProductsToPlug: async (req: AuthRequest, res: Response) => {
+//   try {
+//     const { products } = req.body; // Array of objects with productId and price from frontend
+//     const plug = req.plug!;
+    
+//     // Basic validation
+//     if (!Array.isArray(products) || products.length === 0) {
+//       res.status(400).json({
+//         error: "Please provide a list of product IDs!",
+//       });
+//       return;
+//     }
+    
+//     // Prepare products by mapping each product object to create a plug product entry
+//     const productsToCreate = products.map((product) => ({
+//       originalId: product.id, // Use the ID from the frontend
+//       price: product.price,   // Use the price from the frontend
+//       plugId: plug.id,        // add the plug ID
+//     }));
+    
+//     // Create the products in the database
+//     const result = await prisma.$transaction(async (tx) => {
+//       // Create all product connections at once
+//       await tx.plugProduct.createMany({
+//         data: productsToCreate,
+//         skipDuplicates: true, // Skip if the plugId + originalId combination already exists
+//       });
+      
+//       // Return the latest products for this plug
+//       const createdProducts = await tx.plugProduct.findMany({
+//         where: { 
+//           plugId: plug.id,
+//           originalId: { in: products.map(p => p.id) }
+//         },
+//         orderBy: { createdAt: "desc" },
+//       });
+      
+//       return createdProducts;
+//     });
+    
+//     res.status(201).json({
+//       message: `Added ${result.length} products to your store!`,
+//       data: result.map(formatProductWithImages),
+//     });
+//     return;
+//   } catch (error) {
+//     console.error("Error adding products:", error);
+//     res.status(500).json({ error: "Internal server error!" });
+//     return;
+//   }
+// },
+
+//   // Get all plug products
+//   getPlugProducts: async (req: AuthRequest, res: Response) => {
+//     try {
+//       const plug = req.plug!;
+//       const products = await prisma.plugProduct.findMany({
+//         where: { plugId: plug.id },
+//         orderBy: { createdAt: "desc" },
+//       });
+
+//       const formattedProducts = products.map(formatProductWithImages);
+
+//        res.status(200).json({
+//         message: "Products fetched successfully!",
+//         data: formattedProducts,
+//       });
+//       return;
+//     } catch (error) {
+//       console.error("Error fetching products:", error);
+//        res.status(500).json({ error: "Internal server error!" });
+//       return;
+//     }
+//   },
+
+//  // Simple updatePlugProduct function
+// updatePlugProduct: async (req: AuthRequest, res: Response) => {
+//   try {
+//     const productId = req.params.productId;
+//     const plug = req.plug!;
+//     const { price, description } = req.body;
+
+//     // Find the product
+//     const existingProduct = await prisma.plugProduct.findFirst({
+//       where: { id: productId, plugId: plug.id },
+//     });
+
+//     if (!existingProduct) {
+//        res.status(404).json({ error: "Product not found!" });
+//        return;
+//     }
+
+//     // Simple validation
+//     if (price !== undefined && (isNaN(parseFloat(price)) || parseFloat(price) < 0)) {
+//        res.status(400).json({ error: "Price is invalid!" });
+//        return;
+//     }
+
+//     // Update product
+//     const updatedProduct = await prisma.plugProduct.update({
+//       where: { id: productId },
+//       data: {
+//         description: description !== undefined ? description : existingProduct.description,
+//         price: price !== undefined ? parseFloat(price) : existingProduct.price,
+//         updatedAt: new Date(),
+//       },
+//     });
+
+//      res.status(200).json({
+//       message: "Product updated successfully!",
+//       data: formatProductWithImages(updatedProduct),
+//     });
+//     return;
+//   } catch (error) {
+//     console.error("Error updating product:", error);
+//      res.status(500).json({ error: "Internal server error!" });
+//      return;
+//   }
+// },
+
+//   // Remove product from plug's inventory
+//   removePlugProduct: async (req: AuthRequest, res: Response) => {
+//     try {
+//       const productId = req.params.productId;
+//       const plug = req.plug!;
+
+//       // Check if product exists and belongs to this plug
+//       const existingProduct = await prisma.plugProduct.findFirst({
+//         where: {
+//           id: productId,
+//           plugId: plug.id,
+//         },
+//       });
+
+//       if (!existingProduct) {
+//          res.status(404).json({ error: "Product not found!" });
+//          return;
+//       }
+
+//       // Delete the product from database
+//       await prisma.plugProduct.delete({
+//         where: { id: productId },
+//       });
+
+//        res.status(200).json({
+//         message: "Product removed successfully!",
+//       });
+//       return;
+//     } catch (error) {
+//       console.error("Error removing plug product:", error);
+//        res.status(500).json({ error: "Internal server error!" });
+//        return;
+//     }
+//   },
+
+//   // Get product by ID
+//   getPlugProductById: async (req: AuthRequest, res: Response) => {
+//     try {
+//       const productId = req.params.productId;
+//       const plug = req.plug!;
+
+//       // Get the product
+//       const product = await prisma.plugProduct.findFirst({
+//         where: {
+//           id: productId,
+//           plugId: plug.id,
+//         },
+//       });
+
+//       if (!product) {
+//          res.status(404).json({ error: "Product not found!" });
+//          return;
+//       }
+
+//        res.status(200).json({
+//         message: "Product fetched successfully!",
+//         data: formatProductWithImages(product),
+//       });
+//       return;
+//     } catch (error) {
+//       console.error("Error fetching plug product:", error);
+//        res.status(500).json({ error: "Internal server error!" });
+//        return;
+//     }
+//   },
+
+//   // Remove all products from plug's inventory
+//   removeAllPlugProducts: async (req: AuthRequest, res: Response) => {
+//     try {
+//       const plug = req.plug!;
+
+//       // Delete all products belonging to this plug
+//       const deleteResult = await prisma.plugProduct.deleteMany({
+//         where: { plugId: plug.id },
+//       });
+
+//       if (deleteResult.count === 0) {
+//          res.status(200).json({
+//           message: "No products to remove!",
+//           data: [],
+//         });
+//         return;
+//       }
+
+//        res.status(200).json({
+//         message: `Successfully removed ${deleteResult.count} products!`,
+//         data: [],
+//       });
+//       return;
+//     } catch (error) {
+//       console.error("Error removing all plug products:", error);
+//        res.status(500).json({ error: "Internal server error!" });
+//        return;
+//     }
+//   },
+// };
+
+
+// Helper function to format products with parsed images and complete details
+const formatPlugProductWithDetails = async (plugProduct: PlugProduct, tx?: any) => {
+  // Use the provided transaction or default to prisma
+  const db = tx || prisma;
+  let originalProduct;
+  
+  try {
+    // Fetch the original product details from the supplier's product
+     originalProduct = await db.product.findUnique({
+      where: { id: plugProduct.originalId },
+      include: { supplier: true } // Include supplier details if needed
+    });
+
+    if (!originalProduct) {
+      console.warn(`Original product not found for PlugProduct ${plugProduct.id}`);
+      return {
+        ...plugProduct,
+        images: originalProduct.images
+          ? JSON.parse(originalProduct.images as string)
+          : [],
+        // Set default values for missing product data
+        name: "Product Not Found",
+        description: "",
+        category: "",
+        originalPrice: 0,
+      };
+    }
+
+    // Combine the plug product data with the original product details
+    return {
+      ...plugProduct,
+      // Original product details
+      name: originalProduct.name,
+      description: originalProduct.description,
+      category: originalProduct.category,
+      originalPrice: originalProduct.price, // Keep the original price for reference
+      images: originalProduct.images ? JSON.parse(originalProduct.images as string) : [],
+      // Include supplier info if needed
+      supplierName: originalProduct.supplier?.businessName,
+      supplierId: originalProduct.supplierId,
+    };
+  } catch (error) {
+    console.error(`Error formatting plug product ${plugProduct.id}:`, error);
+    // Return basic product data if there's an error
+    return {
+      ...plugProduct,
+      images: originalProduct.images
+        ? JSON.parse(originalProduct.images as string)
+        : [],
+    };
+  }
 };
 
 export const plugProductController = {
   // Add one or more customized supplier products to plug's inventory
-
   addProductsToPlug: async (req: AuthRequest, res: Response) => {
     try {
-      const { products } = req.body; // Products data from frontend
+      const { products } = req.body; // Array of objects with productId and price from frontend
       const plug = req.plug!;
-
+      
       // Basic validation
       if (!Array.isArray(products) || products.length === 0) {
-         res.status(400).json({
-          error: "Please provide a list of products!",
+        return res.status(400).json({
+          error: "Please provide a list of product IDs!",
         });
-        return;
       }
-
-      // Maximum number of products that can be added in one request
-      const MAX_PRODUCTS = 50;
-      if (products.length > MAX_PRODUCTS) {
-         res.status(400).json({
-          error: `You can only add up to ${MAX_PRODUCTS} products at once!`,
-        });
-        return;
-      }
-
-      // Prepare products by adding the plug ID to each product
+      
+      // Prepare products by mapping each product object to create a plug product entry
       const productsToCreate = products.map((product) => ({
-        ...product, // Use all data sent from frontend
-        plugId: plug.id, // add the plug ID
+        originalId: product.id, // Use the ID from the frontend
+        price: product.price,   // Use the price from the frontend
+        plugId: plug.id,        // add the plug ID
       }));
-
-      // Create the products in the database
+      
+      // Create the products in the database and get complete details
       const result = await prisma.$transaction(async (tx) => {
-        // Create all products at once
+        // Create all product connections at once
         await tx.plugProduct.createMany({
           data: productsToCreate,
+          skipDuplicates: true, // Skip if the plugId + originalId combination already exists
         });
-
+        
         // Return the latest products for this plug
-        const createdProducts = await tx.plugProduct.findMany({
-          where: { plugId: plug.id },
+        const createdPlugProducts = await tx.plugProduct.findMany({
+          where: { 
+            plugId: plug.id,
+            originalId: { in: products.map(p => p.id) }
+          },
           orderBy: { createdAt: "desc" },
-          take: products.length,
         });
 
-        return createdProducts;
+        // Format each product with complete details
+        const formattedProducts = await Promise.all(
+          createdPlugProducts.map(product => formatPlugProductWithDetails(product, tx))
+        );
+        
+        return formattedProducts;
       });
-
-       res.status(201).json({
+      
+      return res.status(201).json({
         message: `Added ${result.length} products to your store!`,
-        data: result.map(formatProductWithImages),
+        data: result,
       });
-      return;
     } catch (error) {
       console.error("Error adding products:", error);
-       res.status(500).json({ error: "Internal server error!" });
-      return;
+      return res.status(500).json({ error: "Internal server error!" });
     }
   },
 
-  // Get all plug products
+  // Get all plug products with complete details
   getPlugProducts: async (req: AuthRequest, res: Response) => {
     try {
       const plug = req.plug!;
-      const products = await prisma.plugProduct.findMany({
+      const plugProducts = await prisma.plugProduct.findMany({
         where: { plugId: plug.id },
         orderBy: { createdAt: "desc" },
       });
 
-      const formattedProducts = products.map(formatProductWithImages);
+      // Format each product with complete details
+      const formattedProducts = await Promise.all(
+        plugProducts.map(product => formatPlugProductWithDetails(product))
+      );
 
-       res.status(200).json({
+      return res.status(200).json({
         message: "Products fetched successfully!",
         data: formattedProducts,
       });
-      return;
     } catch (error) {
       console.error("Error fetching products:", error);
-       res.status(500).json({ error: "Internal server error!" });
-      return;
+      return res.status(500).json({ error: "Internal server error!" });
     }
   },
 
- // Simple updatePlugProduct function
-updatePlugProduct: async (req: AuthRequest, res: Response) => {
-  try {
-    const productId = req.params.productId;
-    const plug = req.plug!;
-    const { price, description } = req.body;
+  // Update plug product price or description
+  updatePlugProduct: async (req: AuthRequest, res: Response) => {
+    try {
+      const productId = req.params.productId;
+      const plug = req.plug!;
+      const { price, description } = req.body;
 
-    // Find the product
-    const existingProduct = await prisma.plugProduct.findFirst({
-      where: { id: productId, plugId: plug.id },
-    });
+      // Find the product
+      const existingProduct = await prisma.plugProduct.findFirst({
+        where: { id: productId, plugId: plug.id },
+      });
 
-    if (!existingProduct) {
-       res.status(404).json({ error: "Product not found!" });
-       return;
+      if (!existingProduct) {
+        return res.status(404).json({ error: "Product not found!" });
+      }
+
+      // Simple validation
+      if (price !== undefined && (isNaN(parseFloat(price)) || parseFloat(price) < 0)) {
+        return res.status(400).json({ error: "Price is invalid!" });
+      }
+
+      // Update product
+      const updatedProduct = await prisma.plugProduct.update({
+        where: { id: productId },
+        data: {
+          // Only update the price - description will come from the original product
+          price: price !== undefined ? parseFloat(price) : existingProduct.price,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Format the product with complete details
+      const formattedProduct = await formatPlugProductWithDetails(updatedProduct);
+
+      return res.status(200).json({
+        message: "Product updated successfully!",
+        data: formattedProduct,
+      });
+    } catch (error) {
+      console.error("Error updating product:", error);
+      return res.status(500).json({ error: "Internal server error!" });
     }
-
-    // Simple validation
-    if (price !== undefined && (isNaN(parseFloat(price)) || parseFloat(price) < 0)) {
-       res.status(400).json({ error: "Price is invalid!" });
-       return;
-    }
-
-    // Update product
-    const updatedProduct = await prisma.plugProduct.update({
-      where: { id: productId },
-      data: {
-        description: description !== undefined ? description : existingProduct.description,
-        price: price !== undefined ? parseFloat(price) : existingProduct.price,
-        updatedAt: new Date(),
-      },
-    });
-
-     res.status(200).json({
-      message: "Product updated successfully!",
-      data: formatProductWithImages(updatedProduct),
-    });
-    return;
-  } catch (error) {
-    console.error("Error updating product:", error);
-     res.status(500).json({ error: "Internal server error!" });
-     return;
-  }
-},
+  },
 
   // Remove product from plug's inventory
   removePlugProduct: async (req: AuthRequest, res: Response) => {
@@ -484,8 +751,7 @@ updatePlugProduct: async (req: AuthRequest, res: Response) => {
       });
 
       if (!existingProduct) {
-         res.status(404).json({ error: "Product not found!" });
-         return;
+        return res.status(404).json({ error: "Product not found!" });
       }
 
       // Delete the product from database
@@ -493,45 +759,43 @@ updatePlugProduct: async (req: AuthRequest, res: Response) => {
         where: { id: productId },
       });
 
-       res.status(200).json({
+      return res.status(200).json({
         message: "Product removed successfully!",
       });
-      return;
     } catch (error) {
       console.error("Error removing plug product:", error);
-       res.status(500).json({ error: "Internal server error!" });
-       return;
+      return res.status(500).json({ error: "Internal server error!" });
     }
   },
 
-  // Get product by ID
+  // Get product by ID with complete details
   getPlugProductById: async (req: AuthRequest, res: Response) => {
     try {
       const productId = req.params.productId;
       const plug = req.plug!;
 
-      // Get the product
-      const product = await prisma.plugProduct.findFirst({
+      // Get the plug product
+      const plugProduct = await prisma.plugProduct.findFirst({
         where: {
           id: productId,
           plugId: plug.id,
         },
       });
 
-      if (!product) {
-         res.status(404).json({ error: "Product not found!" });
-         return;
+      if (!plugProduct) {
+        return res.status(404).json({ error: "Product not found!" });
       }
 
-       res.status(200).json({
+      // Format the product with complete details
+      const formattedProduct = await formatPlugProductWithDetails(plugProduct);
+
+      return res.status(200).json({
         message: "Product fetched successfully!",
-        data: formatProductWithImages(product),
+        data: formattedProduct,
       });
-      return;
     } catch (error) {
       console.error("Error fetching plug product:", error);
-       res.status(500).json({ error: "Internal server error!" });
-       return;
+      return res.status(500).json({ error: "Internal server error!" });
     }
   },
 
@@ -546,22 +810,19 @@ updatePlugProduct: async (req: AuthRequest, res: Response) => {
       });
 
       if (deleteResult.count === 0) {
-         res.status(200).json({
+        return res.status(200).json({
           message: "No products to remove!",
           data: [],
         });
-        return;
       }
 
-       res.status(200).json({
+      return res.status(200).json({
         message: `Successfully removed ${deleteResult.count} products!`,
         data: [],
       });
-      return;
     } catch (error) {
       console.error("Error removing all plug products:", error);
-       res.status(500).json({ error: "Internal server error!" });
-       return;
+      return res.status(500).json({ error: "Internal server error!" });
     }
   },
 };

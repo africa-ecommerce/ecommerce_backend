@@ -5,7 +5,10 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { jwtSecret, prisma } from "../index";
 import bcrypt from "bcryptjs";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import { Strategy as FacebookStrategy } from "passport-facebook";
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 passport.use(
   new LocalStrategy(
@@ -129,42 +132,5 @@ passport.use(
   )
 );
 
-
-
-// passport.use(
-//   new FacebookStrategy(
-//     {
-//       clientID: process.env.FACEBOOK_CLIENT_ID!,
-//       clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
-//       callbackURL: "/auth/facebook/callback",
-//       profileFields: ["id", "displayName", "emails"],
-//     },
-//     async (accessToken, refreshToken, profile, done) => {
-//       try {
-//         // Extract email; note: Facebook may not always return an email!
-//         const email = profile.emails?.[0].value;
-//         if (!email) {
-//           return done(new Error("No email provided by Facebook"), null);
-//         }
-//         let user = await prisma.user.findUnique({ where: { email } });
-//         if (!user) {
-//           user = await prisma.user.create({
-//             data: {
-//               email,
-//               name: profile.displayName,
-//               password: "",
-//               emailVerified: true,
-//               policy: true,
-
-//             },
-//           });
-//         }
-//         return done(null, user);
-//       } catch (error) {
-//         return done(error as Error);
-//       }
-//     }
-//   )
-// );
 
  export default passport;
