@@ -656,11 +656,8 @@ const formatPlugProductWithDetails = async (plugProduct: PlugProduct, tx?: any) 
       const timeDiff = effectiveDate.getTime() - now.getTime();
       let daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
-      // Handle edge cases
-      if (daysLeft < 0) daysLeft = 0;
-      
-      formattedEffectiveDate = daysLeft === 0 ? "Today" 
-        : `${daysLeft} days left`;
+      // 1 - 3 days left
+      formattedEffectiveDate = daysLeft
     }
 
     // Construct base response
@@ -850,12 +847,17 @@ export const plugProductController = {
       }
 
       // Delete the product from database
-      await prisma.plugProduct.delete({
+    const remainingProducts =  await prisma.plugProduct.delete({
         where: { id: productId },
       });
 
+       const data =
+         remainingProducts &&
+         formatPlugProductWithDetails(remainingProducts);
+
       res.status(200).json({
         message: "Product removed successfully!",
+        data
       });
       return;
     } catch (error) {

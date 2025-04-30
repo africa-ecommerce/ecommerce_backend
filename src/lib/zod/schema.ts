@@ -14,7 +14,7 @@ export const supplierInfoSchema = z.object({
     .string()
     .min(1, "Pickup location is required")
     .max(200, "Pickup location cannot exceed 200 characters"),
-  // phone: z.string(),
+  phone: z.string(),
 });
 
 

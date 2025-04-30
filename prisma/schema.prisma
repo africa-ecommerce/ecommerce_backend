@@ -69,7 +69,8 @@ model Supplier {
   id           String    @id @default(cuid())
    businessName   String   @default("")                
   businessType String? 
-   pickupLocation String    @default("")                  
+   pickupLocation String    @default("") 
+   phone           String                 
   avatar         String?   
   userId       String    @unique
   user         User      @relation(fields: [userId], references: [id])
@@ -86,7 +87,6 @@ model Plug {
   state           String?
   aboutBusiness   String?
   niches          String[] // Array of strings
-  // customNiche    String? 
   generalMerchant Boolean
   plugProduct  PlugProduct[]
   userId          String   @unique

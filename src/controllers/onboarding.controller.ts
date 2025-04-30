@@ -31,19 +31,6 @@ export const onboarding = [
       // 2) userType check
       const  userData  = JSON.parse(req.body.userData);
 
-      console.log("userType", userData);
-
- 
-
-
-  // {
-  //   userData: '{"userType":"SUPPLIER","supplierInfo":{"businessType":"Importer","pickupLocation":"nnnnmoookk","businessName":"bbnn","phone":"+2349151425001"}}';
-  // }
-
-
-//   {
-//   userData: '{"userType":"PLUG","niches":[],"generalMerchant":true,"profile":{"businessName":"hhhh","phone":"+2349151425001","state":"Akwa Ibom","aboutBusiness":"nnnnnnnn"}}'
-// }
       if (!Object.values(UserType).includes(userData.userType as UserType)) {
         res.status(400).json({ error: "Invalid user type!" });
         return;
@@ -59,6 +46,7 @@ export const onboarding = [
           businessName: userData.supplierInfo.businessName,
           businessType: userData.supplierInfo.businessType,
           pickupLocation: userData.supplierInfo.pickupLocation,
+          phone: userData.supplierInfo.phone
         });
 
         if (!supParse.success) {
@@ -82,7 +70,7 @@ export const onboarding = [
 
         // optional avatar upload
         if (req.file) {
-          const [url] = await uploadImages([req.file] as any);
+          const [url] = await uploadImages([req.file] as Express.Multer.File[]);
           avatarUrl = url;
         }
       }
@@ -136,12 +124,13 @@ export const onboarding = [
 
         // create supplier row
         if (userData.userType === UserType.SUPPLIER && supplierData) {
-          const { businessName, businessType, pickupLocation } = supplierData;
+          const { businessName, businessType, pickupLocation, phone } = supplierData;
           await tx.supplier.create({
             data: {
               userId,
               businessName,
               businessType: businessType ?? "",
+              phone,
               pickupLocation,
               avatar: avatarUrl,
             },
