@@ -29,8 +29,22 @@ export const onboarding = [
       }
 
       // 2) userType check
-      const { userType } = req.body;
-      if (!Object.values(UserType).includes(userType as UserType)) {
+      const  userData  = JSON.parse(req.body.userData);
+
+      console.log("userType", userData);
+
+ 
+
+
+  // {
+  //   userData: '{"userType":"SUPPLIER","supplierInfo":{"businessType":"Importer","pickupLocation":"nnnnmoookk","businessName":"bbnn","phone":"+2349151425001"}}';
+  // }
+
+
+//   {
+//   userData: '{"userType":"PLUG","niches":[],"generalMerchant":true,"profile":{"businessName":"hhhh","phone":"+2349151425001","state":"Akwa Ibom","aboutBusiness":"nnnnnnnn"}}'
+// }
+      if (!Object.values(UserType).includes(userData.userType as UserType)) {
         res.status(400).json({ error: "Invalid user type!" });
         return;
       }
@@ -39,12 +53,12 @@ export const onboarding = [
       // 3a) SUPPLIER branch
       //
       let supplierData: z.infer<typeof supplierInfoSchema> | null = null;
-      if (userType === UserType.SUPPLIER) {
+      if (userData.userType === UserType.SUPPLIER) {
         // pull directly from req.body
         const supParse = supplierInfoSchema.safeParse({
-          businessName: req.body.supplierInfo.businessName,
-          businessType: req.body.supplierInfo.businessType,
-          pickupLocation: req.body.supplierInfo.pickupLocation,
+          businessName: userData.supplierInfo.businessName,
+          businessType: userData.supplierInfo.businessType,
+          pickupLocation: userData.supplierInfo.pickupLocation,
         });
 
         if (!supParse.success) {
@@ -77,17 +91,17 @@ export const onboarding = [
       // 3b) PLUG branch
       //
       let plugData: z.infer<typeof plugInfoSchema> | null = null;
-      if (userType === UserType.PLUG) {
+      if (userData.userType === UserType.PLUG) {
         // assume your form posts:
         //   generalMerchant, niches (array), and profile as an object
         const plugParse = plugInfoSchema.safeParse({
-          generalMerchant: req.body.generalMerchant === "true" || req.body.generalMerchant === true,
-          niches: Array.isArray(req.body.niches)
-            ? req.body.niches
-            : req.body.niches
-            ? [req.body.niches]
+          generalMerchant: userData.generalMerchant === "true" || userData.generalMerchant === true,
+          niches: Array.isArray(userData.niches)
+            ? userData.niches
+            : userData.niches
+            ? [userData.niches]
             : [],
-          profile: req.body.profile,
+          profile: userData.profile,
         });
 
         if (!plugParse.success) {
@@ -111,15 +125,17 @@ export const onboarding = [
       //
       // 4) Commit everything in one transaction
       //
+
+      
       await prisma.$transaction(async (tx) => {
         // mark user onboarded
         await tx.user.update({
           where: { id: userId },
-          data: { userType, isOnboarded: true },
+          data: {userType: userData.userType, isOnboarded: true },
         });
 
         // create supplier row
-        if (userType === UserType.SUPPLIER && supplierData) {
+        if (userData.userType === UserType.SUPPLIER && supplierData) {
           const { businessName, businessType, pickupLocation } = supplierData;
           await tx.supplier.create({
             data: {
@@ -133,7 +149,7 @@ export const onboarding = [
         }
 
         // create plug row
-        if (userType === UserType.PLUG && plugData) {
+        if (userData.userType === UserType.PLUG && plugData) {
           const {
             generalMerchant,
             niches,
@@ -158,7 +174,7 @@ export const onboarding = [
       const tokens = await generateTokens(
         userId,
         true,
-        userType as UserType
+        userData.userType as UserType
       );
       setAuthCookies(res, tokens);
       res.status(200).json({ message: "Onboarding completed successfully!" });
