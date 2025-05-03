@@ -194,7 +194,6 @@ export function formatProductWithImagesAndVariations(product: any) {
           product.supplier.businessName || "",
         pickupLocation: product.supplier.pickupLocation || "",
         image: product.supplier.avatar,
-        // userId: product.supplier.user?.id,
       }
     : null;
 

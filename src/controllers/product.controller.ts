@@ -295,7 +295,7 @@ export const productController = {
         // Check if this product is in the plug's database
         const pluggedProduct = await prisma.plugProduct.findFirst({
           where: {
-            plugId: req.user.id,
+            plugId: req.user?.plug?.id,
             id: productId,
           },
         });
@@ -375,7 +375,7 @@ export const productController = {
           // Fetch plug's products from database for comparison
           const pluggedProducts = await prisma.plugProduct.findMany({
             where: {
-              plugId: req.user.id,
+              plugId: req.user?.plug?.id,
             },
             select: {
               id: true,
@@ -540,7 +540,7 @@ export const productController = {
         // Fetch plug's products from database for comparison
         const pluggedProducts = await prisma.plugProduct.findMany({
           where: {
-            plugId: req.user.id,
+            plugId: req.user?.plug?.id,
           },
           select: {
             id: true,
