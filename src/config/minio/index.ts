@@ -6,8 +6,15 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Define bucket names
-export const IMAGES_BUCKET = process.env.MINIO_IMAGES_BUCKET || 'images';
-export const STATIC_WEBSITE_BUCKET = process.env.MINIO_STATIC_BUCKET || 'static-site';
+// Define unique bucket names with a prefix to avoid conflicts in play.min.io
+const BUCKET_PREFIX = process.env.MINIO_BUCKET_PREFIX || 'pluggn';
+export const IMAGES_BUCKET = `${BUCKET_PREFIX}${
+  process.env.MINIO_IMAGES_BUCKET || "images"
+}`;
+export const STATIC_WEBSITE_BUCKET = `${BUCKET_PREFIX}${
+  process.env.MINIO_STATIC_BUCKET || "static-site"
+}`;
+
 
 // Configuration interface
 interface MinioConfig {
@@ -39,7 +46,7 @@ export const initializeBuckets = async () => {
   try {
     await initializeProductBucket();
     await initializeStaticBucket();
-    console.log('MinIO buckets initialized successfully');
+    // console.log('MinIO bucket initialized successfully');
   } catch (error) {
     console.error('Failed to initialize MinIO buckets:', error);
   }

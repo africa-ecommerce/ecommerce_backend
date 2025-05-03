@@ -13,12 +13,12 @@ const plugAuth = [authenticateJWT, isPlug];
 router.use(plugAuth);
 
 /**
- * @route   POST /api/plug/products/:productId
+ * @route   POST /api/plug/products/
  * @desc    Add a supplier product to plug's products
  * @access  Private (Plug only)
  */
 router.post(
-  "/:productId",
+  "/",
   plugProductController.addProductsToPlug
 );
 

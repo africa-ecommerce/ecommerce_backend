@@ -1,27 +1,121 @@
 // src/controllers/product.controller.ts
 import { Response } from "express";
-import { prisma } from "../config";
+import { generateCacheKey, invalidateProductCache, prisma, productCache } from "../config";
 import { AuthRequest } from "../types";
-import { productSchema } from "../lib/zod/schema";
+import { productSchema, productVariationsSchema } from "../lib/zod/schema";
 import {
   deleteImages,
   uploadMiddleware,
   uploadImages,
 } from "../helper/minioObjectStore/productImage";
-import { Product } from "@prisma/client";
-// import { createHash } from "crypto";
+import { formatProductWithImagesAndVariations } from "../helper/formatProduct";
+// import { Product, ProductVariation } from "@prisma/client";
 
-// Helper function to format products with parsed images
-const formatProductWithImages = (product: Product) => {
-  return {
-    ...product,
-    images: product.images ? JSON.parse(product.images as string) : [],
-  };
-};
+
+
+
+// Function to handle dimensions in a variation
+// function formatDimensions(length?: number, width?: number, height?: number, unit: string = 'cm') {
+//   if (length === undefined && width === undefined && height === undefined) {
+//     return null;
+//   }
+  
+//   return JSON.stringify({
+//     length: length || 0,
+//     width: width || 0,
+//     height: height || 0,
+//     unit
+//   });
+// }
+
+interface PaginationMeta {
+  hasNextPage: boolean;
+  nextCursor: string | null;
+  count: number;
+  totalCount: number | null;
+}
+
+interface ProductsResponse {
+  products: any[];
+  meta: PaginationMeta;
+}
 
 // Controller methods
 export const productController = {
   // Create a new product
+  // createProduct: [
+  //   uploadMiddleware.array("images", 3), // Allow up to 3 images
+  //   async (req: AuthRequest, res: Response) => {
+  //     let imageUrls: string[] = []; // Track keys for rollback
+
+  //     try {
+  //       const supplier = req.supplier!;
+
+  //       // Parse the product data from FormData
+  //       let productData;
+  //       try {
+  //         productData = JSON.parse(req.body.productData);
+  //       } catch (error) {
+  //         res.status(400).json({ error: "Invalid product data format!" }); // ---->
+  //         return;
+  //       }
+
+  //       // Validate request body
+  //       const validatedData = productSchema.safeParse({
+  //         name: productData.name,
+  //         description: productData.description,
+  //         price: parseFloat(productData.price),
+  //         category: productData.category,
+  //       });
+
+  //       if (!validatedData.success) {
+  //         res.status(400).json({
+  //           error: "Validation failed!",
+  //         }); // ---->
+  //         return;
+  //       }
+
+  //       // Process the request within a transaction
+  //       const result = await prisma.$transaction(async (tx) => {
+  //         // Upload images to MinIO
+  //         const files = req.files as Express.Multer.File[];
+  //         imageUrls =
+  //           files && files.length > 0 ? await uploadImages(files) : [];
+
+  //         // Create product in database using the supplier ID
+  //         const product = await tx.product.create({
+  //           data: {
+  //             name: validatedData.data.name,
+  //             description: validatedData.data.description,
+  //             price: validatedData.data.price,
+  //             category: validatedData.data.category,
+  //             images: JSON.stringify(imageUrls), // Store URLs as JSON string
+  //             supplierId: supplier.id,
+  //           },
+  //         });
+
+  //         return formatProductWithImages(product);
+  //       });
+
+  //       res.status(201).json({
+  //         message: "Product created successfully!",
+  //         data: result,
+  //       }); // ---->
+  //       return;
+  //     } catch (error) {
+  //       console.error("Error creating product:", error);
+
+  //       // Rollback: Delete uploaded images if transaction failed
+  //       if (imageUrls.length > 0) {
+  //         await deleteImages(imageUrls);
+  //       }
+
+  //       res.status(500).json({ error: "Internal server error!" }); // ---->
+  //       return;
+  //     }
+  //   },
+  // ],
+
   createProduct: [
     uploadMiddleware.array("images", 3), // Allow up to 3 images
     async (req: AuthRequest, res: Response) => {
@@ -35,32 +129,52 @@ export const productController = {
         try {
           productData = JSON.parse(req.body.productData);
         } catch (error) {
-          res.status(400).json({ error: "Invalid product data format!" }); // ---->
+          res.status(400).json({ error: "Invalid product data format!" });
           return;
         }
 
-        // Validate request body
+        // Validate main product data
         const validatedData = productSchema.safeParse({
           name: productData.name,
           description: productData.description,
           price: parseFloat(productData.price),
           category: productData.category,
+          size: productData.size,
+          color: productData.color,
+          stock: productData.stock,
+          weight: productData.weight,
+          dimensions: productData.dimensions,
         });
 
         if (!validatedData.success) {
           res.status(400).json({
-            error: "Validation failed!",
-          }); // ---->
+            error: "Product validation failed!",
+          });
           return;
         }
 
+        // Validate product variations if provided
+        let validatedVariations: any = [];
+        if (productData.variations && Array.isArray(productData.variations)) {
+          const variationsResult = productVariationsSchema.safeParse(
+            productData.variations
+          );
+          if (!variationsResult.success) {
+            res.status(400).json({
+              error: "Variations validation failed!",
+              details: variationsResult.error.format(),
+            });
+            return;
+          }
+          validatedVariations = variationsResult.data;
+        }
+
+        // Upload images to MinIO
+        const files = req.files as Express.Multer.File[];
+        imageUrls = files && files.length > 0 ? await uploadImages(files) : [];
+
         // Process the request within a transaction
         const result = await prisma.$transaction(async (tx) => {
-          // Upload images to MinIO
-          const files = req.files as Express.Multer.File[];
-          imageUrls =
-            files && files.length > 0 ? await uploadImages(files) : [];
-
           // Create product in database using the supplier ID
           const product = await tx.product.create({
             data: {
@@ -69,17 +183,36 @@ export const productController = {
               price: validatedData.data.price,
               category: validatedData.data.category,
               images: JSON.stringify(imageUrls), // Store URLs as JSON string
+              size: validatedData.data.size,
+              color: validatedData.data.color,
+              stock: validatedData.data.stock,
+              weight: validatedData.data.weight,
+              dimensions: validatedData.data.dimensions,
               supplierId: supplier.id,
+              variations: {
+                create: validatedVariations.map((variation: any) => ({
+                  size: variation.size,
+                  color: variation.color,
+                  price: variation.price,
+                  stock: variation.stock,
+                  weight: variation.weight,
+                  dimensions: variation.dimensions,
+                })),
+              },
+            },
+            include: {
+              variations: true,
             },
           });
 
-          return formatProductWithImages(product);
+          return formatProductWithImagesAndVariations(product);
         });
 
+         invalidateProductCache();
         res.status(201).json({
           message: "Product created successfully!",
           data: result,
-        }); // ---->
+        });
         return;
       } catch (error) {
         console.error("Error creating product:", error);
@@ -89,7 +222,7 @@ export const productController = {
           await deleteImages(imageUrls);
         }
 
-        res.status(500).json({ error: "Internal server error!" }); // ---->
+        res.status(500).json({ error: "Internal server error!" });
         return;
       }
     },
@@ -104,10 +237,15 @@ export const productController = {
       const products = await prisma.product.findMany({
         where: { supplierId: supplier.id },
         orderBy: { createdAt: "desc" },
+        include: {
+          variations: true,
+        },
       });
 
       // Format products with parsed images
-      const formattedProducts = products.map(formatProductWithImages);
+      const formattedProducts = products.map(
+        formatProductWithImagesAndVariations
+      );
 
       console.log("supplierdata", formattedProducts);
 
@@ -130,8 +268,16 @@ export const productController = {
 
       const product = await prisma.product.findUnique({
         where: { id: productId },
+        include: {
+          supplier: {
+            select: {
+              businessName: true,
+              pickupLocation: true,
+            },
+          },
+          variations: true,
+        },
       });
-
       if (!product) {
         res.status(404).json({ error: "Product not found!" }); // ---->
         return;
@@ -139,7 +285,7 @@ export const productController = {
 
       res.status(200).json({
         message: "Product fetched successfully!",
-        data: formatProductWithImages(product),
+        data: formatProductWithImagesAndVariations(product),
       }); // ---->
       return;
     } catch (error) {
@@ -150,18 +296,206 @@ export const productController = {
   },
 
   // Get all products with efficient pagination for infinite scrolling
+  // getAllProducts: async (req: AuthRequest, res: Response) => {
+  //   try {
+  //     // Parse pagination parameters
+  //     const limit = parseInt(req.query.limit as string) || 20;
+  //     const cursor = req.query.cursor as string; // For cursor-based pagination
+
+  //     // Parse sorting parameters
+  //     const sortBy = (req.query.sortBy as string) || "createdAt";
+  //     const order =
+  //       (req.query.order as string)?.toLowerCase() === "asc" ? "asc" : "desc";
+
+  //     // Parse filtering and search parameters
+  //     const category = req.query.category as string;
+  //     const minPrice = req.query.minPrice
+  //       ? parseFloat(req.query.minPrice as string)
+  //       : undefined;
+  //     const maxPrice = req.query.maxPrice
+  //       ? parseFloat(req.query.maxPrice as string)
+  //       : undefined;
+  //     const search = req.query.search as string;
+  //     const supplierIds = req.query.supplierIds as string | string[];
+  //     const businessType = req.query.businessType as string;
+  //     const createdAfter = req.query.createdAfter
+  //       ? new Date(req.query.createdAfter as string)
+  //       : undefined;
+  //     const createdBefore = req.query.createdBefore
+  //       ? new Date(req.query.createdBefore as string)
+  //       : undefined;
+  //     const tags = req.query.tags as string; // For searching product tags/keywords
+
+  //     // Build where conditions for filtering and search
+  //     const whereConditions: any = {};
+
+  //     // Text search across name, description, and tags
+  //     if (search) {
+  //       whereConditions.OR = [
+  //         { name: { contains: search, mode: "insensitive" } },
+  //         { description: { contains: search, mode: "insensitive" } },
+  //         { tags: { contains: search, mode: "insensitive" } }, // Search in tags field
+  //       ];
+  //     }
+
+  //     // For more advanced full-text search when available in your Postgres setup
+  //     // This would use the built-in full-text search capabilities of Postgres
+  //     // if (search) {
+  //     //   whereConditions.OR = [
+  //     //     { name: { search: search } },
+  //     //     { description: { search: search } },
+  //     //     { tags: { search: search } },
+  //     //   ];
+  //     // }
+
+  //     // Category filter
+  //     if (category) {
+  //       whereConditions.category = category;
+  //     }
+
+  //     // Tags/keywords filter (exact match or array inclusion)
+  //     if (tags) {
+  //       whereConditions.tags = { contains: tags, mode: "insensitive" };
+  //     }
+
+  //     // Price range filter
+  //     if (minPrice !== undefined || maxPrice !== undefined) {
+  //       whereConditions.price = {};
+  //       if (minPrice !== undefined) {
+  //         whereConditions.price.gte = minPrice;
+  //       }
+  //       if (maxPrice !== undefined) {
+  //         whereConditions.price.lte = maxPrice;
+  //       }
+  //     }
+
+  //     // Supplier filters
+  //     if (supplierIds) {
+  //       const supplierIdArray = Array.isArray(supplierIds)
+  //         ? supplierIds
+  //         : [supplierIds];
+  //       whereConditions.supplierId = { in: supplierIdArray };
+  //     }
+
+  //     // Filter by supplier's business type
+  //     if (businessType) {
+  //       whereConditions.supplier = {
+  //         businessType: businessType,
+  //       };
+  //     }
+
+  //     // Date range filters
+  //     if (createdAfter !== undefined || createdBefore !== undefined) {
+  //       whereConditions.createdAt = {};
+  //       if (createdAfter !== undefined) {
+  //         whereConditions.createdAt.gte = createdAfter;
+  //       }
+  //       if (createdBefore !== undefined) {
+  //         whereConditions.createdAt.lte = createdBefore;
+  //       }
+  //     }
+
+  //     // / Build query options
+  //     const queryOptions: any = {
+  //       where: whereConditions,
+  //       take: limit + 1, // Take one extra to determine if there are more items
+  //       orderBy: {
+  //         [sortBy]: order,
+  //       },
+  //       include: {
+  //         supplier: {
+  //           select: {
+  //             businessName: true,
+  //             pickupLocation: true,
+  //           },
+  //         },
+  //         variations: true,
+  //       },
+  //     };
+
+  //     // Add cursor for efficient pagination if provided
+  //     if (cursor) {
+  //       queryOptions.cursor = { id: cursor };
+  //       queryOptions.skip = 1; // Skip the cursor
+  //     }
+
+  //     // Execute query with transaction for consistency
+  //     const result = await prisma.$transaction(async (tx) => {
+  //       // Execute query
+  //       let products = await tx.product.findMany(queryOptions);
+
+  //       // Check if we have more results
+  //       const hasNextPage = products.length > limit;
+  //       if (hasNextPage) {
+  //         products = products.slice(0, limit); // Remove the extra item
+  //       }
+
+  //       // Get the next cursor
+  //       const nextCursor = hasNextPage
+  //         ? products[products.length - 1].id
+  //         : null;
+
+  //       // Get total count when filters are applied (for analytics/UI purposes)
+  //       let totalCount = null;
+  //       if (Object.keys(whereConditions).length > 0) {
+  //         totalCount = await tx.product.count({ where: whereConditions });
+  //       }
+
+  //       // Format products for response
+  //       const formattedProducts = products.map(
+  //         formatProductWithImagesAndVariations
+  //       );
+  //       //  const formattedProducts = products.map((product) => ({
+  //       //    ...product,
+  //       //    images: product.images ? JSON.parse(product.images as string) : []
+  //       //   //  tags: product.tags ? JSON.parse(product.tags as string) : [],
+  //       //   //  supplier: product.supplier
+  //       //      ? {
+  //       //          id: product.supplier.id,
+  //       //          businessType: product.supplier.businessType,
+  //       //          businessName: product.supplier.user.name,
+  //       //          userId: product.supplier.user.id,
+  //       //        }
+  //       //      : null,
+  //       //  }));
+
+  //       return {
+  //         products: formattedProducts,
+  //         meta: {
+  //           hasNextPage,
+  //           nextCursor,
+  //           count: formattedProducts.length,
+  //           totalCount,
+  //         },
+  //       };
+  //     });
+
+  //     res.status(200).json({
+  //       message: "Products fetched successfully!",
+  //       data: result.products,
+  //       meta: result.meta,
+  //     });
+  //     return;
+  //   } catch (error) {
+  //     console.error("Error fetching products:", error);
+  //     res.status(500).json({ error: "Internal server error!" });
+  //     return;
+  //   }
+  // },
+
+  // Get all products with efficient pagination and query optimization
   getAllProducts: async (req: AuthRequest, res: Response) => {
     try {
       // Parse pagination parameters
       const limit = parseInt(req.query.limit as string) || 20;
-      const cursor = req.query.cursor as string; // For cursor-based pagination
+      const cursor = req.query.cursor as string;
 
       // Parse sorting parameters
       const sortBy = (req.query.sortBy as string) || "createdAt";
       const order =
         (req.query.order as string)?.toLowerCase() === "asc" ? "asc" : "desc";
 
-      // Parse filtering and search parameters
+      // Parse filtering parameters
       const category = req.query.category as string;
       const minPrice = req.query.minPrice
         ? parseFloat(req.query.minPrice as string)
@@ -178,7 +512,29 @@ export const productController = {
       const createdBefore = req.query.createdBefore
         ? new Date(req.query.createdBefore as string)
         : undefined;
-      const tags = req.query.tags as string; // For searching product tags/keywords
+      const tags = req.query.tags as string;
+
+      // Generate cache key (without cursor for page 1)
+      const cacheParams = { ...req.query, cursor: "" };
+      if (cursor) {
+        cacheParams.cursor = cursor;
+      }
+      const cacheKey = generateCacheKey(cacheParams);
+
+      // Try to get data from cache first
+      const cachedResult = productCache.get<ProductsResponse>(cacheKey);
+      if (cachedResult) {
+        console.log(`Cache hit for: ${cacheKey}`);
+        res.status(200).json({
+          message: "Products fetched successfully!",
+          data: cachedResult.products,
+          meta: cachedResult.meta,
+          fromCache: true, // Optional flag to indicate cache hit
+        });
+        return;
+      }
+
+      console.log(`Cache miss for: ${cacheKey}`);
 
       // Build where conditions for filtering and search
       const whereConditions: any = {};
@@ -188,26 +544,16 @@ export const productController = {
         whereConditions.OR = [
           { name: { contains: search, mode: "insensitive" } },
           { description: { contains: search, mode: "insensitive" } },
-          { tags: { contains: search, mode: "insensitive" } }, // Search in tags field
+          { tags: { contains: search, mode: "insensitive" } },
         ];
       }
-
-      // For more advanced full-text search when available in your Postgres setup
-      // This would use the built-in full-text search capabilities of Postgres
-      // if (search) {
-      //   whereConditions.OR = [
-      //     { name: { search: search } },
-      //     { description: { search: search } },
-      //     { tags: { search: search } },
-      //   ];
-      // }
 
       // Category filter
       if (category) {
         whereConditions.category = category;
       }
 
-      // Tags/keywords filter (exact match or array inclusion)
+      // Tags/keywords filter
       if (tags) {
         whereConditions.tags = { contains: tags, mode: "insensitive" };
       }
@@ -259,20 +605,15 @@ export const productController = {
         include: {
           supplier: {
             select: {
-              id: true,
-              businessType: true,
-              user: {
-                select: {
-                  name: true,
-                  id: true,
-                },
-              },
+              businessName: true,
+              pickupLocation: true,
             },
           },
+          variations: true,
         },
       };
 
-      // Add cursor for efficient pagination if provided
+      // Add cursor for pagination if provided
       if (cursor) {
         queryOptions.cursor = { id: cursor };
         queryOptions.skip = 1; // Skip the cursor
@@ -294,27 +635,25 @@ export const productController = {
           ? products[products.length - 1].id
           : null;
 
-        // Get total count when filters are applied (for analytics/UI purposes)
-        let totalCount = null;
-        if (Object.keys(whereConditions).length > 0) {
+        // Get total count (with a separate cache to avoid recounting)
+        const countCacheKey = `count:${generateCacheKey({
+          ...cacheParams,
+          cursor: undefined,
+        })}`;
+        let totalCount = productCache.get<number>(countCacheKey);
+
+        if (
+          totalCount === undefined &&
+          Object.keys(whereConditions).length > 0
+        ) {
           totalCount = await tx.product.count({ where: whereConditions });
+          productCache.set(countCacheKey, totalCount, 600); // Cache count for 10 minutes
         }
 
         // Format products for response
-        const formattedProducts = products.map(formatProductWithImages);
-        //  const formattedProducts = products.map((product) => ({
-        //    ...product,
-        //    images: product.images ? JSON.parse(product.images as string) : []
-        //   //  tags: product.tags ? JSON.parse(product.tags as string) : [],
-        //   //  supplier: product.supplier
-        //      ? {
-        //          id: product.supplier.id,
-        //          businessType: product.supplier.businessType,
-        //          businessName: product.supplier.user.name,
-        //          userId: product.supplier.user.id,
-        //        }
-        //      : null,
-        //  }));
+        const formattedProducts = products.map(
+          formatProductWithImagesAndVariations
+        );
 
         return {
           products: formattedProducts,
@@ -326,6 +665,9 @@ export const productController = {
           },
         };
       });
+
+      // Cache the result
+      productCache.set(cacheKey, result);
 
       res.status(200).json({
         message: "Products fetched successfully!",
@@ -339,154 +681,122 @@ export const productController = {
       return;
     }
   },
+  // Update product
+  // updateProduct: [
+  //   uploadMiddleware.array("images", 3),
+  //   async (req: AuthRequest, res: Response) => {
+  //     let newImageUrls: string[] = [];
+  //     let imagesToDelete: string[] = [];
 
-  // Get all products with efficient pagination and query optimization
-  // getAllProducts: async (req: AuthRequest, res: Response) => {
-  //   try {
-  //     // Create ETag fingerprint from query parameters for HTTP caching
-  //     const queryFingerprint = JSON.stringify(req.query);
-  //     const etag = createHash('md5').update(queryFingerprint).digest('hex');
+  //     try {
+  //       const productId = req.params.productId;
+  //       const supplier = req.supplier!;
 
-  //     // Check if client has this data cached (HTTP 304 handling)
-  //     if (req.headers['if-none-match'] === etag) {
-  //       res.status(304).end();
+  //       // Parse the product data from FormData
+  //       let productData;
+  //       try {
+  //         productData = JSON.parse(req.body.productData);
+  //       } catch (error) {
+  //         res.status(400).json({ error: "Invalid product data format!" }); // ---->
+  //         return;
+  //       }
+
+  //       // Check if product exists and belongs to this supplier
+  //       const existingProduct = await prisma.product.findFirst({
+  //         where: {
+  //           id: productId,
+  //           supplierId: supplier.id,
+  //         },
+  //       });
+
+  //       if (!existingProduct) {
+  //         res.status(404).json({ error: "Product not found!" }); // ---->
+  //         return;
+  //       }
+
+  //       // Validate request body
+  //       const validatedData = productSchema.safeParse({
+  //         name: productData.name,
+  //         description: productData.description,
+  //         price: parseFloat(productData.price),
+  //         category: productData.category,
+  //       });
+
+  //       if (!validatedData.success) {
+  //         res.status(400).json({
+  //           error: "Validation failed!",
+  //           details: validatedData.error.format(),
+  //         }); // ---->
+  //         return;
+  //       }
+
+  //       // Get existing images
+  //       const existingImages = existingProduct.images
+  //         ? JSON.parse(existingProduct.images as string)
+  //         : [];
+
+  //       // Upload new images first before database changes
+  //       const files = req.files as Express.Multer.File[];
+  //       if (files?.length) {
+  //         newImageUrls = await uploadImages(files);
+  //       }
+
+  //       // Calculate images to delete
+  //       if (req.body.removeImages) {
+  //         const indices = JSON.parse(req.body.removeImages);
+  //         imagesToDelete = indices
+  //           .filter((i: any) => i >= 0 && i < existingImages.length)
+  //           .map((i: any) => existingImages[i]);
+  //       }
+
+  //       // Calculate the updated images array
+  //       const updatedImages = [
+  //         ...existingImages.filter((url: any) => !imagesToDelete.includes(url)),
+  //         ...newImageUrls,
+  //       ];
+
+  //       // Use transaction to ensure database consistency
+  //       const updatedProduct = await prisma.$transaction(async (tx) => {
+  //         // Update product in database
+  //         const updated = await tx.product.update({
+  //           where: { id: productId },
+  //           data: {
+  //             name: validatedData.data.name,
+  //             description: validatedData.data.description,
+  //             price: validatedData.data.price,
+  //             category: validatedData.data.category,
+  //             images: JSON.stringify(updatedImages),
+  //             updatedAt: new Date(),
+  //           },
+  //         });
+
+  //         return updated;
+  //       });
+
+  //       // Only delete images after successful database transaction
+  //       if (imagesToDelete.length > 0) {
+  //         await deleteImages(imagesToDelete);
+  //       }
+
+  //       res.status(200).json({
+  //         message: "Product updated successfully!",
+  //         data: formatProductWithImagesAndVariations(updatedProduct),
+  //       }); // ---->
+  //       return;
+  //     } catch (error) {
+  //       console.error("Error updating product:", error);
+
+  //       // Rollback: Delete uploaded images if transaction failed
+  //       if (newImageUrls.length > 0) {
+  //         await deleteImages(newImageUrls);
+  //       }
+
+  //       res.status(500).json({ error: "Internal server error!" }); // ---->
   //       return;
   //     }
+  //   },
+  // ],
 
-  //     // Parse pagination parameters
-  //     const limit = parseInt(req.query.limit as string) || 20;
-  //     const cursor = req.query.cursor as string; // For cursor-based pagination
-
-  //     // Parse sorting parameters
-  //     const sortBy = (req.query.sortBy as string) || "createdAt";
-  //     const order = (req.query.order as string)?.toLowerCase() === "asc" ? "asc" : "desc";
-
-  //     // Parse filtering and search parameters
-  //     const category = req.query.category as string;
-  //     const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice as string) : undefined;
-  //     const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice as string) : undefined;
-  //     const search = req.query.search as string;
-  //     const supplierIds = req.query.supplierIds as string | string[];
-  //     const businessType = req.query.businessType as string;
-  //     const createdAfter = req.query.createdAfter ? new Date(req.query.createdAfter as string) : undefined;
-  //     const createdBefore = req.query.createdBefore ? new Date(req.query.createdBefore as string) : undefined;
-  //     const tags = req.query.tags as string;
-
-  //     // Build where conditions for filtering and search
-  //     const whereConditions: any = {};
-
-  //     // Text search across name, description, and tags
-  //     if (search) {
-  //       whereConditions.OR = [
-  //         { name: { contains: search, mode: "insensitive" } },
-  //         { description: { contains: search, mode: "insensitive" } },
-  //         { tags: { contains: search, mode: "insensitive" } },
-  //       ];
-  //     }
-
-  //     // Apply other filters
-  //     if (category) whereConditions.category = category;
-  //     if (tags) whereConditions.tags = { contains: tags, mode: "insensitive" };
-
-  //     // Price range filter
-  //     if (minPrice !== undefined || maxPrice !== undefined) {
-  //       whereConditions.price = {};
-  //       if (minPrice !== undefined) whereConditions.price.gte = minPrice;
-  //       if (maxPrice !== undefined) whereConditions.price.lte = maxPrice;
-  //     }
-
-  //     // Supplier filters
-  //     if (supplierIds) {
-  //       const supplierIdArray = Array.isArray(supplierIds) ? supplierIds : [supplierIds];
-  //       whereConditions.supplierId = { in: supplierIdArray };
-  //     }
-
-  //     // Filter by supplier's business type
-  //     if (businessType) {
-  //       whereConditions.supplier = { businessType: businessType };
-  //     }
-
-  //     // Date range filters
-  //     if (createdAfter !== undefined || createdBefore !== undefined) {
-  //       whereConditions.createdAt = {};
-  //       if (createdAfter !== undefined) whereConditions.createdAt.gte = createdAfter;
-  //       if (createdBefore !== undefined) whereConditions.createdAt.lte = createdBefore;
-  //     }
-
-  //     // Build query options with lean supplier inclusion
-  //     const queryOptions: any = {
-  //       where: whereConditions,
-  //       take: limit + 1, // Take one extra to determine if there are more items
-  //       orderBy: {
-  //         [sortBy]: order,
-  //       },
-  //       include: {
-  //         supplier: {
-  //           select: {
-  //             id: true,
-  //             businessType: true,
-  //             user: {
-  //               select: {
-  //                 name: true,
-  //                 id: true,
-  //               },
-  //             },
-  //           },
-  //         },
-  //       },
-  //     };
-
-  //     // Add cursor for efficient pagination if provided
-  //     if (cursor) {
-  //       queryOptions.cursor = { id: cursor };
-  //       queryOptions.skip = 1; // Skip the cursor
-  //     }
-
-  //     // Execute query with optimization for counting
-  //     let products = await prisma.product.findMany(queryOptions);
-
-  //     // Check if we have more results
-  //     const hasNextPage = products.length > limit;
-  //     if (hasNextPage) {
-  //       products = products.slice(0, limit); // Remove the extra item
-  //     }
-
-  //     // Get the next cursor
-  //     const nextCursor = hasNextPage ? products[products.length - 1].id : null;
-
-  //     // Get total count only when needed (first page of a filtered set)
-  //     // To avoid unnecessary counts on every request
-  //     let totalCount = null;
-  //     if (!cursor && Object.keys(whereConditions).length > 0) {
-  //       // Only count on first page (no cursor) of filtered results
-  //       totalCount = await prisma.product.count({ where: whereConditions });
-  //     }
-
-  //     // Format products for response
-  //     const formattedProducts = products.map(formatProductWithImages);
-
-  //     // Set ETag for client-side caching
-  //     res.setHeader('ETag', etag);
-  //     res.setHeader('Cache-Control', 'private, max-age=0');
-
-  //     res.status(200).json({
-  //       message: "Products fetched successfully!",
-  //       data: formattedProducts,
-  //       meta: {
-  //         hasNextPage,
-  //         nextCursor,
-  //         count: formattedProducts.length,
-  //         totalCount,
-  //       },
-  //     });
-  //     return;
-  //   } catch (error) {
-  //     console.error("Error fetching products:", error);
-  //     res.status(500).json({ error: "Internal server error!" });
-  //     return;
-  //   }
-  // },
-  // Update product
   updateProduct: [
     uploadMiddleware.array("images", 3),
     async (req: AuthRequest, res: Response) => {
@@ -502,7 +812,7 @@ export const productController = {
         try {
           productData = JSON.parse(req.body.productData);
         } catch (error) {
-          res.status(400).json({ error: "Invalid product data format!" }); // ---->
+          res.status(400).json({ error: "Invalid product data format!" });
           return;
         }
 
@@ -512,33 +822,65 @@ export const productController = {
             id: productId,
             supplierId: supplier.id,
           },
+          include: {
+            variations: true,
+          },
         });
 
         if (!existingProduct) {
-          res.status(404).json({ error: "Product not found!" }); // ---->
+          res.status(404).json({ error: "Product not found!" });
           return;
         }
 
-        // Validate request body
+        // Validate request body for base product data (now matching the createProduct fields)
         const validatedData = productSchema.safeParse({
           name: productData.name,
           description: productData.description,
           price: parseFloat(productData.price),
           category: productData.category,
+          size: productData.size,
+          color: productData.color,
+          stock: productData.stock,
+          weight: productData.weight,
+          dimensions: productData.dimensions,
         });
 
         if (!validatedData.success) {
           res.status(400).json({
-            error: "Validation failed!",
+            error: "Product validation failed!",
             details: validatedData.error.format(),
-          }); // ---->
+          });
           return;
         }
 
-        // Get existing images
+        // Validate product variations if provided
+        let validatedVariations: any = [];
+        if (productData.variations && Array.isArray(productData.variations)) {
+          const variationsResult = productVariationsSchema.safeParse(
+            productData.variations
+          );
+          if (!variationsResult.success) {
+            res.status(400).json({
+              error: "Variations validation failed!",
+              details: variationsResult.error.format(),
+            });
+            return;
+          }
+          validatedVariations = variationsResult.data;
+        }
+
+        // Get existing images from database
         const existingImages = existingProduct.images
           ? JSON.parse(existingProduct.images as string)
           : [];
+
+        // Get current images from client (what they want to keep)
+        const currentImages = productData.images || [];
+
+        // Determine which images were removed (exist in database but not in client data)
+        imagesToDelete = existingImages.filter(
+          (url: string) => !currentImages.includes(url)
+        );
 
         // Upload new images first before database changes
         const files = req.files as Express.Multer.File[];
@@ -546,23 +888,32 @@ export const productController = {
           newImageUrls = await uploadImages(files);
         }
 
-        // Calculate images to delete
-        if (req.body.removeImages) {
-          const indices = JSON.parse(req.body.removeImages);
-          imagesToDelete = indices
-            .filter((i: any) => i >= 0 && i < existingImages.length)
-            .map((i: any) => existingImages[i]);
-        }
-
-        // Calculate the updated images array
-        const updatedImages = [
-          ...existingImages.filter((url: any) => !imagesToDelete.includes(url)),
-          ...newImageUrls,
-        ];
+        // Calculate the updated images array - current images from client plus newly uploaded ones
+        const updatedImages = [...currentImages, ...newImageUrls];
 
         // Use transaction to ensure database consistency
         const updatedProduct = await prisma.$transaction(async (tx) => {
-          // Update product in database
+          // First, delete all existing variations
+          await tx.productVariation.deleteMany({
+            where: { productId },
+          });
+
+          // Create new variations
+          if (validatedVariations.length > 0) {
+            await tx.productVariation.createMany({
+              data: validatedVariations.map((variation: any) => ({
+                productId,
+                size: variation.size,
+                color: variation.color,
+                price: variation.price,
+                stock: variation.stock,
+                weight: variation.weight,
+                dimensions: variation.dimensions,
+              })),
+            });
+          }
+
+          // Update base product data with all fields, matching the create endpoint
           const updated = await tx.product.update({
             where: { id: productId },
             data: {
@@ -570,8 +921,16 @@ export const productController = {
               description: validatedData.data.description,
               price: validatedData.data.price,
               category: validatedData.data.category,
+              size: validatedData.data.size,
+              color: validatedData.data.color,
+              stock: validatedData.data.stock,
+              weight: validatedData.data.weight,
+              dimensions: validatedData.data.dimensions,
               images: JSON.stringify(updatedImages),
               updatedAt: new Date(),
+            },
+            include: {
+              variations: true,
             },
           });
 
@@ -583,10 +942,12 @@ export const productController = {
           await deleteImages(imagesToDelete);
         }
 
+         invalidateProductCache();
+
         res.status(200).json({
           message: "Product updated successfully!",
-          data: formatProductWithImages(updatedProduct),
-        }); // ---->
+          data: formatProductWithImagesAndVariations(updatedProduct),
+        });
         return;
       } catch (error) {
         console.error("Error updating product:", error);
@@ -596,12 +957,11 @@ export const productController = {
           await deleteImages(newImageUrls);
         }
 
-        res.status(500).json({ error: "Internal server error!" }); // ---->
+        res.status(500).json({ error: "Internal server error!" });
         return;
       }
     },
   ],
-
   // Delete product with MinIO cleanup
   deleteProduct: async (req: AuthRequest, res: Response) => {
     try {
@@ -642,8 +1002,10 @@ export const productController = {
 
       const data =
         result?.remainingProducts &&
-        formatProductWithImages(result?.remainingProducts);
+        formatProductWithImagesAndVariations(result?.remainingProducts);
 
+
+         invalidateProductCache();
       res.status(200).json({
         message: "Product deleted successfully!",
         data,
@@ -685,6 +1047,8 @@ export const productController = {
       if (result.images.length > 0) {
         await deleteImages(result.images);
       }
+
+       invalidateProductCache();
 
       res.status(200).json({
         message: `Deleted ${result.count} products successfully!`,

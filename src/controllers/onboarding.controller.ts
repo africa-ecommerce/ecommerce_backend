@@ -28,8 +28,14 @@ export const onboarding = [
         return;
       }
 
-      // 2) userType check
-      const  userData  = JSON.parse(req.body.userData);
+
+       let userData;
+       try {
+          userData = JSON.parse(req.body.userData);
+       } catch (error) {
+         res.status(400).json({ error: "Invalid product data format!" });
+         return;
+       }
 
       if (!Object.values(UserType).includes(userData.userType as UserType)) {
         res.status(400).json({ error: "Invalid user type!" });

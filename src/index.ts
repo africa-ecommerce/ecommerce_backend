@@ -101,7 +101,7 @@ initializeBuckets()
 // // API Routes
 
 
-//chronically schedule the update the pending plug product prices every day at midnight
+//chronically schedule the update the pending plug product prices every day at midnight --> SHOULD THIS RUN FOR ALL E.G FOR SUPPLIER
 cron.schedule("0 0 * * *", () => {
   console.log("Running price update check...");
   processPendingPrices();

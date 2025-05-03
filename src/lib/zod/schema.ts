@@ -62,7 +62,24 @@ export const productSchema = z.object({
   price: z.number().positive("Price must be positive"),
   // quantity: z.number().int().nonnegative("Quantity must be a non-negative integer"),
   category: z.string().optional(),
+  size: z.string().optional(),
+  color: z.string().optional(),
+  stock: z.number().int().nonnegative("Stock must be a non-negative integer"),
+  weight: z.number().positive("Weight must be positive").optional(),
+  dimensions: z.string().optional(), // JSON string with dimensions
 });
+
+
+export const productVariationSchema = z.object({
+  size: z.string().optional(),
+  color: z.string().optional(),
+  price: z.number().positive("Variation price must be positive"),
+  stock: z.number().int().nonnegative("Stock must be a non-negative integer"),
+  weight: z.number().positive("Weight must be positive").optional(),
+  dimensions: z.string().optional(), // JSON string with dimensions
+});
+
+export const productVariationsSchema = z.array(productVariationSchema);
 
 
 // Zod validation schema for plug product

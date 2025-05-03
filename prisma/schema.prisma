@@ -98,28 +98,51 @@ model Plug {
 }
 
 model Product {
-  id              String   @id @default(cuid())
+  id              String           @id @default(cuid())
   name            String
   description     String
-  price           Float
-  // quantity        Int
+  price           Float            // Base price (can be overridden by variants)
   category        String?
-  images          String? // Typically would store JSON or comma-separated strings with image paths
+  images          String?          // Typically would store JSON or comma-separated strings with image paths
   supplierId      String
-  //  tags            String? // JSON string containing keywords and name alternatives
-  // supplier        Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  supplier        Supplier @relation(fields: [supplierId], references: [id])
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+   size         String?
+  color        String?
+  stock        Int      @default(0)
+  weight       Float?   // Weight in grams
+  dimensions   String? 
+  plugsCount      Int              @default(0)  // Counter for number of plugs using this product
+  supplier        Supplier         @relation(fields: [supplierId], references: [id])
+  variations      ProductVariation[]
+  plugProducts    PlugProduct[]    // Relationship to track which plugs are using this product
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
-   // indexes to improve query performance
+  // indexes to improve query performance
   @@index([price])
   @@index([category])
   @@index([createdAt])
   @@index([supplierId])
   // Compound index for common filter combinations
   @@index([category, price])
- }
+  @@index([plugsCount]) // Index for the plugs count for efficient querying
+}
+
+model ProductVariation {
+  id           String   @id @default(cuid())
+  size         String?
+  color        String?
+  price        Float?   // Override price if specific to this variation
+  stock        Int      @default(0)
+  weight       Float?   // Weight in grams
+  dimensions   String?  // JSON string containing dimensions: {length, width, height, unit}
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([productId])
+  @@index([size, color])
+}
 
 
 
@@ -132,12 +155,13 @@ model PlugProduct {
   priceEffectiveAt DateTime?     // New field for effective date
   status           ProductStatus @default(ACTIVE)
   plug             Plug          @relation(fields: [plugId], references: [id], onDelete: Cascade)
+  originalProduct Product @relation(fields: [originalId], references: [id])
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  @@unique([plugId, originalId])
+  @@unique([plugId, originalId]) // Ensure a plug can't add the same product twice
   @@index([plugId])
-  @@index([originalId])
+  @@index([originalId]) // Index for efficient lookup of original products
 }
 
 enum ProductStatus {
