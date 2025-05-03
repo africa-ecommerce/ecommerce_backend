@@ -28,8 +28,7 @@ import { Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import { cookieConfig } from "./helper/token";
 import { initializeBuckets } from "./config/minio";
-import cron from "node-cron";
-import { processPendingPrices } from "./helper/workers/priceUpdater";
+import { initializePriceUpdateScheduler } from "./helper/workers/priceUpdater";
 
 
 
@@ -101,11 +100,14 @@ initializeBuckets()
 // // API Routes
 
 
-//chronically schedule the update the pending plug product prices every day at midnight --> SHOULD THIS RUN FOR ALL E.G FOR SUPPLIER
-cron.schedule("0 0 * * *", () => {
-  console.log("Running price update check...");
-  processPendingPrices();
-});
+// Initialize the smart price update scheduler
+initializePriceUpdateScheduler()
+  .then(() => {
+    console.log("Price update scheduler initialized successfully");
+  })
+  .catch((error) => {
+    console.error("Error initializing price update scheduler:", error);
+  });
 app.use("/auth", authRoutes);
 app.use("/onboarding", onboardingRoutes);
 app.use("/products", productRoutes);

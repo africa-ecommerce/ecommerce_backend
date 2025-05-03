@@ -19,6 +19,8 @@ export const formatPlugProductWithDetails = async (plugProduct: PlugProduct, tx?
       },
     });
 
+    //CHECK IF SUPPLIER HAS DELETED PRODUCT  // DO THIS AND PUT A DELETE BUTTON THERE SPECIFICALLY  ------->
+
     if (!originalProduct) {
       // Handle invalid product (existing logic)
       if (tx && plugProduct.status === "ACTIVE") {
@@ -29,7 +31,6 @@ export const formatPlugProductWithDetails = async (plugProduct: PlugProduct, tx?
       }
       return {
         ...remainingPlugProduct,
-        name: "Invalid Product",
         description: "This product has been removed by the supplier.",
         category: "",
         originalPrice: 0,
@@ -67,11 +68,12 @@ export const formatPlugProductWithDetails = async (plugProduct: PlugProduct, tx?
     const formattedProduct: any = {
       ...remainingPlugProduct,
       // Original product details
-      name: originalProduct.name,
       description: originalProduct.description,
       category: originalProduct.category,
       originalPrice: originalProduct.price,
-      currentPrice: remainingPlugProduct.price,
+      stocks:originalProduct.stock,
+      plugsCount:originalProduct.plugsCount,
+    //   currentPrice: remainingPlugProduct.price,
       images: originalProduct.images
         ? JSON.parse(originalProduct.images as string)
         : [],
@@ -91,41 +93,13 @@ export const formatPlugProductWithDetails = async (plugProduct: PlugProduct, tx?
   } catch (error) {
     console.error(`Error formatting plug product ${plugProduct.id}:`, error);
     return {
-      ...remainingPlugProduct,
-      images: originalProduct?.images ? JSON.parse(originalProduct.images as string) : [],
+      ...plugProduct,
+      images: originalProduct?.images
+        ? JSON.parse(originalProduct.images as string)
+        : [],
     };
   }
 };
-
-
-
-
-// Add a new helper function to format products with variations
-// export function formatProductWithImagesAndVariations(product: any ) {
-//   // Parse images from JSON string to array
-//   const images = product.images ? JSON.parse(product.images) : [];
-
-//   // Process variations if they exist
-//   const variations = product.variations || [];
-
-//   // For each variation, parse the dimensions string if it exists
-//   const formattedVariations = variations.map((variation: any) => {
-//     return {
-//       ...variation,
-//       dimensions: variation.dimensions
-//         ? JSON.parse(variation.dimensions)
-//         : null,
-//     };
-//   });
-
-//   // Return the product with parsed images and variations
-//   return {
-//     ...product,
-//     images,
-//     variations: formattedVariations
-//   };
-// }
-
 
 
 // Helper function to format products with images, variations, and supplier details

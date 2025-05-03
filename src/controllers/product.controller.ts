@@ -202,13 +202,19 @@ export const productController = {
             },
             include: {
               variations: true,
+              supplier: {
+                select: {
+                  businessName: true,
+                  pickupLocation: true,
+                },
+              },
             },
           });
 
           return formatProductWithImagesAndVariations(product);
         });
 
-         invalidateProductCache();
+        invalidateProductCache();
         res.status(201).json({
           message: "Product created successfully!",
           data: result,
@@ -239,6 +245,12 @@ export const productController = {
         orderBy: { createdAt: "desc" },
         include: {
           variations: true,
+           supplier: {
+            select: {
+              businessName: true,
+              pickupLocation: true,
+            },
+          },
         },
       });
 
@@ -262,6 +274,7 @@ export const productController = {
   },
 
   // Get product by ID
+  // Get product by ID
   getProductById: async (req: AuthRequest, res: Response) => {
     try {
       const productId = req.params.productId;
@@ -278,19 +291,45 @@ export const productController = {
           variations: true,
         },
       });
+
       if (!product) {
-        res.status(404).json({ error: "Product not found!" }); // ---->
+        res.status(404).json({ error: "Product not found!" });
         return;
       }
 
+      // Format the product
+      const formattedProduct = formatProductWithImagesAndVariations(product);
+
+      // Check if user is a plug and add isPlugged flag
+      if (req.user && req.user.userType === "PLUG") {
+        // Check if this product is in the plug's database
+        const pluggedProduct = await prisma.plugProduct.findFirst({
+          where: {
+            plugId: req.user.id,
+            id: productId,
+          },
+        });
+
+        // Add isPlugged flag to the response
+        res.status(200).json({
+          message: "Product fetched successfully!",
+          data: {
+            ...formattedProduct,
+            isPlugged: !!pluggedProduct, // Convert to boolean
+          },
+        });
+        return;
+      }
+
+      // Regular response for non-plug users
       res.status(200).json({
         message: "Product fetched successfully!",
-        data: formatProductWithImagesAndVariations(product),
-      }); // ---->
+        data: formattedProduct,
+      });
       return;
     } catch (error) {
       console.error("Error fetching product:", error);
-      res.status(500).json({ error: "Internal server error!" }); // ---->
+      res.status(500).json({ error: "Internal server error!" });
       return;
     }
   },
@@ -525,9 +564,32 @@ export const productController = {
       const cachedResult = productCache.get<ProductsResponse>(cacheKey);
       if (cachedResult) {
         console.log(`Cache hit for: ${cacheKey}`);
+
+        // Check if user is a plug and handle plugged products
+        let responseData = cachedResult.products;
+        if (req.user && req.user.userType === "PLUG") {
+          // Fetch plug's products from database for comparison
+          const pluggedProducts = await prisma.plugProduct.findMany({
+            where: {
+              plugId: req.user.id,
+            },
+            select: {
+              id: true,
+            },
+          });
+
+          const pluggedProductIds = pluggedProducts.map((pp) => pp.id);
+
+          // Add isPlugged flag to each product
+          responseData = responseData.map((product) => ({
+            ...product,
+            isPlugged: pluggedProductIds.includes(product.id),
+          }));
+        }
+
         res.status(200).json({
           message: "Products fetched successfully!",
-          data: cachedResult.products,
+          data: responseData,
           meta: cachedResult.meta,
           fromCache: true, // Optional flag to indicate cache hit
         });
@@ -666,12 +728,34 @@ export const productController = {
         };
       });
 
-      // Cache the result
+      // Check if user is a plug and handle plugged products
+      let responseData = result.products;
+      if (req.user && req.user.userType === "PLUG") {
+        // Fetch plug's products from database for comparison
+        const pluggedProducts = await prisma.plugProduct.findMany({
+          where: {
+            plugId: req.user.id,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        const pluggedProductIds = pluggedProducts.map((pp) => pp.id);
+
+        // Add isPlugged flag to each product
+        responseData = responseData.map((product) => ({
+          ...product,
+          isPlugged: pluggedProductIds.includes(product.id),
+        }));
+      }
+
+      // Cache the original result without the plug-specific data
       productCache.set(cacheKey, result);
 
       res.status(200).json({
         message: "Products fetched successfully!",
-        data: result.products,
+        data: responseData,
         meta: result.meta,
       });
       return;
@@ -942,7 +1026,7 @@ export const productController = {
           await deleteImages(imagesToDelete);
         }
 
-         invalidateProductCache();
+        invalidateProductCache();
 
         res.status(200).json({
           message: "Product updated successfully!",
@@ -1004,8 +1088,7 @@ export const productController = {
         result?.remainingProducts &&
         formatProductWithImagesAndVariations(result?.remainingProducts);
 
-
-         invalidateProductCache();
+      invalidateProductCache();
       res.status(200).json({
         message: "Product deleted successfully!",
         data,
@@ -1048,7 +1131,7 @@ export const productController = {
         await deleteImages(result.images);
       }
 
-       invalidateProductCache();
+      invalidateProductCache();
 
       res.status(200).json({
         message: `Deleted ${result.count} products successfully!`,

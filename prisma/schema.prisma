@@ -148,6 +148,7 @@ model ProductVariation {
 
 model PlugProduct {
   id               String        @id @default(cuid())
+   name             String        // new field for product name
   originalId       String
   plugId           String
   price            Float
@@ -166,5 +167,5 @@ model PlugProduct {
 
 enum ProductStatus {
   ACTIVE       // Original Product is active and available to plug into
-  INACTIVE       // Original product is not available to plug into
+  INACTIVE       // Original product is not available to plug into and has been deleted by supplier
 }

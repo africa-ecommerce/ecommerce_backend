@@ -5,101 +5,210 @@ import { AuthRequest } from "../types";
 import { plugProductSchema } from "../lib/zod/schema";
 import { PlugProduct } from "@prisma/client";
 import { formatPlugProductWithDetails } from "../helper/formatProduct";
+import { scheduleProductUpdate } from "../helper/workers/priceUpdater";
 
 
 
 
 export const plugProductController = {
   // Add one or more customized supplier products to plug's inventory
+  // addProductsToPlug: async (req: AuthRequest, res: Response) => {
+  //   try {
+  //     const { products } = req.body; // Array of objects with productId and price from frontend
+  //     const plug = req.plug!;
+
+  //     // Basic validation
+  //     if (!Array.isArray(products) || products.length === 0) {
+  //       res.status(400).json({
+  //         error: "Please provide a list of products!",
+  //       });
+  //       return;
+  //     }
+
+  //     // Get unique product IDs to avoid duplicating increments
+  //     const uniqueProductIds = [...new Set(products.map((p) => p.id))];
+
+  //     // Prepare products by mapping each product object to create a plug product entry
+  //     const productsToCreate = products.map((product) => ({
+  //       originalId: product.id, // Use the ID from the frontend
+  //       price: product.price, // Use the price from the frontend
+  //       plugId: plug.id, // add the plug ID
+  //     }));
+
+  //     // Create the products in the database, increment counters, and get complete details
+  //     const result = await prisma.$transaction(async (tx) => {
+  //       // First check which products already exist to avoid double counting
+  //       const existingConnections = await tx.plugProduct.findMany({
+  //         where: {
+  //           plugId: plug.id,
+  //           originalId: { in: uniqueProductIds },
+  //         },
+  //         select: { originalId: true },
+  //       });
+
+  //       const existingProductIds = existingConnections.map((c) => c.originalId);
+
+  //       // Find products that need to be incremented (only new connections)
+  //       const productsToIncrement = uniqueProductIds.filter(
+  //         (id) => !existingProductIds.includes(id)
+  //       );
+
+  //       // Create all product connections at once
+  //       await tx.plugProduct.createMany({
+  //         data: productsToCreate,
+  //         skipDuplicates: true, // Skip if the plugId + originalId combination already exists
+  //       });
+
+  //       // Increment the plugsCount for each product being newly connected
+  //       if (productsToIncrement.length > 0) {
+  //         await tx.product.updateMany({
+  //           where: {
+  //             id: { in: productsToIncrement },
+  //           },
+  //           data: {
+  //             plugsCount: { increment: 1 },
+  //           },
+  //         });
+  //       }
+
+  //       // Return the latest products for this plug
+  //       const createdPlugProducts = await tx.plugProduct.findMany({
+  //         where: {
+  //           plugId: plug.id,
+  //           originalId: { in: products.map((p) => p.id) },
+  //         },
+  //         orderBy: { createdAt: "desc" },
+  //       });
+
+  //       // Format each product with complete details
+  //       const formattedProducts = await Promise.all(
+  //         createdPlugProducts.map((product) =>
+  //           formatPlugProductWithDetails(product, tx)
+  //         )
+  //       );
+
+  //       return formattedProducts;
+  //     });
+
+  //     res.status(201).json({
+  //       message: `Added ${result.length} products to your store!`,
+  //       data: result,
+  //     });
+  //     return;
+  //   } catch (error) {
+  //     console.error("Error adding products:", error);
+  //     res.status(500).json({ error: "Internal server error!" });
+  //     return;
+  //   }
+  // },
+
   addProductsToPlug: async (req: AuthRequest, res: Response) => {
-    try {
-      const { products } = req.body; // Array of objects with productId and price from frontend
-      const plug = req.plug!;
+  try {
+    const { products } = req.body; // Array of objects with productId and price from frontend
+    const plug = req.plug!;
 
-      // Basic validation
-      if (!Array.isArray(products) || products.length === 0) {
-        res.status(400).json({
-          error: "Please provide a list of products!",
-        });
-        return;
-      }
+    // Basic validation
+    if (!Array.isArray(products) || products.length === 0) {
+      res.status(400).json({
+        error: "Please provide a list of products!",
+      });
+      return;
+    }
 
-      // Get unique product IDs to avoid duplicating increments
-      const uniqueProductIds = [...new Set(products.map((p) => p.id))];
+    // Get unique product IDs to avoid duplicating increments
+    const uniqueProductIds = [...new Set(products.map((p) => p.id))];
+
+    // Create the products in the database, increment counters, and get complete details
+    const result = await prisma.$transaction(async (tx) => {
+      // Check which products already exist to avoid double counting
+      const existingConnections = await tx.plugProduct.findMany({
+        where: {
+          plugId: plug.id,
+          originalId: { in: uniqueProductIds },
+        },
+        select: { originalId: true },
+      });
+
+      const existingProductIds = existingConnections.map((c) => c.originalId);
+
+      // Find products that need to be incremented (only new connections)
+      const productsToIncrement = uniqueProductIds.filter(
+        (id) => !existingProductIds.includes(id)
+      );
+      
+      // Only fetch minimal product details needed for creation
+      // We don't need to fetch full product details with variations here
+      const productNamesMap = productsToIncrement.length > 0 
+        ? await tx.product.findMany({
+            where: {
+              id: { in: uniqueProductIds },
+            },
+            select: {
+              id: true,
+              name: true,
+            },
+          }).then(products => 
+            new Map(products.map(p => [p.id, p.name]))
+          )
+        : new Map();
 
       // Prepare products by mapping each product object to create a plug product entry
       const productsToCreate = products.map((product) => ({
-        originalId: product.id, // Use the ID from the frontend
-        price: product.price, // Use the price from the frontend
-        plugId: plug.id, // add the plug ID
+        originalId: product.id,
+        plugId: plug.id,
+        name: productNamesMap.get(product.id) || "Unknown Product",
+        price: product.price,
       }));
 
-      // Create the products in the database, increment counters, and get complete details
-      const result = await prisma.$transaction(async (tx) => {
-        // First check which products already exist to avoid double counting
-        const existingConnections = await tx.plugProduct.findMany({
-          where: {
-            plugId: plug.id,
-            originalId: { in: uniqueProductIds },
-          },
-          select: { originalId: true },
-        });
-
-        const existingProductIds = existingConnections.map((c) => c.originalId);
-
-        // Find products that need to be incremented (only new connections)
-        const productsToIncrement = uniqueProductIds.filter(
-          (id) => !existingProductIds.includes(id)
-        );
-
-        // Create all product connections at once
-        await tx.plugProduct.createMany({
-          data: productsToCreate,
-          skipDuplicates: true, // Skip if the plugId + originalId combination already exists
-        });
-
-        // Increment the plugsCount for each product being newly connected
-        if (productsToIncrement.length > 0) {
-          await tx.product.updateMany({
-            where: {
-              id: { in: productsToIncrement },
-            },
-            data: {
-              plugsCount: { increment: 1 },
-            },
-          });
-        }
-
-        // Return the latest products for this plug
-        const createdPlugProducts = await tx.plugProduct.findMany({
-          where: {
-            plugId: plug.id,
-            originalId: { in: products.map((p) => p.id) },
-          },
-          orderBy: { createdAt: "desc" },
-        });
-
-        // Format each product with complete details
-        const formattedProducts = await Promise.all(
-          createdPlugProducts.map((product) =>
-            formatPlugProductWithDetails(product, tx)
-          )
-        );
-
-        return formattedProducts;
+      // Create all product connections at once
+      await tx.plugProduct.createMany({
+        data: productsToCreate,
+        skipDuplicates: true, // Skip if the plugId + originalId combination already exists
       });
 
-      res.status(201).json({
-        message: `Added ${result.length} products to your store!`,
-        data: result,
+      // Increment the plugsCount for each product being newly connected
+      if (productsToIncrement.length > 0) {
+        await tx.product.updateMany({
+          where: {
+            id: { in: productsToIncrement },
+          },
+          data: {
+            plugsCount: { increment: 1 },
+          },
+        });
+      }
+
+      // Return the latest products for this plug
+      const createdPlugProducts = await tx.plugProduct.findMany({
+        where: {
+          plugId: plug.id,
+          originalId: { in: products.map((p) => p.id) },
+        },
+        orderBy: { createdAt: "desc" },
       });
-      return;
-    } catch (error) {
-      console.error("Error adding products:", error);
-      res.status(500).json({ error: "Internal server error!" });
-      return;
-    }
-  },
+
+      // Format each product with complete details
+      // We rely on formatPlugProductWithDetails to fetch full product details
+      const formattedProducts = await Promise.all(
+        createdPlugProducts.map((product) =>
+          formatPlugProductWithDetails(product, tx)
+        )
+      );
+
+      return formattedProducts;
+    });
+
+    res.status(201).json({
+      message: `Added ${result.length} products to your store!`,
+      data: result,
+    });
+    return;
+  } catch (error) {
+    console.error("Error adding products:", error);
+    res.status(500).json({ error: "Internal server error!" });
+    return;
+  }
+},
   // Get all plug products with complete details
   getPlugProducts: async (req: AuthRequest, res: Response) => {
     try {
@@ -134,6 +243,7 @@ export const plugProductController = {
       const { price } = req.body;
 
       // Find the product
+      const now = Date.now();
       const existingProduct = await prisma.plugProduct.findFirst({
         where: { id: productId, plugId: plug.id },
       });
@@ -162,6 +272,9 @@ export const plugProductController = {
           updatedAt: new Date(),
         },
       });
+
+      // Schedule this specific product's update
+      await scheduleProductUpdate(productId, priceEffectiveAt);
 
       // Format response
       const formattedProduct = await formatPlugProductWithDetails(
