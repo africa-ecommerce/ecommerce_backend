@@ -148,24 +148,19 @@ model ProductVariation {
 
 model PlugProduct {
   id               String        @id @default(cuid())
-   name             String        // new field for product name
+  //  name             String        // new field for product name
   originalId       String
   plugId           String
   price            Float
   pendingPrice     Float?        // New field for scheduled price
   priceEffectiveAt DateTime?     // New field for effective date
-  status           ProductStatus @default(ACTIVE)
+    lastPriceUpdateAt DateTime?    // New field to track when a price was actually updated
   plug             Plug          @relation(fields: [plugId], references: [id], onDelete: Cascade)
-  originalProduct Product @relation(fields: [originalId], references: [id])
+ originalProduct  Product    @relation(fields: [originalId], references: [id], onDelete: Cascade) // Add onDelete: Cascade here
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
   @@unique([plugId, originalId]) // Ensure a plug can't add the same product twice
   @@index([plugId])
   @@index([originalId]) // Index for efficient lookup of original products
-}
-
-enum ProductStatus {
-  ACTIVE       // Original Product is active and available to plug into
-  INACTIVE       // Original product is not available to plug into and has been deleted by supplier
 }

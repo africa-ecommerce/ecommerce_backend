@@ -8,19 +8,6 @@ import authRoutes from "./routes/auth.routes";
 import onboardingRoutes from "./routes/onboarding.routes";
 import productRoutes from "./routes/product.routes";
 import plugProductRoutes from "./routes/plugProduct.routes";
-// import orderRoutes from "./routes/order.routes";
-// import paymentRoutes from "./routes/payment.routes";
-// import analyticsRoutes from "./routes/analytics.routes";
-// import notificationRoutes from "./routes/notification.routes";
-// import qrcodeRoutes from "./routes/qrcode.routes";
-// import logisticsRoutes from "./routes/logistics.routes";
-// import websiteRoutes from "./routes/website.routes";
-// import customerRoutes from "./routes/customer.routes";
-// import marketplaceRoutes from "./routes/marketplace.routes";
-// import searchRoutes from "./routes/search.routes";
-// import whatsappRoutes from "./routes/whatsapp.routes"; // Existing WhatsApp-to-Web Store Builder routes
-// import whatsappMessageRoutes from "./routes/whatsapp.message.routes"; // New WhatsApp messaging routes
-// import affiliateRoutes from "./routes/affiliate.routes";
 import { RedisStore } from "connect-redis";
 import session from "express-session";
 import passport from "./config/passport";
@@ -28,7 +15,7 @@ import { Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import { cookieConfig } from "./helper/token";
 import { initializeBuckets } from "./config/minio";
-import { initializePriceUpdateScheduler } from "./helper/workers/priceUpdater";
+import { initializePriceUpdateScheduler, shutdownPriceUpdateScheduler } from "./helper/workers/priceUpdater";
 
 
 
@@ -113,31 +100,6 @@ app.use("/onboarding", onboardingRoutes);
 app.use("/products", productRoutes);
 app.use("/plug/products", plugProductRoutes);
 
-// New current user endpoint - protected route
-// app.use("/merchants", merchantRoutes);
-// app.use("/orders", orderRoutes);
-// app.use("/payments", paymentRoutes);
-// app.use("/analytics", analyticsRoutes);
-// app.use("/notifications", notificationRoutes);
-// app.use("/subscriptions", subscriptionRoutes);
-// app.use("/qrcodes", qrcodeRoutes);
-// app.use("/logistics", logisticsRoutes);
-// app.use("/websites", websiteRoutes);
-// app.use("/customers", customerRoutes);
-// app.use("/marketplace", marketplaceRoutes);
-// app.use("/search", searchRoutes);
-// app.use("/whatsapp", whatsappRoutes);
-// app.use("/whatsapp-messages", whatsappMessageRoutes);
-// app.use("/affiliates", affiliateRoutes);
-
-
-
-
-// Catch-all for subdomain website requests (proxy)
-// app.use("*", subscriptionCheck, dynamicHugoProxy);
-
-
-
 // Global error handling middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error("Unhandled error:", err);
@@ -146,9 +108,35 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   //   .json({ error: "Unexpected error occured!" });
 });
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Server is listening on port ${port}`);
 });
 
+// Handle graceful shutdown
+process.on("SIGTERM", () => {
+  console.log("SIGTERM signal received: closing HTTP server");
+
+  // First shut down the price update scheduler
+  shutdownPriceUpdateScheduler();
+
+  // Then close the server
+  server.close(() => {
+    console.log("HTTP server closed");
+    process.exit(0);
+  });
+});
+
+process.on("SIGINT", () => {
+  console.log("SIGINT signal received: closing HTTP server");
+
+  // First shut down the price update scheduler
+  shutdownPriceUpdateScheduler();
+
+  // Then close the server
+  server.close(() => {
+    console.log("HTTP server closed");
+    process.exit(0);
+  });
+});
 
 export default app;
