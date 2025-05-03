@@ -296,7 +296,7 @@ export const productController = {
         const pluggedProduct = await prisma.plugProduct.findFirst({
           where: {
             plugId: req.user?.plug?.id,
-            id: productId,
+            originalId: productId,
           },
         });
 
@@ -378,11 +378,11 @@ export const productController = {
               plugId: req.user?.plug?.id,
             },
             select: {
-              id: true,
+              originalId: true,
             },
           });
 
-          const pluggedProductIds = pluggedProducts.map((pp) => pp.id);
+          const pluggedProductIds = pluggedProducts.map((pp) => pp.originalId);
 
           // Cache hit - responseData is already formatted by formatProductWithImagesAndVariations before caching
           // Add isPlugged flag to each product
@@ -543,11 +543,11 @@ export const productController = {
             plugId: req.user?.plug?.id,
           },
           select: {
-            id: true,
+            originalId: true,
           },
         });
 
-        const pluggedProductIds = pluggedProducts.map((pp) => pp.id);
+        const pluggedProductIds = pluggedProducts.map((pp) => pp.originalId);
 
         // Add isPlugged flag to each product
         responseData = responseData.map((product) => ({
