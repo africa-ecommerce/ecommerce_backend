@@ -40,6 +40,6 @@ export function invalidateProductCache() {
   productCache.flushAll();
 }
 
-export const jwtSecret = process.env.JWT_SECRET || "defaultsecret";
-export const refreshTokenSecret = process.env.REFRESH_SECRET || "defaultsecret";
+export const jwtSecret = process.env.JWT_SECRET || "JWT_SECRET";
+export const refreshTokenSecret = process.env.REFRESH_SECRET || "REFRESH_SECRET";
 export const port = process.env.PORT || 5000;

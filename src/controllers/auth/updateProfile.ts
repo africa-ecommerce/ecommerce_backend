@@ -78,6 +78,7 @@ export const updateProfile = [
             pickupLocation: supplierParse.data.pickupLocation,
             businessType: supplierParse.data.businessType || "",
             avatar: avatarUrl || oldAvatarUrl, // Keep old avatar if no new one
+            updatedAt: new Date(), // Explicitly update the timestamp
           },
         });
 
@@ -118,6 +119,7 @@ export const updateProfile = [
             phone: profileData.phone,
             state: profileData.state || user.plug.state,
             aboutBusiness: profileData.aboutBusiness || user.plug.aboutBusiness,
+            updatedAt: new Date(), // Explicitly update the timestamp
           },
         });
 

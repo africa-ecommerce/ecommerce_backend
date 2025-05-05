@@ -13,7 +13,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
+enum UserType {
+  UNSET
+  SUPPLIER
+  PLUG
+}
 
 model User {
   id            String    @id @default(uuid())
@@ -58,66 +62,63 @@ model PasswordToken {
   @@unique([email, token])
 }
 
-enum UserType {
-  UNSET
-  SUPPLIER
-  PLUG
-}
+
 
 model Supplier {
-  id           String    @id @default(cuid())
-   businessName   String   @default("")                
-  businessType String? 
-   pickupLocation String    @default("") 
-   phone           String                 
-  avatar         String?   
-  userId       String    @unique
-  user         User      @relation(fields: [userId], references: [id])
-  products     Product[]
-  verified     Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  businessName   String    @default("")
+  businessType   String?
+  pickupLocation String    @default("")
+  phone          String
+  avatar         String?
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id])
+  products       Product[]
+  verified       Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model Plug {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   businessName    String
   phone           String?
   state           String?
   aboutBusiness   String?
   niches          String[] // Array of strings
   generalMerchant Boolean
-  plugProduct  PlugProduct[]
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id])
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  plugProduct     PlugProduct[]
+  userId          String        @unique
+  user            User          @relation(fields: [userId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([businessName])
 }
 
 model Product {
-  id              String           @id @default(cuid())
-  name            String
-  description     String?
-  price           Float            // Base price (can be overridden by variants)
-  category        String?
-  images          String?          // Typically would store JSON or comma-separated strings with image paths
-  supplierId      String
-   size         String?
+  id           String             @id @default(cuid())
+  name         String
+  description  String?
+  price        Float 
+  category     String?
+  images       String? // Typically would store JSON or comma-separated strings with image paths
+  supplierId   String
+  size         String?
   color        String?
-  stock        Int      @default(0)
-  weight       Float?   // Weight in grams
-  dimensions   String? 
-  plugsCount      Int              @default(0)  // Counter for number of plugs using this product
-  supplier        Supplier         @relation(fields: [supplierId], references: [id])
-  variations      ProductVariation[]
-  plugProducts    PlugProduct[]    // Relationship to track which plugs are using this product
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  stock        Int                @default(0)
+  weight       Float? // Weight in grams
+  dimensions   String?
+  plugsCount   Int                @default(0) // Counter for number of plugs using this product
+  supplier     Supplier           @relation(fields: [supplierId], references: [id])
+  variations   ProductVariation[]
+  plugProducts PlugProduct[] // Relationship to track which plugs are using this product
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
 
   // indexes to improve query performance
   @@index([price])
+  @@index([name])
   @@index([category])
   @@index([createdAt])
   @@index([supplierId])
@@ -127,37 +128,34 @@ model Product {
 }
 
 model ProductVariation {
-  id           String   @id @default(cuid())
-  size         String?
-  color        String?
-  price        Float?   // Override price if specific to this variation
-  stock        Int      @default(0)
-  weight       Float?   // Weight in grams
-  dimensions   String?  // JSON string containing dimensions: {length, width, height, unit}
-  productId    String
-  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id         String   @id @default(cuid())
+  size       String?
+  color      String?
+  price      Float? // Override price if specific to this variation
+  stock      Int      @default(0)
+  weight     Float? // Weight in grams
+  dimensions String? // JSON string containing dimensions: {length, width, height, unit}
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([productId])
   @@index([size, color])
 }
 
-
-
 model PlugProduct {
-  id               String        @id @default(cuid())
-  //  name             String        // new field for product name
-  originalId       String
-  plugId           String
-  price            Float
-  pendingPrice     Float?        // New field for scheduled price
-  priceEffectiveAt DateTime?     // New field for effective date
-    lastPriceUpdateAt DateTime?    // New field to track when a price was actually updated
-  plug             Plug          @relation(fields: [plugId], references: [id], onDelete: Cascade)
- originalProduct  Product    @relation(fields: [originalId], references: [id], onDelete: Cascade) // Add onDelete: Cascade here
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  id                String    @id @default(cuid())
+  originalId        String
+  plugId            String
+  price             Float
+  pendingPrice      Float? //  field for scheduled price
+  priceEffectiveAt  DateTime? //  field for effective date
+  lastPriceUpdateAt DateTime? //  field to track when a price was actually updated
+  plug              Plug      @relation(fields: [plugId], references: [id], onDelete: Cascade)
+  originalProduct   Product   @relation(fields: [originalId], references: [id], onDelete: Cascade) // Add onDelete: Cascade here
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@unique([plugId, originalId]) // Ensure a plug can't add the same product twice
   @@index([plugId])

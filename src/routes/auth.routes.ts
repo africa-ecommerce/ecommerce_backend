@@ -15,9 +15,7 @@ import { login } from "../controllers/auth/login";
 import { logout } from "../controllers/auth/logout";
 import { google, googleCallback } from "../controllers/auth/oauth";
 
-import {
-  resendNewPasswordMail,
-} from "../controllers/auth/forgotPassword";
+import { resendNewPasswordMail } from "../controllers/auth/forgotPassword";
 import { refreshToken } from "../controllers/auth/refreshToken";
 import { updateProfile } from "../controllers/auth/updateProfile";
 import { updatePassword } from "../controllers/auth/updatePassword";
@@ -59,7 +57,6 @@ router.post("/refresh", refreshToken);
 
 // endpoint to get current user
 router.get("/current-user", authenticateJWT, getCurrentUser);
-
 
 // This route initiates the Google OAuth process
 router.get("/google", google);

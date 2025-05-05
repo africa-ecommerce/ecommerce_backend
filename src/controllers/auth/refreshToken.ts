@@ -1,4 +1,3 @@
-
 import { Request, Response } from "express";
 import { refreshSession, setAuthCookies } from "../../helper/token";
 import jwt from "jsonwebtoken";
@@ -14,7 +13,6 @@ import jwt from "jsonwebtoken";
        return;
      }
 
-      // Now we have a structured response
     const result = await refreshSession(refreshToken);
     
     if (!result.success) {

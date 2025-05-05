@@ -1,6 +1,5 @@
-
 import { Response } from "express";
-import {prisma} from "../../config";
+import { prisma } from "../../config";
 import { AuthRequest } from "../../types";
 import bcrypt from "bcryptjs";
 export const updatePassword = async (req: AuthRequest, res: Response) => {
@@ -14,8 +13,7 @@ export const updatePassword = async (req: AuthRequest, res: Response) => {
 
     const { currentPassword, newPassword } = req.body;
 
-    
-    if (!currentPassword ) {
+    if (!currentPassword) {
       res.status(400).json({ error: "Current password is required!" });
       return;
     }
@@ -24,18 +22,18 @@ export const updatePassword = async (req: AuthRequest, res: Response) => {
       return;
     }
 
-     if (newPassword.length < 6 || currentPassword.length < 6) {
-       res.status(400).json({ error: "Minimum 6 characters required!" });
-       return;
-     }
+    if (newPassword.length < 6 || currentPassword.length < 6) {
+      res.status(400).json({ error: "Minimum 6 characters required!" });
+      return;
+    }
 
-     if (currentPassword === newPassword) {
-       res.status(400).json({ error: "New password cannot be same as current!" });
-       return;
-     }
+    if (currentPassword === newPassword) {
+      res
+        .status(400)
+        .json({ error: "New password cannot be same as current!" });
+      return;
+    }
 
-
-  
     // Get user with password
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -58,10 +56,7 @@ export const updatePassword = async (req: AuthRequest, res: Response) => {
     }
 
     // Hash the new password
-    const hashedPassword = await bcrypt.hash(
-      newPassword,
-      10
-    );
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     // Update password
     await prisma.user.update({

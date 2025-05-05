@@ -1,4 +1,3 @@
-// src/middleware/role.ts
 import {Request, Response, NextFunction } from "express";
 import { AuthRequest } from "../types";
 

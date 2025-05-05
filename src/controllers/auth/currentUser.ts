@@ -1,4 +1,3 @@
-
 import { Response, NextFunction } from "express";
 import { prisma } from "../../config";
 import { AuthRequest } from "../../types";

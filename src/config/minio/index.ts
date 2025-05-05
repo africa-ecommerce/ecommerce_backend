@@ -1,4 +1,3 @@
-
 import * as Minio from "minio";
 import dotenv from 'dotenv';
 
@@ -10,8 +9,8 @@ const BUCKET_PREFIX = process.env.MINIO_BUCKET_PREFIX || 'pluggn';
 export const IMAGES_BUCKET = `${BUCKET_PREFIX}${
   process.env.MINIO_IMAGES_BUCKET || "images"
 }`;
-export const STATIC_WEBSITE_BUCKET = `${BUCKET_PREFIX}${
-  process.env.MINIO_STATIC_BUCKET || "static-site"
+export const STATIC_SITE_BUCKET = `${BUCKET_PREFIX}${
+  process.env.MINIO_STATIC_SITE_BUCKET || "static-site"
 }`;
 
 
@@ -25,12 +24,12 @@ interface MinioConfig {
   region: string;
 }
 
-// Load configuration from environment variables with sensible defaults
+// Load configuration from environment variables with play.minio defaults
 const getMinioConfig = (): MinioConfig => {
   return {
     endPoint: process.env.MINIO_ENDPOINT || "play.min.io",
     port: parseInt(process.env.MINIO_PORT || "443", 10),
-    useSSL: process.env.MINIO_USE_SSL === "true", // Default to true for security
+    useSSL: true, // Default to true for security
     accessKey: process.env.MINIO_ACCESS_KEY || "Q3AM3UQ867SPQQA43P2F",
     secretKey: process.env.MINIO_SECRET_KEY || "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG",
     region: process.env.MINIO_REGION || "us-east-1",
@@ -43,8 +42,8 @@ export const minioClient = new Minio.Client(getMinioConfig());
 // Function to ensure buckets exist with proper configuration
 export const initializeBuckets = async () => {
   try {
-    await initializeProductBucket();
-    await initializeStaticBucket();
+    await initializeImagesBucket();
+    await initializeStaticSiteBucket();
     // console.log('MinIO bucket initialized successfully');
   } catch (error) {
     console.error('Failed to initialize MinIO buckets:', error);
@@ -52,7 +51,7 @@ export const initializeBuckets = async () => {
 };
 
 // Initialize product images bucket
-const initializeProductBucket = async () => {
+const initializeImagesBucket = async () => {
   try {
     const exists = await minioClient.bucketExists(IMAGES_BUCKET);
     
@@ -106,13 +105,13 @@ const initializeProductBucket = async () => {
 
 
 // Initialize static website bucket
-const initializeStaticBucket = async () => {
+const initializeStaticSiteBucket = async () => {
   try {
-    const exists = await minioClient.bucketExists(STATIC_WEBSITE_BUCKET);
+    const exists = await minioClient.bucketExists(STATIC_SITE_BUCKET);
     
     if (!exists) {
-      await minioClient.makeBucket(STATIC_WEBSITE_BUCKET, process.env.MINIO_REGION || 'us-east-1');
-      console.log(`Bucket '${STATIC_WEBSITE_BUCKET}' created successfully`);
+      await minioClient.makeBucket(STATIC_SITE_BUCKET, process.env.MINIO_REGION || 'us-east-1');
+      console.log(`Bucket '${STATIC_SITE_BUCKET}' created successfully`);
       
       // Set bucket policy for static website serving
       const policy = {
@@ -122,13 +121,13 @@ const initializeStaticBucket = async () => {
             Effect: 'Allow',
             Principal: { AWS: ['*'] },
             Action: ['s3:GetObject'],
-            Resource: [`arn:aws:s3:::${STATIC_WEBSITE_BUCKET}/*`],
+            Resource: [`arn:aws:s3:::${STATIC_SITE_BUCKET}/*`],
           },
         ],
       };
       
-      await minioClient.setBucketPolicy(STATIC_WEBSITE_BUCKET, JSON.stringify(policy));
-      console.log(`Public read policy set for '${STATIC_WEBSITE_BUCKET}'`);
+      await minioClient.setBucketPolicy(STATIC_SITE_BUCKET, JSON.stringify(policy));
+      console.log(`Public read policy set for '${STATIC_SITE_BUCKET}'`);
       
       // // Set up static website hosting configuration
       // // Note: This would typically be done via the MinIO console for production
@@ -155,7 +154,7 @@ const initializeStaticBucket = async () => {
     //   console.error(`Error setting CORS for '${STATIC_WEBSITE_BUCKET}':`, corsError);
     // }
   } catch (error) {
-    console.error(`Error initializing '${STATIC_WEBSITE_BUCKET}' bucket:`, error);
+    console.error(`Error initializing '${STATIC_SITE_BUCKET}' bucket:`, error);
     throw error;
   }
 };

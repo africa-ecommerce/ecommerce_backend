@@ -1,5 +1,5 @@
 
-import { minioClient, getMinioUrl, STATIC_WEBSITE_BUCKET, IMAGES_BUCKET } from "../../config/minio";
+import { minioClient, getMinioUrl, STATIC_SITE_BUCKET, IMAGES_BUCKET } from "../../config/minio";
 import multer from 'multer';
 import { Request } from "express";
 
@@ -170,7 +170,7 @@ export const uploadSiteContent = async (
 
   // Upload to MinIO
   await minioClient.putObject(
-    STATIC_WEBSITE_BUCKET,
+    STATIC_SITE_BUCKET,
     objectName,
     file.buffer,
     file.size,
@@ -178,7 +178,7 @@ export const uploadSiteContent = async (
   );
 
   // Return public URL to the file
-  return getMinioUrl(STATIC_WEBSITE_BUCKET, objectName);
+  return getMinioUrl(STATIC_SITE_BUCKET, objectName);
 };
 
 
@@ -187,7 +187,7 @@ export const deleteStaticFile = async (url: string): Promise<void> => {
    const objectName = extractObjectName(url);
 
   try {
-    await minioClient.removeObject(STATIC_WEBSITE_BUCKET, objectName);
+    await minioClient.removeObject(STATIC_SITE_BUCKET, objectName);
     console.log(`Deleted static file: ${objectName}`);
   } catch (error) {
     console.error(`Failed to delete static file ${objectName}:`, error);
