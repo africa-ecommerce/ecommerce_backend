@@ -7,6 +7,7 @@ Send notification email with "secure account" link
 If link is clicked
 
 image compressing
+set up migration script
 Invalidate all sessions
 Direct to a special password reset page
 
