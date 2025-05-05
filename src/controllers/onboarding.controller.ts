@@ -1,15 +1,13 @@
-
-// src/controllers/onboarding.controller.ts
 import { Response } from "express";
 import { prisma } from "../config";
 import { UserType } from "@prisma/client";
 import { AuthRequest } from "../types";
 import { generateTokens, setAuthCookies } from "../helper/token";
 import { supplierInfoSchema, plugInfoSchema } from "../lib/zod/schema";
-import { uploadMiddleware } from "../helper/minioObjectStore/productImage";
 import {
+  uploadMiddleware,
   uploadImages,
-  deleteImages
+  deleteImages,
 } from "../helper/minioObjectStore/productImage";
 import { z } from "zod";
 
@@ -21,30 +19,27 @@ export const onboarding = [
     let avatarUrl: string | null = null;
 
     try {
-      // 1) Auth check
+      
       const userId = req.user?.id;
       if (!userId) {
         res.status(401).json({ error: "Unauthorized!" });
         return;
       }
 
-
-       let userData;
-       try {
-          userData = JSON.parse(req.body.userData);
-       } catch (error) {
-         res.status(400).json({ error: "Invalid product data format!" });
-         return;
-       }
+      let userData;
+      try {
+        userData = JSON.parse(req.body.userData);
+      } catch (error) {
+        res.status(400).json({ error: "Invalid product data format!" });
+        return;
+      }
 
       if (!Object.values(UserType).includes(userData.userType as UserType)) {
         res.status(400).json({ error: "Invalid user type!" });
         return;
       }
 
-      //
-      // 3a) SUPPLIER branch
-      //
+     
       let supplierData: z.infer<typeof supplierInfoSchema> | null = null;
       if (userData.userType === UserType.SUPPLIER) {
         // pull directly from req.body
@@ -52,7 +47,7 @@ export const onboarding = [
           businessName: userData.supplierInfo.businessName,
           businessType: userData.supplierInfo.businessType,
           pickupLocation: userData.supplierInfo.pickupLocation,
-          phone: userData.supplierInfo.phone
+          phone: userData.supplierInfo.phone,
         });
 
         if (!supParse.success) {
@@ -63,7 +58,6 @@ export const onboarding = [
         }
         supplierData = supParse.data;
 
-       
         const existingSupplier = await prisma.supplier.findUnique({
           where: { userId },
         });
@@ -81,15 +75,14 @@ export const onboarding = [
         }
       }
 
-      //
-      // 3b) PLUG branch
-      //
       let plugData: z.infer<typeof plugInfoSchema> | null = null;
       if (userData.userType === UserType.PLUG) {
         // assume your form posts:
         //   generalMerchant, niches (array), and profile as an object
         const plugParse = plugInfoSchema.safeParse({
-          generalMerchant: userData.generalMerchant === "true" || userData.generalMerchant === true,
+          generalMerchant:
+            userData.generalMerchant === "true" ||
+            userData.generalMerchant === true,
           niches: Array.isArray(userData.niches)
             ? userData.niches
             : userData.niches
@@ -106,7 +99,6 @@ export const onboarding = [
         }
         plugData = plugParse.data;
 
-        
         const existingPlug = await prisma.plug.findUnique({
           where: { userId },
         });
@@ -116,21 +108,18 @@ export const onboarding = [
         }
       }
 
-      //
-      // 4) Commit everything in one transaction
-      //
-
       
       await prisma.$transaction(async (tx) => {
         // mark user onboarded
         await tx.user.update({
           where: { id: userId },
-          data: {userType: userData.userType, isOnboarded: true },
+          data: { userType: userData.userType, isOnboarded: true },
         });
 
         // create supplier row
         if (userData.userType === UserType.SUPPLIER && supplierData) {
-          const { businessName, businessType, pickupLocation, phone } = supplierData;
+          const { businessName, businessType, pickupLocation, phone } =
+            supplierData;
           await tx.supplier.create({
             data: {
               userId,
@@ -165,7 +154,6 @@ export const onboarding = [
         }
       });
 
-      // 5) Return success with cookies/tokens
       const tokens = await generateTokens(
         userId,
         true,

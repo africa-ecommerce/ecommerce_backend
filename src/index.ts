@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import { port,  } from "./config";
+import { port } from "./config";
 import authRoutes from "./routes/auth.routes";
 import onboardingRoutes from "./routes/onboarding.routes";
 import productRoutes from "./routes/product.routes";
@@ -15,10 +15,11 @@ import { Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import { cookieConfig } from "./helper/token";
 import { initializeBuckets } from "./config/minio";
-import { initializePriceUpdateScheduler, shutdownPriceUpdateScheduler } from "./helper/workers/priceUpdater";
-
-
-
+import {
+  initializePriceUpdateScheduler,
+  shutdownPriceUpdateScheduler,
+} from "./helper/workers/priceUpdater";
+import marketPlaceRoutes from "./routes/marketplace.routes";
 
 const app = express();
 app.use(cookieParser());
@@ -26,7 +27,6 @@ app.use(cookieParser());
 // Then: Body parsers
 app.use(express.json()); // For JSON bodies
 app.use(express.urlencoded({ extended: true })); // For URL-encoded bodies
-
 
 // Only allow requests from your frontend URL
 const corsOptions = {
@@ -56,9 +56,7 @@ app.use(
 );
 app.use(morgan("dev"));
 
-
-
-// // Configure session middleware -> passport need this internally
+// Configure session middleware -> passport need this internally
 app.use(
   session({
     secret: process.env.SESSION_SECRET! || "yourSecret",
@@ -70,7 +68,6 @@ app.use(
     },
   })
 );
-
 
 // Initialize Passport middleware
 app.use(passport.initialize());
@@ -84,21 +81,24 @@ initializeBuckets()
   .catch((error) => {
     console.error("Error initializing MinIO bucket:", error);
   });
-// // API Routes
 
-
-// Initialize the smart price update scheduler
+// Initialize the price update scheduler to handle any pending updates from before restart
+// This only processes immediately due updates and sets up schedule for future ones
 initializePriceUpdateScheduler()
   .then(() => {
-    console.log("Price update scheduler initialized successfully");
+    console.log(
+      "Price update scheduler initialized to handle any pending updates"
+    );
   })
   .catch((error) => {
     console.error("Error initializing price update scheduler:", error);
   });
+
 app.use("/auth", authRoutes);
 app.use("/onboarding", onboardingRoutes);
 app.use("/products", productRoutes);
 app.use("/plug/products", plugProductRoutes);
+app.use(marketPlaceRoutes);
 
 // Global error handling middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {

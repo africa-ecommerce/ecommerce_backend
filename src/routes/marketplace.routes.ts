@@ -1,13 +1,17 @@
-// // src/routes/marketplace.routes.ts
-// import { Router } from "express";
-// import {
-//   getMerchants,
-//   getMarketplaceProducts,
-// } from "../controllers/marketplace.controller";
+import { Router } from "express";
+import authenticateJWT from "../middleware/auth.middleware";
+import { getAllProducts, getProductById } from "../controllers/marketplace.controller";
 
-// const router = Router();
 
-// router.get("/merchants", getMerchants);
-// router.get("/products", getMarketplaceProducts);
+const router = Router();
 
-// export default router;
+router.use(authenticateJWT);
+
+
+// Route to get all products
+router.get("/products", getAllProducts);
+// Get product by ID
+router.get("/:productId", getProductById);
+
+
+export default router;

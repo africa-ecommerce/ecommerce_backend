@@ -18,7 +18,6 @@ import jwt from "jsonwebtoken";
     const result = await refreshSession(refreshToken);
     
     if (!result.success) {
-      // Handle different types of failures differently if needed
       res.status(401).json({ 
         error: result.error, 
         code: "INVALID_REFRESH" 

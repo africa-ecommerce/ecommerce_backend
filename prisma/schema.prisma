@@ -24,7 +24,6 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   refreshToken  String?   @unique
-  policy        Boolean   @default(false)
   isOnboarded   Boolean   @default(false)
   userType      UserType  @default(UNSET)
   //  EITHER SUPPLIER OR PLUG
@@ -100,7 +99,7 @@ model Plug {
 model Product {
   id              String           @id @default(cuid())
   name            String
-  description     String
+  description     String?
   price           Float            // Base price (can be overridden by variants)
   category        String?
   images          String?          // Typically would store JSON or comma-separated strings with image paths

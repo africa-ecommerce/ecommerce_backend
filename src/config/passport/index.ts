@@ -1,4 +1,3 @@
-// src/config/passport.ts - Passport JWT Strategy Setup
 import passport from "passport";
 import { Strategy as JWTStrategy, ExtractJwt } from "passport-jwt";
 import { Strategy as LocalStrategy } from "passport-local";
@@ -81,7 +80,6 @@ passport.deserializeUser(async (id: string, done) => {
         createdAt: true,
         updatedAt: true,
         refreshToken: true,
-        policy: true,
         isOnboarded: true,
         userType: true,
       },
@@ -116,7 +114,6 @@ passport.use(
               name: profile.displayName || email.split("@")[0] || "User",
               password: "",
               emailVerified: true,
-              policy: true,
               isOnboarded: false, // Explicit default
               userType: "UNSET", // Explicit default
             },

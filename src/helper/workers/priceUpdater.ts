@@ -10,7 +10,6 @@ const scheduledTasks = new Map();
 export const processPendingPrices = async () => {
   try {
     const now = new Date();
-    console.log(`Processing pending prices at ${now.toISOString()}`);
 
     // Find all products with pending price updates that should be active now
     const productsToUpdate = await prisma.plugProduct.findMany({
@@ -23,17 +22,23 @@ export const processPendingPrices = async () => {
     });
 
     if (productsToUpdate.length === 0) {
-      console.log("No pending price updates to process");
+      // Only log when debug is enabled
+      if (process.env.DEBUG === "true") {
+        console.log("No pending price updates to process");
+      }
       return 0;
     }
 
     console.log(
-      `Found ${productsToUpdate.length} products with pending price updates`
+      `Processing ${
+        productsToUpdate.length
+      } pending price updates at ${now.toISOString()}`
     );
 
     // Process each product update
     for (const product of productsToUpdate) {
       const newPrice = product.pendingPrice as number;
+      const oldPrice = product.price;
 
       await prisma.plugProduct.update({
         where: { id: product.id },
@@ -46,15 +51,8 @@ export const processPendingPrices = async () => {
       });
 
       console.log(
-        `Updated price for product ${product.id} from ${product.price} to ${newPrice}`
+        `Updated price for product ${product.id} from ${oldPrice} to ${newPrice}`
       );
-
-      // Remove scheduled task for this product if it exists
-      if (scheduledTasks.has(product.id)) {
-        scheduledTasks.get(product.id).stop();
-        scheduledTasks.delete(product.id);
-        console.log(`Removed scheduled task for product ${product.id}`);
-      }
     }
 
     console.log(`Successfully updated ${productsToUpdate.length} prices`);
@@ -66,12 +64,92 @@ export const processPendingPrices = async () => {
 };
 
 /**
+ * Calculate appropriate schedule for price updates based on time remaining
+ * @param effectiveDate The date when the price should be effective
+ * @returns An object with schedule information
+ */
+const calculateSchedule = (effectiveDate: Date) => {
+  const now = new Date();
+  const timeDiff = effectiveDate.getTime() - now.getTime();
+  const minutesDiff = timeDiff / (1000 * 60);
+  const hoursDiff = minutesDiff / 60;
+  const daysDiff = hoursDiff / 24;
+
+  // Define check frequencies based on proximity to effective date
+  // Follow the specific timing requirement
+  if (minutesDiff <= 0) {
+    // Already due or past due - immediate execution
+    return {
+      pattern: "* * * * * *", // every second
+      frequency: "immediate",
+      isImmediate: true,
+    };
+  } else if (minutesDiff < 1) {
+    // Less than a minute - check every second
+    return {
+      pattern: "* * * * * *",
+      frequency: "every second",
+      isImmediate: false,
+    };
+  } else if (minutesDiff < 15) {
+    // Less than 15 minutes - check every minute
+    return {
+      pattern: "* * * * *",
+      frequency: "every minute",
+      isImmediate: false,
+    };
+  } else if (hoursDiff < 1) {
+    // Less than 1 hour - check every 15 minutes
+    return {
+      pattern: "*/15 * * * *",
+      frequency: "every 15 minutes",
+      isImmediate: false,
+    };
+  } else if (hoursDiff < 2) {
+    // Less than 2 hours - check every 30 minutes
+    return {
+      pattern: "*/30 * * * *",
+      frequency: "every 30 minutes",
+      isImmediate: false,
+    };
+  } else if (hoursDiff < 6) {
+    // Less than 6 hours - check every hour
+    return {
+      pattern: "0 * * * *",
+      frequency: "every hour",
+      isImmediate: false,
+    };
+  } else if (hoursDiff < 12) {
+    // Less than 12 hours - check every 6 hours
+    return {
+      pattern: "0 */6 * * *",
+      frequency: "every 6 hours",
+      isImmediate: false,
+    };
+  } else if (hoursDiff < 24) {
+    // Less than 24 hours - check every 12 hours
+    return {
+      pattern: "0 */12 * * *",
+      frequency: "every 12 hours",
+      isImmediate: false,
+    };
+  } else {
+    // More than 1 day - check once per day
+    return {
+      pattern: "0 0 * * *", // once at midnight
+      frequency: "once per day",
+      isImmediate: false,
+    };
+  }
+};
+
+/**
  * Schedule the next pending price update check
- * This runs more frequently as the effective date approaches
+ * This dynamically adjusts frequency as the effective date approaches
  */
 export const scheduleNextPendingPrices = async () => {
   try {
-    // Clear any existing scheduled tasks
+    // Clean up existing tasks before scheduling new ones
     for (const [id, task] of scheduledTasks.entries()) {
       task.stop();
       scheduledTasks.delete(id);
@@ -89,76 +167,53 @@ export const scheduleNextPendingPrices = async () => {
     });
 
     if (pendingProducts.length === 0) {
-      console.log("No pending price updates to schedule");
-
-      // Set up a check every 3 hours to catch any newly added updates
-      // This ensures we don't miss updates even if the server restarted
-      const periodicTask = cron.schedule("0 */3 * * *", async () => {
-        console.log("Running periodic check for new pending updates...");
-        await processPendingPrices();
-      });
-
-      scheduledTasks.set("periodic", periodicTask);
-      console.log("Scheduled periodic check every 3 hours");
+      console.log("No pending price updates. Scheduler will be inactive.");
       return;
     }
 
-    const now = new Date();
-
-    // Find the earliest effective date
+    // Find the earliest update to determine optimal check frequency
     const earliestUpdate = pendingProducts[0];
     const earliestDate = new Date(earliestUpdate.priceEffectiveAt!);
-    const timeDiff = earliestDate.getTime() - now.getTime();
-    const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
+    const schedule = calculateSchedule(earliestDate);
 
-    // Schedule a master task based on the earliest pending update
-    let masterSchedule;
-
-    if (daysDiff <= 0) {
-      // Updates are already due - process immediately and set up frequent checks
-      console.log("Some updates are already due, processing immediately");
+    if (schedule.isImmediate) {
+      // Process immediately if already due
+      console.log("Some updates are past due, processing immediately");
       await processPendingPrices();
-      masterSchedule = "*/5 * * * *"; // Check every 5 minutes
-    } else if (daysDiff < 1) {
-      // Less than 1 day remaining - check every 5 minutes
-      masterSchedule = "*/5 * * * *";
-    } else if (daysDiff < 2) {
-      // Between 1-2 days remaining - check every 30 minutes
-      masterSchedule = "*/30 * * * *";
-    } else {
-      // More than 2 days remaining - check every 3 hours
-      masterSchedule = "0 */3 * * *";
+
+      // Reschedule in case there are more updates
+      await scheduleNextPendingPrices();
+      return;
     }
 
-    // Set up the master task
-    const masterTask = cron.schedule(masterSchedule, async () => {
-      await processPendingPrices();
+    // Set up the dynamic check task
+    const masterTask = cron.schedule(schedule.pattern, async () => {
+      const updatedCount = await processPendingPrices();
 
-      // After processing, reconfigure the schedule if needed
-      const remainingProducts = await prisma.plugProduct.count({
-        where: {
-          pendingPrice: { not: null },
-          priceEffectiveAt: { not: null },
-        },
-      });
-
-      if (remainingProducts === 0) {
-        // No more pending updates, reschedule with a less frequent check
-        masterTask.stop();
-        await scheduleNextPendingPrices();
-      }
+      // After processing updates, recalculate the schedule
+      await scheduleNextPendingPrices();
     });
 
     scheduledTasks.set("master", masterTask);
-    console.log(`Scheduled master task with pattern: ${masterSchedule}`);
+    console.log(
+      `Scheduled price update checks ${
+        schedule.frequency
+      } (next update at ${earliestDate.toISOString()})`
+    );
 
-    // Log individual products for visibility
-    for (const product of pendingProducts) {
+    // Log summary of upcoming updates (limited to first 5)
+    const displayLimit = Math.min(pendingProducts.length, 5);
+    console.log(
+      `Next ${displayLimit} of ${pendingProducts.length} pending price updates:`
+    );
+
+    for (let i = 0; i < displayLimit; i++) {
+      const product = pendingProducts[i];
       const effectiveDate = new Date(product.priceEffectiveAt!);
       console.log(
-        `Product ${
-          product.id
-        } scheduled for price update at ${effectiveDate.toISOString()}`
+        `- Product ${product.id}: ${product.price} → ${
+          product.pendingPrice
+        } at ${effectiveDate.toISOString()}`
       );
     }
   } catch (error) {
@@ -168,62 +223,67 @@ export const scheduleNextPendingPrices = async () => {
 
 /**
  * Schedule an individual product update, called when a new price update is created
+ * This is the main entry point that should be called from the endpoint
  */
 export const scheduleProductUpdate = async (
   productId: string,
   effectiveDate: Date
 ) => {
   try {
-    // Instead of creating a new task for each product,
-    // simply ensure the master scheduler is configured correctly
+    // Get the current product to include in log
+    const product = await prisma.plugProduct.findUnique({
+      where: { id: productId },
+    });
 
-    // Check if we already have a master task
-    if (!scheduledTasks.has("master")) {
-      // No master task, set up the scheduler
-      await scheduleNextPendingPrices();
-    } else {
-      // Already have a master task, but we might need to update its frequency
-      // if this new update is happening sooner than current ones
-      const now = new Date();
-      const timeDiff = effectiveDate.getTime() - now.getTime();
-      const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
-
-      // If this is going to happen soon, reschedule everything
-      if (daysDiff < 1) {
-        await scheduleNextPendingPrices();
-      }
+    if (!product) {
+      console.error(
+        `Cannot schedule update for non-existent product ${productId}`
+      );
+      return;
     }
 
     console.log(
-      `Product ${productId} scheduled for price update at ${effectiveDate.toISOString()}`
+      `Scheduling price update for product ${productId}: ${product.price} → ${
+        product.pendingPrice
+      } at ${effectiveDate.toISOString()}`
     );
+
+    // This will start the scheduler or adjust the existing schedule as needed
+    await scheduleNextPendingPrices();
+
+    console.log(
+      `Price update scheduler started or adjusted for product ${productId}`
+    );
+    return true;
   } catch (error) {
     console.error(`Error scheduling update for product ${productId}:`, error);
+    return false;
   }
 };
 
-// Initialize the scheduler when the application starts
+/**
+ * Initialize the price update scheduler when the application starts
+ * This ensures any pending updates from before server restart are processed
+ */
 export const initializePriceUpdateScheduler = async () => {
   console.log("Initializing price update scheduler...");
 
   // First, check if there are any past-due updates that need immediate processing
-  await processPendingPrices();
+  const processedCount = await processPendingPrices();
 
-  // Then set up the regular schedule
+  if (processedCount > 0) {
+    console.log(`Processed ${processedCount} past-due updates on startup`);
+  }
+
+  // Then set up the regular schedule for any remaining pending updates
   await scheduleNextPendingPrices();
 
-  console.log("Price update scheduler initialized");
-
-  // Set up a daily backup check just to be safe
-  const dailyBackupTask = cron.schedule("0 0 * * *", async () => {
-    console.log("Running daily backup check for price updates...");
-    await processPendingPrices();
-  });
-
-  scheduledTasks.set("daily-backup", dailyBackupTask);
+  console.log("Price update scheduler initialized successfully");
 };
 
-// Add a function to handle a graceful shutdown
+/**
+ * Handle graceful shutdown of the scheduler
+ */
 export const shutdownPriceUpdateScheduler = () => {
   console.log("Shutting down price update scheduler...");
 
@@ -233,5 +293,5 @@ export const shutdownPriceUpdateScheduler = () => {
     scheduledTasks.delete(id);
   }
 
-  console.log("Price update scheduler shut down");
+  console.log("Price update scheduler shut down successfully");
 };

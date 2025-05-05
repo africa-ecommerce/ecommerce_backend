@@ -4,7 +4,6 @@ import { v4 as uuidv4 } from "uuid";
 import { prisma } from "../../config";
 import { sendVerificationMail } from "../../helper/sendVerificationMail";
 import { generateTokens, setAuthCookies } from "../../helper/token";
-import { User } from "@prisma/client";
 
 export const login = (req: Request, res: Response, next: NextFunction) => {
   passport.authenticate(
@@ -62,7 +61,6 @@ export const login = (req: Request, res: Response, next: NextFunction) => {
             email: true,
             name: true,
             emailVerified: true,
-            policy: true,
             isOnboarded: true,
             userType: true,
             createdAt: true,

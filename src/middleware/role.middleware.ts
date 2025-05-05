@@ -11,7 +11,7 @@ export const isPlug =  (req: AuthRequest, res: Response, next: NextFunction) => 
       next();
     } else {
       res.status(403).json({
-        error: "Access denied! Plug profile required",
+        error: "Access denied! Plug account required",
       });
       return;
     }
@@ -37,7 +37,7 @@ export const isSupplier = (
       next();
     } else {
       res.status(403).json({
-        error: "Access denied! Supplier profile required",
+        error: "Access denied! Supplier account required",
       });
       return;
     }

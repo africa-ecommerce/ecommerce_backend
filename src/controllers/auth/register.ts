@@ -62,7 +62,6 @@ export const register = async (req: Request, res: Response) => {
          email,
          password: hashedPassword,
          emailVerified: false,
-         policy: true,
         isOnboarded: false, // Explicit default
         userType: "UNSET", // Explicit default
        },

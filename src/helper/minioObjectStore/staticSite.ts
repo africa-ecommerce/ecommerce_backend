@@ -1,9 +1,6 @@
-// src/services/staticFileService.ts
 
 import { minioClient, getMinioUrl, STATIC_WEBSITE_BUCKET, IMAGES_BUCKET } from "../../config/minio";
 import multer from 'multer';
-// import path from "path";
-// import fs from "fs";
 import { Request } from "express";
 
 
@@ -151,7 +148,6 @@ export const uploadSiteImage = async (
 
   // Return public URL to the image
 
-  //baseUrl/product-images/${objectName}--> object name which is random, may need to make it more deterministic according to user details for logo or so
   return getMinioUrl(IMAGES_BUCKET, objectName);
 };
 
@@ -185,33 +181,6 @@ export const uploadSiteContent = async (
   return getMinioUrl(STATIC_WEBSITE_BUCKET, objectName);
 };
 
-
-// // List all files under a prefix
-// export const listStaticFiles = async (prefix: string = ""): Promise<any[]> => {
-//   const files: any[] = [];
-
-//   // List objects with the given prefix
-//   const stream = minioClient.listObjects(STATIC_WEBSITE_BUCKET, prefix, true);
-
-//   return new Promise((resolve, reject) => {
-//     stream.on("data", (obj) => {
-//       files.push({
-//         name: obj.name,
-//         size: obj.size,
-//         lastModified: obj.lastModified,
-//         url: getMinioUrl(STATIC_WEBSITE_BUCKET, obj.name),
-//       });
-//     });
-
-//     stream.on("error", (err) => {
-//       reject(err);
-//     });
-
-//     stream.on("end", () => {
-//       resolve(files);
-//     });
-//   });
-// };
 
 // Delete a static file
 export const deleteStaticFile = async (url: string): Promise<void> => {

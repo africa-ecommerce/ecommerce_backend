@@ -1,4 +1,3 @@
-// generateJWT.ts
 import jwt from "jsonwebtoken";
 import { jwtSecret, refreshTokenSecret, prisma } from "../config";
 import { Response } from "express";
@@ -8,7 +7,7 @@ import { UserType } from "@prisma/client";
 // Token expiration times
 const ACCESS_TOKEN_EXPIRY = 15 * 60 * 60; // 15 mins (in seconds)
 const REFRESH_TOKEN_EXPIRY = 7 * 24 * 60 * 60; // 7 days (in seconds)
-const REFRESH_TOKEN_ROTATION_WINDOW = 1 * 24 * 60 * 60; // 3 days before expiration
+const REFRESH_TOKEN_ROTATION_WINDOW = 1 * 24 * 60 * 60; // 1 day before expiration
 
 export const generateTokens = async (
   userId: string,
@@ -78,12 +77,6 @@ export const cookieConfig = {
 };
 
 
-// export const cookieConfig = {
-//   httpOnly: true,
-//   secure: true, // Always true for Vercel deployments
-//   sameSite: "none" as const, // Type assertion to fix the error
-//   path: "/", // Ensure cookies are available across your entire app
-// };
 
  export const refreshSession = async (refreshToken: string) => {
    try {
@@ -99,7 +92,6 @@ export const cookieConfig = {
          name: true,
          refreshToken: true,
          emailVerified: true,
-         policy: true,
          isOnboarded: true,
          userType: true,
          createdAt: true,
@@ -121,20 +113,6 @@ export const cookieConfig = {
      return { success: false, error: error.message };
    }
  };
-
-
-// export const setAuthCookies = (res: Response, tokens: Tokens) => {
-//   res
-//     .cookie("accessToken", tokens.accessToken, {
-//       ...cookieConfig,
-//       maxAge: ACCESS_TOKEN_EXPIRY * 1000,
-//     })
-//     .cookie("refreshToken", tokens.refreshToken, {
-//       ...cookieConfig,
-//       maxAge: REFRESH_TOKEN_EXPIRY * 1000,
-//       path: "/auth/refresh",
-//     });
-// };
 
 
 

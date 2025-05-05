@@ -5,7 +5,6 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
-// Define bucket names
 // Define unique bucket names with a prefix to avoid conflicts in play.min.io
 const BUCKET_PREFIX = process.env.MINIO_BUCKET_PREFIX || 'pluggn';
 export const IMAGES_BUCKET = `${BUCKET_PREFIX}${

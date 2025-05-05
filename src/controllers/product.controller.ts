@@ -9,100 +9,12 @@ import {
   uploadImages,
 } from "../helper/minioObjectStore/productImage";
 import { formatProductWithImagesAndVariations } from "../helper/formatProduct";
-// import { Product, ProductVariation } from "@prisma/client";
 
 
 
-
-
-
-interface PaginationMeta {
-  hasNextPage: boolean;
-  nextCursor: string | null;
-  count: number;
-  totalCount: number | null;
-}
-
-interface ProductsResponse {
-  products: any[];
-  meta: PaginationMeta;
-}
 
 // Controller methods
 export const productController = {
-  // Create a new product
-  // createProduct: [
-  //   uploadMiddleware.array("images", 3), // Allow up to 3 images
-  //   async (req: AuthRequest, res: Response) => {
-  //     let imageUrls: string[] = []; // Track keys for rollback
-
-  //     try {
-  //       const supplier = req.supplier!;
-
-  //       // Parse the product data from FormData
-  //       let productData;
-  //       try {
-  //         productData = JSON.parse(req.body.productData);
-  //       } catch (error) {
-  //         res.status(400).json({ error: "Invalid product data format!" }); // ---->
-  //         return;
-  //       }
-
-  //       // Validate request body
-  //       const validatedData = productSchema.safeParse({
-  //         name: productData.name,
-  //         description: productData.description,
-  //         price: parseFloat(productData.price),
-  //         category: productData.category,
-  //       });
-
-  //       if (!validatedData.success) {
-  //         res.status(400).json({
-  //           error: "Validation failed!",
-  //         }); // ---->
-  //         return;
-  //       }
-
-  //       // Process the request within a transaction
-  //       const result = await prisma.$transaction(async (tx) => {
-  //         // Upload images to MinIO
-  //         const files = req.files as Express.Multer.File[];
-  //         imageUrls =
-  //           files && files.length > 0 ? await uploadImages(files) : [];
-
-  //         // Create product in database using the supplier ID
-  //         const product = await tx.product.create({
-  //           data: {
-  //             name: validatedData.data.name,
-  //             description: validatedData.data.description,
-  //             price: validatedData.data.price,
-  //             category: validatedData.data.category,
-  //             images: JSON.stringify(imageUrls), // Store URLs as JSON string
-  //             supplierId: supplier.id,
-  //           },
-  //         });
-
-  //         return formatProductWithImages(product);
-  //       });
-
-  //       res.status(201).json({
-  //         message: "Product created successfully!",
-  //         data: result,
-  //       }); // ---->
-  //       return;
-  //     } catch (error) {
-  //       console.error("Error creating product:", error);
-
-  //       // Rollback: Delete uploaded images if transaction failed
-  //       if (imageUrls.length > 0) {
-  //         await deleteImages(imageUrls);
-  //       }
-
-  //       res.status(500).json({ error: "Internal server error!" }); // ---->
-  //       return;
-  //     }
-  //   },
-  // ],
 
   createProduct: [
     uploadMiddleware.array("images", 3), // Allow up to 3 images
@@ -200,9 +112,11 @@ export const productController = {
             },
           });
 
+          // Format the product with images and variations
           return formatProductWithImagesAndVariations(product);
         });
 
+       // invalidate cache after creating product
         invalidateProductCache();
         res.status(201).json({
           message: "Product created successfully!",
@@ -254,324 +168,18 @@ export const productController = {
       res.status(200).json({
         message: "Products fetched successfully!",
         data: formattedProducts,
-      }); // ---->
+      }); 
       return;
     } catch (error) {
       console.error("Error fetching supplier products:", error);
-      res.status(500).json({ error: "Internal server error!" }); // ---->
-      return;
-    }
-  },
-
-  // Get product by ID
-  getProductById: async (req: AuthRequest, res: Response) => {
-    try {
-      const productId = req.params.productId;
-
-      const product = await prisma.product.findUnique({
-        where: { id: productId },
-        include: {
-          supplier: {
-            select: {
-              businessName: true,
-              pickupLocation: true,
-              avatar: true,
-            },
-          },
-          variations: true,
-        },
-      });
-
-      if (!product) {
-        res.status(404).json({ error: "Product not found!" });
-        return;
-      }
-
-      // Format the product
-      const formattedProduct = formatProductWithImagesAndVariations(product);
-
-      // Check if user is a plug and add isPlugged flag
-      if (req.user && req.user.userType === "PLUG") {
-        // Check if this product is in the plug's database
-        const pluggedProduct = await prisma.plugProduct.findFirst({
-          where: {
-            plugId: req.user?.plug?.id,
-            originalId: productId,
-          },
-        });
-
-        // Add isPlugged flag to the response
-        res.status(200).json({
-          message: "Product fetched successfully!",
-          data: {
-            ...formattedProduct,
-            isPlugged: !!pluggedProduct, // Convert to boolean
-          },
-        });
-        return;
-      }
-
-      // Regular response for non-plug users
-      res.status(200).json({
-        message: "Product fetched successfully!",
-        data: formattedProduct,
-      });
-      return;
-    } catch (error) {
-      console.error("Error fetching product:", error);
-      res.status(500).json({ error: "Internal server error!" });
+      res.status(500).json({ error: "Internal server error!" }); 
       return;
     }
   },
 
   
-  
-  // Get all products with efficient pagination and query optimization
-  getAllProducts: async (req: AuthRequest, res: Response) => {
-    try {
-      // Parse pagination parameters
-      const limit = parseInt(req.query.limit as string) || 20;
-      const cursor = req.query.cursor as string;
 
-      // Parse sorting parameters
-      const sortBy = (req.query.sortBy as string) || "createdAt";
-      const order =
-        (req.query.order as string)?.toLowerCase() === "asc" ? "asc" : "desc";
-
-      // Parse filtering parameters
-      const category = req.query.category as string;
-      const minPrice = req.query.minPrice
-        ? parseFloat(req.query.minPrice as string)
-        : undefined;
-      const maxPrice = req.query.maxPrice
-        ? parseFloat(req.query.maxPrice as string)
-        : undefined;
-      const search = req.query.search as string;
-      const supplierIds = req.query.supplierIds as string | string[];
-      const businessType = req.query.businessType as string;
-      const createdAfter = req.query.createdAfter
-        ? new Date(req.query.createdAfter as string)
-        : undefined;
-      const createdBefore = req.query.createdBefore
-        ? new Date(req.query.createdBefore as string)
-        : undefined;
-      const tags = req.query.tags as string;
-
-      // Generate cache key (without cursor for page 1)
-      const cacheParams = { ...req.query, cursor: "" };
-      if (cursor) {
-        cacheParams.cursor = cursor;
-      }
-      const cacheKey = generateCacheKey(cacheParams);
-
-      // Try to get data from cache first
-      const cachedResult = productCache.get<ProductsResponse>(cacheKey);
-      if (cachedResult) {
-        console.log(`Cache hit for: ${cacheKey}`);
-
-        // Check if user is a plug and handle plugged products
-        let responseData = cachedResult.products;
-        if (req.user && req.user.userType === "PLUG") {
-          // Fetch plug's products from database for comparison
-          const pluggedProducts = await prisma.plugProduct.findMany({
-            where: {
-              plugId: req.user?.plug?.id,
-            },
-            select: {
-              originalId: true,
-            },
-          });
-
-          const pluggedProductIds = pluggedProducts.map((pp) => pp.originalId);
-
-          // Cache hit - responseData is already formatted by formatProductWithImagesAndVariations before caching
-          // Add isPlugged flag to each product
-          responseData = responseData.map((product) => ({
-            ...product,
-            isPlugged: pluggedProductIds.includes(product.id),
-          }));
-        }
-
-        res.status(200).json({
-          message: "Products fetched successfully!",
-          data: responseData,
-          meta: cachedResult.meta,
-          fromCache: true, // Optional flag to indicate cache hit
-        });
-        return;
-      }
-
-      console.log(`Cache miss for: ${cacheKey}`);
-
-      // Build where conditions for filtering and search
-      const whereConditions: any = {};
-
-      // Text search across name, description, and tags
-      if (search) {
-        whereConditions.OR = [
-          { name: { contains: search, mode: "insensitive" } },
-          { description: { contains: search, mode: "insensitive" } },
-          { tags: { contains: search, mode: "insensitive" } },
-        ];
-      }
-
-      // Category filter
-      if (category) {
-        whereConditions.category = category;
-      }
-
-      // Tags/keywords filter
-      if (tags) {
-        whereConditions.tags = { contains: tags, mode: "insensitive" };
-      }
-
-      // Price range filter
-      if (minPrice !== undefined || maxPrice !== undefined) {
-        whereConditions.price = {};
-        if (minPrice !== undefined) {
-          whereConditions.price.gte = minPrice;
-        }
-        if (maxPrice !== undefined) {
-          whereConditions.price.lte = maxPrice;
-        }
-      }
-
-      // Supplier filters
-      if (supplierIds) {
-        const supplierIdArray = Array.isArray(supplierIds)
-          ? supplierIds
-          : [supplierIds];
-        whereConditions.supplierId = { in: supplierIdArray };
-      }
-
-      // Filter by supplier's business type
-      if (businessType) {
-        whereConditions.supplier = {
-          businessType: businessType,
-        };
-      }
-
-      // Date range filters
-      if (createdAfter !== undefined || createdBefore !== undefined) {
-        whereConditions.createdAt = {};
-        if (createdAfter !== undefined) {
-          whereConditions.createdAt.gte = createdAfter;
-        }
-        if (createdBefore !== undefined) {
-          whereConditions.createdAt.lte = createdBefore;
-        }
-      }
-
-      // Build query options
-      const queryOptions: any = {
-        where: whereConditions,
-        take: limit + 1, // Take one extra to determine if there are more items
-        orderBy: {
-          [sortBy]: order,
-        },
-        include: {
-          supplier: {
-            select: {
-              businessName: true,
-              pickupLocation: true,
-              avatar: true,
-            },
-          },
-          variations: true,
-        },
-      };
-
-      // Add cursor for pagination if provided
-      if (cursor) {
-        queryOptions.cursor = { id: cursor };
-        queryOptions.skip = 1; // Skip the cursor
-      }
-
-      // Execute query with transaction for consistency
-      const result = await prisma.$transaction(async (tx) => {
-        // Execute query
-        let products = await tx.product.findMany(queryOptions);
-
-        // Check if we have more results
-        const hasNextPage = products.length > limit;
-        if (hasNextPage) {
-          products = products.slice(0, limit); // Remove the extra item
-        }
-
-        // Get the next cursor
-        const nextCursor = hasNextPage
-          ? products[products.length - 1].id
-          : null;
-
-        // Get total count (with a separate cache to avoid recounting)
-        const countCacheKey = `count:${generateCacheKey({
-          ...cacheParams,
-          cursor: undefined,
-        })}`;
-        let totalCount = productCache.get<number>(countCacheKey);
-
-        if (
-          totalCount === undefined &&
-          Object.keys(whereConditions).length > 0
-        ) {
-          totalCount = await tx.product.count({ where: whereConditions });
-          productCache.set(countCacheKey, totalCount, 600); // Cache count for 10 minutes
-        }
-
-        // Format products for response
-        const formattedProducts = products.map(
-          formatProductWithImagesAndVariations
-        );
-
-        return {
-          products: formattedProducts,
-          meta: {
-            hasNextPage,
-            nextCursor,
-            count: formattedProducts.length,
-            totalCount,
-          },
-        };
-      });
-
-      // Check if user is a plug and handle plugged products
-      let responseData = result.products;
-      if (req.user && req.user.userType === "PLUG") {
-        // Fetch plug's products from database for comparison
-        const pluggedProducts = await prisma.plugProduct.findMany({
-          where: {
-            plugId: req.user?.plug?.id,
-          },
-          select: {
-            originalId: true,
-          },
-        });
-
-        const pluggedProductIds = pluggedProducts.map((pp) => pp.originalId);
-
-        // Add isPlugged flag to each product
-        responseData = responseData.map((product) => ({
-          ...product,
-          isPlugged: pluggedProductIds.includes(product.id),
-        }));
-      }
-
-      // Cache the original result without the plug-specific data
-      productCache.set(cacheKey, result);
-
-      res.status(200).json({
-        message: "Products fetched successfully!",
-        data: responseData,
-        meta: result.meta,
-      });
-      return;
-    } catch (error) {
-      console.error("Error fetching products:", error);
-      res.status(500).json({ error: "Internal server error!" });
-      return;
-    }
-  },
- 
+  // Update product
   updateProduct: [
     uploadMiddleware.array("images", 3),
     async (req: AuthRequest, res: Response) => {
@@ -620,7 +228,6 @@ export const productController = {
         if (!validatedData.success) {
           res.status(400).json({
             error: "Product validation failed!",
-            details: validatedData.error.format(),
           });
           return;
         }
@@ -633,8 +240,7 @@ export const productController = {
           );
           if (!variationsResult.success) {
             res.status(400).json({
-              error: "Variations validation failed!",
-              details: variationsResult.error.format(),
+              error: "Product validation failed!",
             });
             return;
           }
@@ -721,6 +327,7 @@ export const productController = {
           await deleteImages(imagesToDelete);
         }
 
+        // Invalidate cache after updating product
         invalidateProductCache();
 
         res.status(200).json({
@@ -789,10 +396,12 @@ export const productController = {
         await deleteImages(result?.existingImages);
       }
 
+      // Format the remaining products with images and variations
       const data =
         result?.remainingProducts &&
         formatProductWithImagesAndVariations(result?.remainingProducts);
 
+      // Invalidate cache after deleting product
       invalidateProductCache();
       res.status(200).json({
         message: "Product deleted successfully!",
@@ -806,24 +415,24 @@ export const productController = {
     }
   },
 
-  // Add to product.controller.ts
+// Delete all products for a supplier
   deleteAllProducts: async (req: AuthRequest, res: Response) => {
     try {
       const supplier = req.supplier!;
 
       const result = await prisma.$transaction(async (tx) => {
-        // 1. Get all products and their images first
+        // Get all products and their images first
         const products = await tx.product.findMany({
           where: { supplierId: supplier.id },
           select: { images: true },
         });
 
-        // 2. Extract all image URLs
+        //  Extract all image URLs
         const allImages = products.flatMap((product) =>
           product.images ? JSON.parse(product.images) : []
         );
 
-        // 3. Delete all products
+        // Delete all products
         const deleteResult = await tx.product.deleteMany({
           where: { supplierId: supplier.id },
           
@@ -832,11 +441,13 @@ export const productController = {
         return { count: deleteResult.count, images: allImages };
       });
 
-      // 4. Clean up images after successful transaction
+      // Clean up images after successful transaction
       if (result.images.length > 0) {
         await deleteImages(result.images);
       }
 
+
+      // Invalidate cache after deleting all products
       invalidateProductCache();
 
       res.status(200).json({
