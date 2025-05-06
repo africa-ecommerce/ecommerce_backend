@@ -2,6 +2,9 @@
 # This is a lightweight version of Node.js with essential tools
 FROM node:20-slim
 
+# Install OpenSSL - this is the critical fix for your Prisma issue
+RUN apt-get update -y && apt-get install -y openssl
+
 # Set the working directory inside the container
 WORKDIR /app
 
