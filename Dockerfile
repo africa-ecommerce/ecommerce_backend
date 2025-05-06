@@ -25,8 +25,10 @@ RUN npm run build
 
 # Create a script to run db push and start the app
 RUN echo '#!/bin/sh\nnpx prisma db push --schema=./prisma/schema.prisma --force-reset\nnpm start' > /app/start.sh && chmod +x /app/start.sh
+RUN npx prisma db push --schema=./prisma/schema.prisma --force-reset
+RUN npx prisma migrate deploy --schema=./prisma/schema.prisma
 
-EXPOSE 8080
+EXPOSE 5000
 
 # Use our custom start script
 CMD ["/app/start.sh"]
