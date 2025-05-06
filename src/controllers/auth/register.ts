@@ -32,7 +32,7 @@ export const register = async (req: Request, res: Response) => {
 
     // Validate email format and password length
     if (!isEmail(email)) {
-      res.status(400).json({ error: "Invalid email format" });
+      res.status(400).json({ error: "Invalid email format!" });
       return;
     }
 

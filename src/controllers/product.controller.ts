@@ -1,6 +1,6 @@
 // src/controllers/product.controller.ts
 import { Response } from "express";
-import { generateCacheKey, invalidateProductCache, prisma, productCache } from "../config";
+import { invalidateProductCache, prisma } from "../config";
 import { AuthRequest } from "../types";
 import { productSchema, productVariationsSchema } from "../lib/zod/schema";
 import {
@@ -42,7 +42,6 @@ export const productController = {
           size: productData.size,
           color: productData.color,
           stock: productData.stock,
-          // weight: productData.weight,
           dimensions: productData.dimensions,
         });
 
@@ -61,8 +60,7 @@ export const productController = {
           );
           if (!variationsResult.success) {
             res.status(400).json({
-              error: "Variations validation failed!",
-              // details: variationsResult.error.format(),
+              error: "Product validation failed!",
             });
             return;
           }
@@ -86,17 +84,14 @@ export const productController = {
               size: validatedData.data.size,
               color: validatedData.data.color,
               stock: validatedData.data.stock,
-              // weight: validatedData.data.weight,
               dimensions: validatedData.data.dimensions,
               supplierId: supplier.id,
               variations: {
                 create: validatedVariations.map((variation: any) => ({
                   size: variation.size,
                   color: variation.color,
-                  // price: variation.price,
                   stock: variation.stock,
-                  // weight: variation.weight,
-                  // dimensions: variation.dimensions, ------->
+                  // dimensions: variation.dimensions,
                 })),
               },
             },
@@ -177,6 +172,65 @@ export const productController = {
     }
   },
 
+  getProductById : async (req: AuthRequest, res: Response) => {
+     try {
+       const productId = req.params.productId;
+  
+       const product = await prisma.product.findUnique({
+         where: { id: productId },
+         include: {
+           supplier: {
+             select: {
+               businessName: true,
+               pickupLocation: true,
+               avatar: true,
+             },
+           },
+           variations: true,
+         },
+       });
+  
+       if (!product) {
+         res.status(404).json({ error: "Product not found!" });
+         return;
+       }
+  
+       // Format the product with images and variations
+       const formattedProduct = formatProductWithImagesAndVariations(product);
+  
+       // Check if user is a plug and add isPlugged flag
+       if (req.user && req.user.userType === "PLUG") {
+         // Check if this product is in the plug's database
+         const pluggedProduct = await prisma.plugProduct.findFirst({
+           where: {
+             plugId: req.user?.plug?.id,
+             originalId: productId,
+           },
+         });
+  
+         // Add isPlugged flag to the response
+         res.status(200).json({
+           message: "Product fetched successfully!",
+           data: {
+             ...formattedProduct,
+             isPlugged: !!pluggedProduct, // Convert to boolean
+           },
+         });
+         return;
+       }
+  
+       // Regular response for non-plug users
+       res.status(200).json({
+         message: "Product fetched successfully!",
+         data: formattedProduct,
+       });
+       return;
+     } catch (error) {
+       console.error("Error fetching product:", error);
+       res.status(500).json({ error: "Internal server error!" });
+       return;
+     }
+   },
   
 
   // Update product
@@ -221,7 +275,6 @@ export const productController = {
           size: productData.size,
           color: productData.color,
           stock: productData.stock,
-          // weight: productData.weight,
           dimensions: productData.dimensions,
         });
 
@@ -283,9 +336,7 @@ export const productController = {
                 productId,
                 size: variation.size,
                 color: variation.color,
-                // price: variation.price,
                 stock: variation.stock,
-                // weight: variation.weight,
                 // dimensions: variation.dimensions,
               })),
             });
@@ -302,7 +353,6 @@ export const productController = {
               size: validatedData.data.size,
               color: validatedData.data.color,
               stock: validatedData.data.stock,
-              // weight: validatedData.data.weight,
               dimensions: validatedData.data.dimensions,
               images: JSON.stringify(updatedImages),
               updatedAt: new Date(),

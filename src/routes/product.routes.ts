@@ -13,6 +13,9 @@ router.use(supplierAuth);
 // Get all supplier products
 router.get("/supplier", productController.getSupplierProducts);
 
+// Get product by ID
+router.get("/:productId", productController.getProductById);
+
 // create product
 router.post("/", productController.createProduct);
 

@@ -1,4 +1,3 @@
-
 import { Response } from "express";
 import { invalidateProductCache, prisma } from "../config";
 import { AuthRequest } from "../types";
@@ -10,104 +9,139 @@ import { scheduleProductUpdate } from "../helper/workers/priceUpdater";
 
 export const plugProductController = {
   // Add products to plug's inventory
-addProductsToPlug: async (req: AuthRequest, res: Response) => {
-  try {
-    const products = req.body;
-    const plug = req.plug!;
+  addProductsToPlug: async (req: AuthRequest, res: Response) => {
+    try {
+      const products = req.body;
+      const plug = req.plug!;
 
-    // Basic validation
-    if (!Array.isArray(products) || products.length === 0) {
-      res.status(400).json({
-        error: "Please provide a list of products!",
-      });
-      return;
-    }
-
-    if (products.length > 20) {
-      res.status(400).json({
-        error: "Please provide 20 products max at once!",
-      });
-    }
-
-    // Validate prices before starting the transaction
-    const invalidProducts = products.filter(
-      (product) =>
-        isNaN(parseFloat(product.price)) || parseFloat(product.price) < 0
-    );
-
-    if (invalidProducts.length > 0) {
-       res.status(400).json({
-        error: "Some products have invalid prices!"
-      });
-      return;
-    }
-
-    // Get unique product IDs
-    const uniqueProductIds = [...new Set(products.map((p) => p.id))];
-
-    const result = await prisma.$transaction(async (tx) => {
-      // Prepare products
-      const productsToCreate = products.map((product) => ({
-        originalId: product.id,
-        plugId: plug.id,
-        price: product.price,
-      }));
-
-      // Create all product connections at once
-      const createResult = await tx.plugProduct.createMany({
-        data: productsToCreate,
-        skipDuplicates: true,
-      });
-
-      // Only increment plugsCount if products were actually created
-      if (createResult.count > 0) {
-        await tx.product.updateMany({
-          where: {
-            id: { in: uniqueProductIds },
-          },
-          data: {
-            plugsCount: { increment: 1 },
-          },
+      // Basic validation
+      if (!Array.isArray(products) || products.length === 0) {
+        res.status(400).json({
+          error: "Please provide a list of products!",
         });
+        return;
       }
 
-      // Return the latest products for this plug
-      const createdPlugProducts = await tx.plugProduct.findMany({
-        where: {
-          plugId: plug.id,
-          originalId: { in: uniqueProductIds },
-        },
-        include: {
-          originalProduct: {
-            include: {
-              variations: true,
-            },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      });
+      if (products.length > 20) {
+        res.status(400).json({
+          error: "Please provide 20 products max at once!",
+        });
+        return; // Added missing return statement
+      }
 
-      // Format each product with complete details
-      const formattedProducts = createdPlugProducts.map((product) =>
-        formatPlugProductWithDetails(product)
+      // Validate prices before starting the transaction
+      const invalidProducts = products.filter(
+        (product) =>
+          isNaN(parseFloat(product.price)) || parseFloat(product.price) < 0
       );
 
-      return formattedProducts;
-    });
+      if (invalidProducts.length > 0) {
+        res.status(400).json({
+          error: "Provide products with valid prices!",
+        });
+        return;
+      }
 
-    // Invalidate cache after adding products
-    invalidateProductCache();
-    res.status(201).json({
-      message: `Added ${result.length} products to your store!`,
-      data: result,
-    });
-    return;
-  } catch (error) {
-    console.error("Error adding products:", error);
-     res.status(500).json({ error: "Internal server error!" });
-     return;
-  }
-},
+      // Get unique product IDs
+      const uniqueProductIds = [...new Set(products.map((p) => p.id))];
+
+      // Fetch the original supplier products to check prices against
+      const originalProducts = await prisma.product.findMany({
+        where: {
+          id: { in: uniqueProductIds },
+        },
+      });
+
+      // Create a map of product IDs to their supplier prices for easy lookup
+      const productPriceMap = new Map();
+      originalProducts.forEach((product) => {
+        productPriceMap.set(product.id, product.price);
+      });
+
+      // Check if any product price is less than the supplier price
+      const belowSupplierPriceProducts = products.filter((product) => {
+        const supplierPrice = productPriceMap.get(product.id);
+        return supplierPrice && parseFloat(product.price) < supplierPrice;
+      });
+
+      if (belowSupplierPriceProducts.length > 0) {
+        // Return the products with prices below supplier prices
+        const belowPriceDetails = belowSupplierPriceProducts.map((product) => ({
+          id: product.id,
+          proposedPrice: parseFloat(product.price),
+          supplierPrice: productPriceMap.get(product.id),
+        }));
+
+        res.status(400).json({
+          error: "Ensure prices are not below supplier prices!",
+          invalidProducts: belowPriceDetails,
+        });
+        return;
+      }
+
+      const result = await prisma.$transaction(async (tx) => {
+        // Prepare products
+        const productsToCreate = products.map((product) => ({
+          originalId: product.id,
+          plugId: plug.id,
+          price: parseFloat(product.price), // Ensure price is stored as a number
+        }));
+
+        // Create all product connections at once
+        const createResult = await tx.plugProduct.createMany({
+          data: productsToCreate,
+          skipDuplicates: true,
+        });
+
+        // Only increment plugsCount if products were actually created
+        if (createResult.count > 0) {
+          await tx.product.updateMany({
+            where: {
+              id: { in: uniqueProductIds },
+            },
+            data: {
+              plugsCount: { increment: 1 },
+            },
+          });
+        }
+
+        // Return the latest products for this plug
+        const createdPlugProducts = await tx.plugProduct.findMany({
+          where: {
+            plugId: plug.id,
+            originalId: { in: uniqueProductIds },
+          },
+          include: {
+            originalProduct: {
+              include: {
+                variations: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        });
+
+        // Format each product with complete details
+        const formattedProducts = createdPlugProducts.map((product) =>
+          formatPlugProductWithDetails(product)
+        );
+
+        return formattedProducts;
+      });
+
+      // Invalidate cache after adding products
+      invalidateProductCache();
+      res.status(201).json({
+        message: `Added ${result.length} products to your store!`,
+        data: result,
+      });
+      return;
+    } catch (error) {
+      console.error("Error adding products:", error);
+      res.status(500).json({ error: "Internal server error!" });
+      return;
+    }
+  },
   // Get all plug products with complete details
   getPlugProducts: async (req: AuthRequest, res: Response) => {
     try {
@@ -125,9 +159,9 @@ addProductsToPlug: async (req: AuthRequest, res: Response) => {
       });
 
       // Format each product with complete details
-      const formattedProducts = 
-        plugProducts.map((product) => formatPlugProductWithDetails(product))
-      
+      const formattedProducts = plugProducts.map((product) =>
+        formatPlugProductWithDetails(product)
+      );
 
       res.status(200).json({
         message: "Products fetched successfully!",
@@ -141,67 +175,86 @@ addProductsToPlug: async (req: AuthRequest, res: Response) => {
     }
   },
 
- 
   // Update plug product price with deferred price update after 3 days
-updatePlugProductPrice: async (req: AuthRequest, res: Response) => {
-  try {
-    const productId = req.params.productId;
-    const plug = req.plug!;
-    const { price } = req.body;
+  updatePlugProductPrice: async (req: AuthRequest, res: Response) => {
+    try {
+      const productId = req.params.productId;
+      const plug = req.plug!;
+      const { price } = req.body;
 
-    // Find the product
-    const existingProduct = await prisma.plugProduct.findFirst({
-      where: { id: productId, plugId: plug.id },
-    });
+      // Find the product
+      const existingProduct = await prisma.plugProduct.findFirst({
+        where: {
+          id: productId,
+          plugId: plug.id,
+        },
+        include: {
+          originalProduct: true, // Include the original product to access its price
+        },
+      });
 
-    if (!existingProduct) {
-      res.status(404).json({ error: "Product not found!" });
-      return;
-    }
+      if (!existingProduct) {
+        res
+          .status(404)
+          .json({ error: "Product has been discontinued by supplier!" });
+        return;
+      }
 
-    // Validation
-    if (isNaN(parseFloat(price)) || parseFloat(price) < 0) {
-      res.status(400).json({ error: "Price is invalid!" });
-      return;
-    }
+      // Validation
+      if (isNaN(parseFloat(price)) || parseFloat(price) < 0) {
+        res.status(400).json({ error: "Price is invalid!" });
+        return;
+      }
 
-    // Calculate effective date (3 days from now)
-    const priceEffectiveAt = new Date();
-    priceEffectiveAt.setDate(priceEffectiveAt.getDate() + 3);
+      // Check if the new price is less than the original supplier price
+      const newPrice = parseFloat(price);
+      const supplierPrice = existingProduct.originalProduct.price;
 
-    // Update with pending price and effective date
-    const updatedProduct = await prisma.plugProduct.update({
-      where: { id: productId, plugId: plug.id },
-      data: {
-        pendingPrice: parseFloat(price),
-        priceEffectiveAt,
-        updatedAt: new Date(),
-      },
-      include: {
-        originalProduct: {
-          include: {
-            variations: true,
+      if (newPrice < supplierPrice) {
+        res.status(400).json({
+          error: "Price cannot be less than supplier price!",
+          supplierPrice: supplierPrice,
+        });
+        return;
+      }
+
+      // Calculate effective date (3 days from now)
+      const priceEffectiveAt = new Date();
+      priceEffectiveAt.setDate(priceEffectiveAt.getDate() + 3);
+
+      // Update with pending price and effective date
+      const updatedProduct = await prisma.plugProduct.update({
+        where: { id: productId, plugId: plug.id },
+        data: {
+          pendingPrice: parseFloat(price),
+          priceEffectiveAt,
+          updatedAt: new Date(),
+        },
+        include: {
+          originalProduct: {
+            include: {
+              variations: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    // Schedule this specific product's update - this will start the scheduler
-    // or adjust it based on the new timing
-    await scheduleProductUpdate(productId, priceEffectiveAt);
+      // Schedule this specific product's update - this will start the scheduler
+      // or adjust it based on the new timing
+      await scheduleProductUpdate(productId, priceEffectiveAt);
 
-    // Format response
-    const formattedProduct = formatPlugProductWithDetails(updatedProduct);
+      // Format response
+      const formattedProduct = formatPlugProductWithDetails(updatedProduct);
 
-    res.status(200).json({
-      message: "Price update scheduled. It will take effect in 3 days!",
-      data: formattedProduct,
-    });
-  } catch (error) {
-    console.error("Error updating product price:", error);
-    res.status(500).json({ error: "Internal server error!" });
-  }
-},
+      res.status(200).json({
+        message: "Price update to be effected in 3 days!",
+        data: formattedProduct,
+      });
+    } catch (error) {
+      console.error("Error updating product price:", error);
+      res.status(500).json({ error: "Internal server error!" });
+    }
+  },
 
   // Remove product from plug's inventory
   removePlugProduct: async (req: AuthRequest, res: Response) => {
@@ -218,7 +271,9 @@ updatePlugProductPrice: async (req: AuthRequest, res: Response) => {
       });
 
       if (!existingProduct) {
-        res.status(404).json({ error: "Product not found!" });
+        res
+          .status(404)
+          .json({ error: "Product has been discontinued by supplier!" });
         return;
       }
 
@@ -242,7 +297,6 @@ updatePlugProductPrice: async (req: AuthRequest, res: Response) => {
           data: {
             plugsCount: {
               decrement: 1,
-              
             },
           },
         });
@@ -250,9 +304,8 @@ updatePlugProductPrice: async (req: AuthRequest, res: Response) => {
         return deletedProduct;
       });
 
-
       // Format the deleted product with complete details
-      const data = result &&  formatPlugProductWithDetails(result);
+      const data = result && formatPlugProductWithDetails(result);
 
       // Invalidate cache after removing product
       invalidateProductCache();
@@ -289,12 +342,14 @@ updatePlugProductPrice: async (req: AuthRequest, res: Response) => {
       });
 
       if (!plugProduct) {
-        res.status(404).json({ error: "Product not found!" });
+        res
+          .status(404)
+          .json({ error: "Product has been discontinued by supplier!" });
         return;
       }
 
       // Format the product with complete details
-      const formattedProduct =  formatPlugProductWithDetails(plugProduct);
+      const formattedProduct = formatPlugProductWithDetails(plugProduct);
 
       res.status(200).json({
         message: "Product fetched successfully!",
@@ -337,18 +392,16 @@ updatePlugProductPrice: async (req: AuthRequest, res: Response) => {
         // Delete all products belonging to this plug
         return await tx.plugProduct.deleteMany({
           where: { plugId: plug.id },
-          
         });
       });
 
       if (deleteResult.count === 0) {
         res.status(200).json({
-          message: "No products to remove!",
+          message: "All products removed successfully!",
           data: [],
         });
         return;
       }
- 
 
       // Invalidate cache after removing all products
       invalidateProductCache();

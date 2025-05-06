@@ -95,21 +95,17 @@ export const productSchema = z.object({
     .max(100, "name cannot exceed 100 characters"),
   description: z.string().optional(),
   price: z.number().positive("Price must be positive"),
-  category: z.string().optional(),
+  category: z.string(),
   size: z.string().optional(),
   color: z.string().optional(),
-  stock: z.number().int().nonnegative("Stock must be a non-negative integer"),
-  weight: z.number().positive("Weight must be positive").optional(),
+  stock: z.number().int().nonnegative("Stock must be a non-negative integer").optional(),
   dimensions: z.string().optional(), // JSON string with dimensions
 });
 
 export const productVariationSchema = z.object({
   size: z.string().optional(),
   color: z.string().optional(),
-  price: z.number().positive("Variation price must be positive"),
-  stock: z.number().int().nonnegative("Stock must be a non-negative integer"),
-  weight: z.number().positive("Weight must be positive").optional(),
-  dimensions: z.string().optional(), // JSON string with dimensions
+  stock: z.number().int().nonnegative("Stock must be a non-negative integer").optional(),
 });
 
 export const productVariationsSchema = z.array(productVariationSchema);

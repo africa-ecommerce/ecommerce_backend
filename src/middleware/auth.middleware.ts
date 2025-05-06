@@ -39,7 +39,7 @@ const authenticateJWT = async (
       res.clearCookie("refreshToken");
 
       res.status(401).json({
-        error: "No authentication tokens found",
+        error: "No authentication tokens found!",
       });
       return; //
     }
@@ -50,7 +50,7 @@ const authenticateJWT = async (
     // Handle failed refresh
     if (!result.success) {
       res.status(401).json({
-        error: "Refresh failed",
+        error: "Refresh token failed!",
       });
 
       // Clear invalid credentials
@@ -72,14 +72,14 @@ const authenticateJWT = async (
     res.clearCookie("refreshToken");
     // More specific error handling
     if (error instanceof jwt.TokenExpiredError) {
-      res.status(401).json({ error: "Token expired" });
+      res.status(401).json({ error: "Token expired!" });
       return;
     } else if (error instanceof jwt.JsonWebTokenError) {
-      res.status(401).json({ error: "Invalid token" });
+      res.status(401).json({ error: "Invalid token!" });
       return;
     } else {
       console.error("Authentication error:", error);
-      res.status(500).json({ error: "Authentication error" });
+      res.status(500).json({ error: "Authentication error!" });
       return;
     }
   }

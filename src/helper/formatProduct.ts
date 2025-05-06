@@ -30,6 +30,7 @@ export const formatPlugProductWithDetails = (plugProduct: any) => {
       dimensions: variation.dimensions
         ? JSON.parse(variation.dimensions)
         : null,
+       stocks: variation.stock 
     };
   });
 
@@ -45,7 +46,6 @@ export const formatPlugProductWithDetails = (plugProduct: any) => {
     plugsCount: originalProduct.plugsCount,
     size: originalProduct.size,
     color: originalProduct.color,
-    // weight: originalProduct.weight,
     dimensions: originalProduct.dimensions
       ? JSON.parse(originalProduct.dimensions)
       : null,
@@ -85,9 +85,7 @@ export function formatProductWithImagesAndVariations(product: any) {
   // Extract supplier details if available
   const supplierDetails = product.supplier
     ? {
-        // id: product.supplier.id,
-        // businessType: product.supplier.businessType,
-        businessName:
+          businessName:
           product.supplier.businessName || "",
         pickupLocation: product.supplier.pickupLocation || "",
         image: product.supplier.avatar,

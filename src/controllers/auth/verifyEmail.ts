@@ -60,11 +60,11 @@ export const verifyEmail = async (req: Request, res: Response) => {
 
 export const resendVerificationEmail = async (req: Request, res: Response) => {
   try {
-    // Get the email from the request body (or session if you prefer)
+    // Get the email from the request body 
     const { email } = req.body;
     if (!email) {
       res.status(400).json({
-        error: "No email provided. Please register again!",
+        error: "Please provide an email",
       });
       return;
     }
@@ -72,7 +72,7 @@ export const resendVerificationEmail = async (req: Request, res: Response) => {
     // Find the user by email
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      res.status(404).json({ error: "User not found!" });
+      res.status(404).json({ error: "User not found. Please register again!" });
       return;
     }
     if (user.emailVerified) {

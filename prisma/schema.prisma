@@ -46,7 +46,7 @@ model EmailVerification {
   token   String   @unique
   expires DateTime
   userId  String   @unique
-  user    User     @relation(fields: [userId], references: [id])
+  user    User     @relation(fields: [userId], references: [id],  onDelete: Cascade)
 
   @@index([token])
 }
@@ -57,7 +57,7 @@ model PasswordToken {
   token   String   @unique
   expires DateTime
   userId  String
-  user    User     @relation(fields: [userId], references: [id])
+  user    User     @relation(fields: [userId], references: [id],  onDelete: Cascade)
 
   @@unique([email, token])
 }
@@ -72,7 +72,7 @@ model Supplier {
   phone          String
   avatar         String?
   userId         String    @unique
-  user           User      @relation(fields: [userId], references: [id])
+  user           User      @relation(fields: [userId], references: [id],  onDelete: Cascade)
   products       Product[]
   verified       Boolean   @default(false)
   createdAt      DateTime  @default(now())
@@ -89,7 +89,7 @@ model Plug {
   generalMerchant Boolean
   plugProduct     PlugProduct[]
   userId          String        @unique
-  user            User          @relation(fields: [userId], references: [id])
+  user            User          @relation(fields: [userId], references: [id],  onDelete: Cascade)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -107,10 +107,9 @@ model Product {
   size         String?
   color        String?
   stock        Int                @default(0)
-  // weight       Float? // Weight in grams
   dimensions   String?
   plugsCount   Int                @default(0) // Counter for number of plugs using this product
-  supplier     Supplier           @relation(fields: [supplierId], references: [id])
+  supplier     Supplier           @relation(fields: [supplierId], references: [id],  onDelete: Cascade)
   variations   ProductVariation[]
   plugProducts PlugProduct[] // Relationship to track which plugs are using this product
   createdAt    DateTime           @default(now())
@@ -153,7 +152,7 @@ model PlugProduct {
   priceEffectiveAt  DateTime? //  field for effective date
   lastPriceUpdateAt DateTime? //  field to track when a price was actually updated
   plug              Plug      @relation(fields: [plugId], references: [id], onDelete: Cascade)
-  originalProduct   Product   @relation(fields: [originalId], references: [id], onDelete: Cascade) // Add onDelete: Cascade here
+  originalProduct   Product   @relation(fields: [originalId], references: [id], onDelete: Cascade) 
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 

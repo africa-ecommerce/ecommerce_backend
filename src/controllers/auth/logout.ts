@@ -4,19 +4,22 @@ import { AuthRequest } from "../../types";
 
 export const logout = async (req: AuthRequest, res: Response) => {
   try {
-    const token = req.cookies.accessToken;
     const refreshToken = req.cookies.refreshToken;
 
-
-    // 2. Invalidate refresh token from database
-    if (refreshToken) {
-      await prisma.user.updateMany({
-        where: { refreshToken },
-        data: { refreshToken: null },
+    // Only invalidate the token for the currently logged-in user
+    if (refreshToken && req.user && req.user.id) {
+      await prisma.user.update({
+        where: {
+          id: req.user?.id,
+          refreshToken: refreshToken, 
+        },
+        data: {
+          refreshToken: null,
+        },
       });
     }
 
-    // 3. Clear client-side cookies
+    // Clear client-side cookies
     res
       .clearCookie("accessToken")
       .clearCookie("refreshToken")

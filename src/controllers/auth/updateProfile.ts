@@ -1,5 +1,5 @@
 import { Response } from "express";
-import {prisma} from "../../config";
+import { prisma } from "../../config";
 import { AuthRequest } from "../../types";
 import {
   uploadMiddleware,
@@ -8,15 +8,14 @@ import {
 } from "../../helper/minioObjectStore/productImage";
 import { supplierInfoSchema, updatePlugInfoSchema } from "../../lib/zod/schema";
 
-
 export const updateProfile = [
   // Accept one optional file called "avatar"
   uploadMiddleware.single("avatar"),
-    
+
   async (req: AuthRequest, res: Response) => {
     let avatarUrl: string | null = null;
     let oldAvatarUrl: string | null = null;
-    
+
     try {
       // Auth check
       const userId = req.user?.id;
@@ -42,7 +41,6 @@ export const updateProfile = [
         res.status(404).json({ error: "User not found!" });
         return;
       }
-
 
       // SUPPLIER profile update
       if (user.userType === "SUPPLIER" && user.supplier) {
@@ -96,21 +94,20 @@ export const updateProfile = [
 
       // PLUG profile update
       if (user.userType === "PLUG" && user.plug) {
+        const supplierParse = updatePlugInfoSchema.safeParse({
+          businessName: profileData.businessName,
+          phone: profileData.phone,
+          state: profileData.state,
+          aboutBusiness: profileData.aboutBusiness,
+        });
 
-         const supplierParse = updatePlugInfoSchema.safeParse({
-           businessName: profileData.businessName,
-           phone: profileData.phone,
-           state: profileData.state,
-           aboutBusiness: profileData.aboutBusiness,
-         });
+        if (!supplierParse.success) {
+          res.status(400).json({
+            error: "Validation failed!",
+          });
+          return;
+        }
 
-         if (!supplierParse.success) {
-           res.status(400).json({
-             error: "Validation failed!",
-           });
-           return;
-         }
-       
         // Update plug profile
         await prisma.plug.update({
           where: { userId },
@@ -127,16 +124,16 @@ export const updateProfile = [
         return;
       }
 
-      res.status(400).json({ error: "Invalid user type!" });
+      res.status(400).json({ error: "Invalid user. Please Onboard again!" });
       return;
     } catch (err) {
       console.error("Profile update error:", err);
-      
+
       // Rollback avatar if there was an error
       if (avatarUrl && avatarUrl !== oldAvatarUrl) {
         await deleteImages([avatarUrl]);
       }
-      
+
       res.status(500).json({ error: "Internal server error!" });
       return;
     }

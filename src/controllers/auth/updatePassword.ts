@@ -51,7 +51,7 @@ export const updatePassword = async (req: AuthRequest, res: Response) => {
     );
 
     if (!isPasswordValid) {
-      res.status(400).json({ error: "Current password is invalid!" });
+      res.status(400).json({ error: "Current password is incorrect!" });
       return;
     }
 

@@ -17,9 +17,10 @@ if (process.env.NODE_ENV !== "production") {
 
 
  export const productCache = new NodeCache({
-  stdTTL: 300, // Cache TTL: 5 minutes
-  checkperiod: 60, // Check for expired keys every 60 seconds
+  stdTTL: 120, // Reduced Cache TTL: 2 minutes (down from 5)
+  checkperiod: 30, // Check for expired keys more frequently: every 30 seconds
   useClones: false, // For better performance with large objects
+  maxKeys: 1000, // Add a max key limit to prevent unbounded memory growth
 });
 
 

@@ -101,7 +101,7 @@ export const cookieConfig = {
 
      // Instead of throwing, return a result object
      if (!user || user.refreshToken !== refreshToken) {
-       return { success: false, error: "Invalid refresh token" };
+       return { success: false, error: "Invalid refresh token!" };
      }
 
      // Generate new tokens
