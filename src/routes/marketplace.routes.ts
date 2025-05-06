@@ -11,7 +11,7 @@ router.use(authenticateJWT);
 // Route to get all products
 router.get("/products", getAllProducts);
 // Get product by ID
-router.get("/:productId", getProductById);
+router.get("/products/:productId", getProductById);
 
 
 export default router;

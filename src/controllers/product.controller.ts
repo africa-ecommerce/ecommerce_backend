@@ -42,7 +42,7 @@ export const productController = {
           size: productData.size,
           color: productData.color,
           stock: productData.stock,
-          weight: productData.weight,
+          // weight: productData.weight,
           dimensions: productData.dimensions,
         });
 
@@ -62,7 +62,7 @@ export const productController = {
           if (!variationsResult.success) {
             res.status(400).json({
               error: "Variations validation failed!",
-              details: variationsResult.error.format(),
+              // details: variationsResult.error.format(),
             });
             return;
           }
@@ -86,17 +86,17 @@ export const productController = {
               size: validatedData.data.size,
               color: validatedData.data.color,
               stock: validatedData.data.stock,
-              weight: validatedData.data.weight,
+              // weight: validatedData.data.weight,
               dimensions: validatedData.data.dimensions,
               supplierId: supplier.id,
               variations: {
                 create: validatedVariations.map((variation: any) => ({
                   size: variation.size,
                   color: variation.color,
-                  price: variation.price,
+                  // price: variation.price,
                   stock: variation.stock,
-                  weight: variation.weight,
-                  dimensions: variation.dimensions,
+                  // weight: variation.weight,
+                  // dimensions: variation.dimensions, ------->
                 })),
               },
             },
@@ -221,7 +221,7 @@ export const productController = {
           size: productData.size,
           color: productData.color,
           stock: productData.stock,
-          weight: productData.weight,
+          // weight: productData.weight,
           dimensions: productData.dimensions,
         });
 
@@ -283,10 +283,10 @@ export const productController = {
                 productId,
                 size: variation.size,
                 color: variation.color,
-                price: variation.price,
+                // price: variation.price,
                 stock: variation.stock,
-                weight: variation.weight,
-                dimensions: variation.dimensions,
+                // weight: variation.weight,
+                // dimensions: variation.dimensions,
               })),
             });
           }
@@ -302,7 +302,7 @@ export const productController = {
               size: validatedData.data.size,
               color: validatedData.data.color,
               stock: validatedData.data.stock,
-              weight: validatedData.data.weight,
+              // weight: validatedData.data.weight,
               dimensions: validatedData.data.dimensions,
               images: JSON.stringify(updatedImages),
               updatedAt: new Date(),

@@ -45,7 +45,7 @@ export const formatPlugProductWithDetails = (plugProduct: any) => {
     plugsCount: originalProduct.plugsCount,
     size: originalProduct.size,
     color: originalProduct.color,
-    weight: originalProduct.weight,
+    // weight: originalProduct.weight,
     dimensions: originalProduct.dimensions
       ? JSON.parse(originalProduct.dimensions)
       : null,

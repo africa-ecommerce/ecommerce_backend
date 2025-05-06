@@ -23,13 +23,10 @@ COPY . .
 # Build the TypeScript application
 RUN npm run build
 
-# Create a script to run db push and start the app
-# RUN echo '#!/bin/sh\nnpx prisma db push --schema=./prisma/schema.prisma --force-reset\nnpm start' > /app/start.sh && chmod +x /app/start.shoo
-RUN npx prisma db push --schema=./prisma/schema.prisma --force-reset
-RUN npx prisma migrate deploy --schema=./prisma/schema.prisma
+# Create a script to run migrations and start the app
+RUN echo '#!/bin/sh\nnpx prisma migrate deploy --schema=./prisma/schema.prisma\nnpm start' > /app/start.sh && chmod +x /app/start.sh
 
 EXPOSE 5000
 
-# Command to run your application
-# This executes your start script from package.json
-CMD ["npm", "start"]
+# Use our custom start script
+CMD ["/app/start.sh"]

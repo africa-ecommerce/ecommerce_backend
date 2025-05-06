@@ -94,9 +94,9 @@ initializePriceUpdateScheduler()
 
 app.use("/auth", authRoutes);
 app.use("/onboarding", onboardingRoutes);
+app.use(marketPlaceRoutes);
 app.use("/products", productRoutes);
 app.use("/plug/products", plugProductRoutes);
-app.use(marketPlaceRoutes);
 
 // Global error handling middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
