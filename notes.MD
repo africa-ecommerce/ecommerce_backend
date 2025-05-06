@@ -28,6 +28,88 @@ LOADING, EMPTY STATE
 remove try again on auth cerror callbackor or contact us there
 THREE DAYS PENDING TIME WHEN IT GETS UPDATED
 
+
+
+image compressing
+image resizing tip
+mime type
+dimensions one genneral unit or so
+
+pwa 
+
+IN UPLOADING PRODUCT GIVE TIP TO GIVE ENOUGH INFO
+WE NEED TO MAKE THE WEBSITE DYNAMIC ON REQUEST, BECAUSE OF UPDATE
+NO IF A PLUG ADD OR UPDATE THEIR PRODUCTS IT REBUILDS
+\|" 
+https://youtu.be/6rDBjdBjYCg?si=ryPo5B-Gx7UHSj3d
+
+SHARE LINK ON SOCIAL MEDIA TIP
+
+
+accepting cookies
+
+We use cookies to deliver and improve our services, analyze site usage, and if you agree, to customize or personalize your experience and market our services to you. You can read our Cookie Policy here.
+
+
+adjust
+
+
+
+
+WHAT VARIATION DOES THE PUG 
+THE BUYER CHOOSES A VARIATION TO BUY IN CHECKOUT
+
+
+
+IF USER WANTS TO PICK TO PICK UP WE USE OUR LOCATION OR OUR PARTNER FOR PICKUPS
+
+ALSO VERIFICATION
+OTHER STUFF
+PROBABLY ANALYTICS
+TOTAL SALES OF PRODUCT IN DESCRIPTION
+LOCATION LIBRARY
+LOCATION OF PRODUCT
+PICKUP LOCATIONS
+SOCIAL MEDIA LINK, INCLUDE REFFERRER and encode
+
+dimension ui
+ADJUST THE WAY PICKUP LOCATION IS STORED TO GET STATE 
+INDEX DB
+NOT SENDING DIMENSIONS
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 DO CUSTOMER SUPPORT FOR PLUGS
 Buyers choose a "Delivery Day" (e.g., "Want it faster? Pay ₦500 extra. Want it cheaper? Wait 3 days.").
 Public leaderboards show the fastest Plugs/suppliers.

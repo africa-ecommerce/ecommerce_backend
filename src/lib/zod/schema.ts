@@ -73,18 +73,14 @@ export const plugInfoSchema = z.object({
 });
 
 export const updatePlugInfoSchema = z.object({
-  profile: z.object({
+  
     businessName: z
       .string()
       .min(1, "Business name is required")
-      .max(100, "Business name cannot exceed 100 characters"),
+      .max(100, "Business name cannot exceed 100 characters").optional(),
     phone: z.string().optional(),
-    state: STATE_ENUM.optional(),
-    aboutBusiness: z
-      .string()
-      .max(500, "About your business cannot exceed 500 characters")
-      .optional(),
-  }),
+    state: STATE_ENUM.optional()
+  
 });
 
 // Zod validation schema for product

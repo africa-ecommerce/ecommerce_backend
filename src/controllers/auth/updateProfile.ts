@@ -98,7 +98,6 @@ export const updateProfile = [
           businessName: profileData.businessName,
           phone: profileData.phone,
           state: profileData.state,
-          aboutBusiness: profileData.aboutBusiness,
         });
 
         if (!supplierParse.success) {

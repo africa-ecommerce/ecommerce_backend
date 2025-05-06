@@ -27,13 +27,6 @@ export const updatePassword = async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    if (currentPassword === newPassword) {
-      res
-        .status(400)
-        .json({ error: "New password cannot be same as current!" });
-      return;
-    }
-
     // Get user with password
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -45,16 +38,19 @@ export const updatePassword = async (req: AuthRequest, res: Response) => {
     }
 
     // Verify current password
-    const isPasswordValid = await bcrypt.compare(
-      currentPassword,
-      user.password
-    );
+    if (currentPassword) {
+       const isPasswordValid = await bcrypt.compare(
+         currentPassword,
+         user.password
+       );
 
-    if (!isPasswordValid) {
-      res.status(400).json({ error: "Current password is incorrect!" });
-      return;
+       if (!isPasswordValid) {
+         res.status(400).json({ error: "Current password is incorrect!" });
+         return;
+       }
+
     }
-
+     
     // Hash the new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
