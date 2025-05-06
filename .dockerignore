@@ -1,1 +1,21 @@
-**/prisma
+# 1) ignore everything by default
+*
+
+# 2) but include these files needed to build & install
+!package.json
+!package-lock.json
+!Dockerfile
+
+# 3) include your source code
+!src
+!src/**
+
+# 4) include the prisma folder and all its contents
+!prisma
+!prisma/**
+
+# 5) (optional) ignore node_modules, build outputs, logs, git metadata
+node_modules
+dist
+*.log
+.git
