@@ -1,0 +1,20 @@
+app = "pluggn-backend"  # Replace with your desired name
+
+# Choose the region closest to most of your users
+# ewr (US East), lax (US West), lhr (London), fra (Frankfurt), syd (Sydney), etc.
+primary_region = "fra" 
+
+[build]
+  [build.args]
+    NODE_VERSION = "20"  # Match your local Node version
+
+[env]
+  PORT = "5000"  # This should match the port in your Express app
+
+[http_service]
+  internal_port = 5000  # Must match the PORT env var above
+  force_https = true
+#   auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0  # Set to 1 if you need 100% uptime
+  processes = ["app"]

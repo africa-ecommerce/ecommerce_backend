@@ -1,21 +1,31 @@
-# 1) ignore everything by default
-*
-
-# 2) but include these files needed to build & install
-!package.json
-!package-lock.json
-!Dockerfile
-
-# 3) include your source code
-!src
-!src/**
-
-# 4) include the prisma folder and all its contents
-!prisma
-!prisma/**
-
-# 5) (optional) ignore node_modules, build outputs, logs, git metadata
-node_modules
-dist
-*.log
+# Version control files
 .git
+.github
+.gitignore
+
+# Node.js build artifacts and dependencies
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Build output directory
+dist
+
+# Fly.io configuration
+fly.toml
+
+# Environment files (except example)
+.env
+.env.*
+!.env.example
+
+# Development/IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Logs
+logs
+*.log
