@@ -30,5 +30,6 @@ RUN npx prisma migrate deploy --schema=./prisma/schema.prisma
 
 EXPOSE 5000
 
-# Use our custom start script
-CMD ["/app/start.sh"]
+# Command to run your application
+# This executes your start script from package.json
+CMD ["npm", "start"]
