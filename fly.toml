@@ -20,3 +20,4 @@ primary_region = 'cdg'
   memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
+# pluggn-app-twilight-haze-5289 

@@ -3,6 +3,7 @@ import { jwtSecret, refreshTokenSecret, prisma } from "../config";
 import { Response } from "express";
 import { Tokens } from "../types";
 import { UserType } from "@prisma/client";
+import { NONAME } from "dns";
 
 // Token expiration times
 const ACCESS_TOKEN_EXPIRY = 15 * 60 * 60; // 15 mins (in seconds)
@@ -68,11 +69,12 @@ export const shouldRotateRefreshToken = (token: string): boolean => {
 export const cookieConfig = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
-  domain:
-    process.env.NODE_ENV === "development"
-      ? "localhost"
-      : `${process.env.DOMAIN}`,
+  sameSite: "none" as const,
+  // "lax" as const,
+  // domain:
+  //   process.env.NODE_ENV === "development"
+  //     ? "localhost"
+  //     : `${process.env.DOMAIN}`,
   path: "/", // Ensure cookies are available across your entire app
 };
 
