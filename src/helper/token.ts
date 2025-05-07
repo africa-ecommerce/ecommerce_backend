@@ -71,10 +71,10 @@ export const cookieConfig = {
   secure: process.env.NODE_ENV === "production",
   sameSite: "none" as const,
   // "lax" as const,
-  // domain:
-  //   process.env.NODE_ENV === "development"
-  //     ? "localhost"
-  //     : `${process.env.DOMAIN}`,
+  domain:
+    process.env.NODE_ENV === "development"
+      ? "localhost"
+      : `${process.env.DOMAIN}`,
   path: "/", // Ensure cookies are available across your entire app
 };
 
