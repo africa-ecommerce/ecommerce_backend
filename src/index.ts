@@ -66,9 +66,7 @@ app.use(
     cookie: {
       ...cookieConfig,
   sameSite: "lax" as const, // Strictly required for OAuth security
-  domain: process.env.NODE_ENV === "development" 
-    ? "localhost" 
-    : "pluggn.vercel.app", // Explicit domain
+ 
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     },
   })
