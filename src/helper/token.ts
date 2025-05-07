@@ -3,7 +3,6 @@ import { jwtSecret, refreshTokenSecret, prisma } from "../config";
 import { Response } from "express";
 import { Tokens } from "../types";
 import { UserType } from "@prisma/client";
-import { NONAME } from "dns";
 
 // Token expiration times
 const ACCESS_TOKEN_EXPIRY = 15 * 60 * 60; // 15 mins (in seconds)

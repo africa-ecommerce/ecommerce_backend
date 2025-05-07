@@ -65,9 +65,7 @@ app.use(
     saveUninitialized: false,
     cookie: {
       ...cookieConfig,
-  sameSite: "lax" as const, // Strictly required for OAuth security
- 
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
+       maxAge: 24 * 60 * 60 * 1000, // 1 day
     },
   })
 );

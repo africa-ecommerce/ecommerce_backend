@@ -306,7 +306,7 @@ export const productController = {
           : [];
 
         // Get current images from client (what they want to keep)
-        const currentImages = productData.images || [];
+        const currentImages = productData.imageUrls || [];
 
         // Determine which images were removed (exist in database but not in client data)
         imagesToDelete = existingImages.filter(
