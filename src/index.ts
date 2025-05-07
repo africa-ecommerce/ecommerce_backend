@@ -94,7 +94,7 @@ initializePriceUpdateScheduler()
 
 app.use("/auth", authRoutes);
 app.use("/onboarding", onboardingRoutes);
-app.use("marketplace", marketPlaceRoutes);
+app.use("/marketplace", marketPlaceRoutes);
 app.use("/products", productRoutes);
 app.use("/plug/products", plugProductRoutes);
 
