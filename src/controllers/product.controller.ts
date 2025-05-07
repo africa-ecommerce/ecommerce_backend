@@ -307,11 +307,15 @@ export const productController = {
 
         // Get current images from client (what they want to keep)
         const currentImages = productData.imageUrls || [];
+        console.log("currentImages", currentImages)
 
         // Determine which images were removed (exist in database but not in client data)
         imagesToDelete = existingImages.filter(
           (url: string) => !currentImages.includes(url)
         );
+
+                console.log("imagesToDelete", imagesToDelete);
+
 
         // Upload new images first before database changes
         const files = req.files as Express.Multer.File[];
