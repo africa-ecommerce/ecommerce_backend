@@ -78,8 +78,6 @@ export const cookieConfig = {
   path: "/", // Ensure cookies are available across your entire app
 };
 
-
-
  export const refreshSession = async (refreshToken: string) => {
    try {
      // Verify refresh token

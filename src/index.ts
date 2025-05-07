@@ -33,6 +33,9 @@ const corsOptions = {
   credentials: true, // Required for cookies
 };
 
+// Trust proxy is critical when behind Vercel's proxy
+app.set('trust proxy', 1);
+
 app.use(cors(corsOptions));
 app.use(
   helmet({
