@@ -70,6 +70,10 @@ export const cookieConfig = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: "none" as const,
+  domain:
+    process.env.NODE_ENV === "production"
+      ? "pluggn.vercel.app" // Explicit production domain
+      : undefined, // Let browser handle in development
   // "lax" as const,
   // domain:
   //   process.env.NODE_ENV === "development"
