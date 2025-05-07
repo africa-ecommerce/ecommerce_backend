@@ -71,8 +71,8 @@ export const cookieConfig = {
    sameSite: process.env.NODE_ENV === "production" 
     ? "none" as const // Required for cross-subdomain cookies
     : "lax"as const, 
-   domain: process.env.NODE_ENV === "development"
-      ? "localhost": process.env.DOMAIN, // Set domain for production
+  //  domain: process.env.NODE_ENV === "development"
+  //     ? "localhost": process.env.DOMAIN, // Set domain for production
   path: "/", // Ensure cookies are available across your entire app
 };
 
