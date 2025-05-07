@@ -106,8 +106,8 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   //   .json({ error: "Unexpected error occured!" });
 });
 
-const server = app.listen(port, () => {
-  console.log(`Server is listening on port ${port}`);
+const server = app.listen(port, "0.0.0.0", () => {
+  console.log(`Listening on 0.0.0.0:${port}`);
 });
 
 // Handle graceful shutdown

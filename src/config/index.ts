@@ -43,4 +43,4 @@ export function invalidateProductCache() {
 
 export const jwtSecret = process.env.JWT_SECRET || "JWT_SECRET";
 export const refreshTokenSecret = process.env.REFRESH_SECRET || "REFRESH_SECRET";
-export const port = process.env.PORT || 5000;
+export const port = 5000;
