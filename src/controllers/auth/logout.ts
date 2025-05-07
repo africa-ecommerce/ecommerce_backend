@@ -11,7 +11,6 @@ export const logout = async (req: AuthRequest, res: Response) => {
       await prisma.user.update({
         where: {
           id: req.user?.id,
-          refreshToken: refreshToken, 
         },
         data: {
           refreshToken: null,
