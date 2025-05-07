@@ -60,7 +60,7 @@ export const shouldRotateRefreshToken = (token: string): boolean => {
     const now = Date.now();
     return (expirationDate - now) < (REFRESH_TOKEN_ROTATION_WINDOW * 1000);
   } catch {
-     return true;
+    return true;
   }
 };
 
@@ -68,7 +68,11 @@ export const shouldRotateRefreshToken = (token: string): boolean => {
 export const cookieConfig = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const, // Strictly required for OAuth security
+   sameSite: process.env.NODE_ENV === "production" 
+    ? "none" as const // Required for cross-subdomain cookies
+    : "lax"as const, 
+   domain: process.env.NODE_ENV === "development"
+      ? "localhost": process.env.DOMAIN, // Set domain for production
   path: "/", // Ensure cookies are available across your entire app
 };
 
