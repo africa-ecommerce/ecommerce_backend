@@ -7,31 +7,28 @@ const router = express.Router();
 
 
 
+
+
+
+
+
+
+// Get all supplier products
+router.get("/supplier", authenticateJWT, isSupplier,productController.getSupplierProducts);
+
 // Get product by ID
 router.get("/:productId", authenticateJWT, productController.getProductById);
 
-
-// Middleware to ensure user is authenticated and is a supplier
-const supplierAuth = [authenticateJWT, isSupplier];
-
-
-router.use(supplierAuth);
-
-// Get all supplier products
-router.get("/supplier", productController.getSupplierProducts);
-
-
-
 // create product
-router.post("/", productController.createProduct);
+router.post("/", authenticateJWT, isSupplier,productController.createProduct);
 
 // Update product
-router.put("/:productId", productController.updateProduct);
+router.put("/:productId", authenticateJWT, isSupplier,productController.updateProduct);
 
 // Delete product
-router.delete("/:productId", productController.deleteProduct);
+router.delete("/:productId", authenticateJWT, isSupplier,productController.deleteProduct);
 
 // Delete all products
-router.delete("/", productController.deleteAllProducts);
+router.delete("/", authenticateJWT, isSupplier,productController.deleteAllProducts);
 
 export default router;
