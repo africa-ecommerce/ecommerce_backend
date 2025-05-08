@@ -277,8 +277,6 @@
 // };
 
 
-
-
 import { Response } from "express";
 import { generateCacheKey, productCache } from "../config";
 import { AuthRequest } from "../types";
@@ -333,7 +331,6 @@ export const getAllProducts = async (req: AuthRequest, res: Response) => {
     }
 
     // Detect if this is a filter request by checking for filter parameters
-    // This is the key change - we determine this automatically without frontend changes
     const hasActiveFilters = !!(
       category ||
       minPrice !== undefined ||
@@ -360,7 +357,6 @@ export const getAllProducts = async (req: AuthRequest, res: Response) => {
     });
 
     // Store the filter fingerprint in a per-session cache with session ID as key
-    // Note: In a real implementation, you'd use req.user.id or some session identifier
     const sessionId = req.user.id;
     const previousFilterKey = `prevFilter:${sessionId}`;
     const previousFilter = productCache.get<string>(previousFilterKey);
@@ -371,6 +367,13 @@ export const getAllProducts = async (req: AuthRequest, res: Response) => {
 
     // Store current filter for next comparison
     productCache.set(previousFilterKey, filterFingerprint, 3600); // Cache for 1 hour
+
+    // IMPORTANT: Reset cursor if filters have changed
+    let effectiveCursor = cursor;
+    if (isFilterChange) {
+      effectiveCursor = null; // Reset pagination when filters change
+      console.log("Filter changed, resetting pagination cursor");
+    }
 
     // Create cache params - exclude cursor if filters have changed
     const cacheParams = { ...req.query };
@@ -509,8 +512,8 @@ export const getAllProducts = async (req: AuthRequest, res: Response) => {
     };
 
     // Add cursor for pagination if provided AND not a filter change
-    if (cursor && !isFilterChange) {
-      queryOptions.cursor = { id: cursor };
+    if (effectiveCursor) {
+      queryOptions.cursor = { id: effectiveCursor };
       queryOptions.skip = 1; // Skip the cursor
     }
 
@@ -582,7 +585,7 @@ export const getAllProducts = async (req: AuthRequest, res: Response) => {
     // Cache the original result without the plug-specific data
     productCache.set(cacheKey, result, 120); // 2 minutes TTL
 
-    // Handle case with filters but no results
+    // Clear loading state for empty results
     if (hasActiveFilters && responseData.length === 0) {
       res.status(200).json({
         message: "No products found matching your criteria",
@@ -601,6 +604,7 @@ export const getAllProducts = async (req: AuthRequest, res: Response) => {
       message: "Products fetched successfully!",
       data: responseData,
       meta: result.meta,
+      filterChanged: isFilterChange, // Let frontend know filters changed
     });
     return;
   } catch (error) {
