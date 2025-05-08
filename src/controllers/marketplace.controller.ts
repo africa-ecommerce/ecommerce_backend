@@ -276,7 +276,6 @@
 //   }
 // };
 
-
 import { Response } from "express";
 import { generateCacheKey, productCache } from "../config";
 import { AuthRequest } from "../types";
@@ -369,7 +368,7 @@ export const getAllProducts = async (req: AuthRequest, res: Response) => {
     productCache.set(previousFilterKey, filterFingerprint, 3600); // Cache for 1 hour
 
     // IMPORTANT: Reset cursor if filters have changed
-    let effectiveCursor = cursor;
+    let effectiveCursor: string | null = cursor || null;
     if (isFilterChange) {
       effectiveCursor = null; // Reset pagination when filters change
       console.log("Filter changed, resetting pagination cursor");
@@ -512,7 +511,7 @@ export const getAllProducts = async (req: AuthRequest, res: Response) => {
     };
 
     // Add cursor for pagination if provided AND not a filter change
-    if (effectiveCursor) {
+    if (effectiveCursor !== null) {
       queryOptions.cursor = { id: effectiveCursor };
       queryOptions.skip = 1; // Skip the cursor
     }
