@@ -17,7 +17,9 @@ const router = express.Router();
 router.get("/supplier", authenticateJWT, isSupplier,productController.getSupplierProducts);
 
 // Get product by ID
-router.get("/:productId", authenticateJWT, productController.getProductById);
+router.get("/:productId",
+    //  authenticateJWT,
+      productController.getProductById);
 
 // create product
 router.post("/", authenticateJWT, isSupplier,productController.createProduct);
