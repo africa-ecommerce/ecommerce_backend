@@ -43,16 +43,15 @@ export const uploadMiddleware = multer({
   fileFilter,
 });
 
-// Generate optimized object name for images
+// 1) Generate a key **without** "images/" prefix
 const generateObjectName = (originalFilename: string): string => {
   const timestamp = Date.now();
-  const uuid = uuidv4();
-  const extension = path.extname(originalFilename);
-  const sanitizedName = path.basename(originalFilename, extension)
+  const uuid = uuidv4().substring(0, 8);
+  const ext = path.extname(originalFilename);
+  const base = path.basename(originalFilename, ext)
     .toLowerCase()
-    .replace(/[^a-z0-9]/g, '-');
-  
-  return `images/${sanitizedName}-${timestamp}-${uuid.substring(0, 8)}${extension}`;
+    .replace(/[^a-z0-9]/g, "-");
+  return `${base}-${timestamp}-${uuid}${ext}`;
 };
 
 // Determine cache control based on image type
@@ -108,18 +107,13 @@ export const uploadImage = async (
 };
 
 
-// Parse and extract object name from a full URL
+// 2) Extract whatever key you uploaded, in order to delete/stat
 export const extractObjectName = (url: string): string => {
   try {
-    const urlObj = new URL(url);
-    const pathParts = urlObj.pathname.split('/');
-    // Remove empty first segment and bucket name
-    pathParts.shift();
-    pathParts.shift();
-    return pathParts.join('/');
-  } catch (error) {
-    // If not a valid URL, assume it's already an object name
-    return url.replace(/^\/+/, '');
+    const p = new URL(url).pathname;            // "/bucket/your-key.jpg"
+    return p.replace(new RegExp(`^/${IMAGES_BUCKET}/`), "");
+  } catch {
+    return url.replace(/^\/+/, "");
   }
 };
 

@@ -44,7 +44,7 @@ app.use(
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:"],
+        imgSrc: ["'self'", "data:", "https://play.min.io"],
         connectSrc: ["'self'", process.env.APP_URL!],
       },
     },
