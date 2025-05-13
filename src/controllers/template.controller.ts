@@ -98,6 +98,7 @@ export const getTemplateById = async (req: Request, res: Response) => {
  * Get a specific file from a template
  * Returns the content of the requested file
  */
+
 export const getTemplateFile = async (req: Request, res: Response) => {
   const { id, fileType } = req.params;
 
@@ -108,111 +109,212 @@ export const getTemplateFile = async (req: Request, res: Response) => {
     try {
       await fs.access(templateDir);
     } catch (error) {
-       res.status(404).json({
+      return res.status(404).json({
         success: false,
-        error: `Template not found!`,
+        error: `Template '${id}' not found!`,
       });
-      return;
     }
 
-    // Handle different file types
-    let filePath: string;
-    let contentType: string;
-
-    // Map common page names to their file paths
-    if (fileType === "index" || fileType === "home" || fileType === "main") {
-      filePath = path.join(templateDir, "index.html");
-      contentType = "text/html";
-    } else if (
-      fileType === "about" ||
-      fileType === "blog" ||
-      fileType === "product"
-    ) {
-      filePath = path.join(templateDir, `${fileType}.html`);
-      contentType = "text/html";
-    } else if (fileType === "css") {
-      // First try main.css, then style.css, then the first CSS file found
-      const cssFiles = (await fs.readdir(templateDir)).filter((file) =>
-        file.endsWith(".css")
-      );
-
-      if (cssFiles.includes("main.css")) {
-        filePath = path.join(templateDir, "main.css");
-      } else if (cssFiles.includes("style.css")) {
-        filePath = path.join(templateDir, "style.css");
-      } else if (cssFiles.length > 0) {
-        filePath = path.join(templateDir, cssFiles[0]);
-      } else {
-         res.status(404).json({
-          error: `No CSS files found!`,
-        });
-        return;
-      }
-      contentType = "text/css";
-    } else if (fileType === "js") {
-      // First try main.js, then script.js, then the first JS file found
-      const jsFiles = (await fs.readdir(templateDir)).filter((file) =>
-        file.endsWith(".js")
-      );
-
-      if (jsFiles.includes("main.js")) {
-        filePath = path.join(templateDir, "main.js");
-      } else if (jsFiles.includes("script.js")) {
-        filePath = path.join(templateDir, "script.js");
-      } else if (jsFiles.length > 0) {
-        filePath = path.join(templateDir, jsFiles[0]);
-      } else {
-         res.status(404).json({
-          
-          error: `No JavaScript files found!`,
-        });
-        return;
-      }
-      contentType = "application/javascript";
-    } else {
-      // Check if the file exists directly with its name
-      const allFiles = await fs.readdir(templateDir);
-      if (allFiles.includes(fileType)) {
-        filePath = path.join(templateDir, fileType);
-
-        // Determine content type based on file extension
-        if (fileType.endsWith(".html")) contentType = "text/html";
-        else if (fileType.endsWith(".css")) contentType = "text/css";
-        else if (fileType.endsWith(".js"))
-          contentType = "application/javascript";
-        else if (fileType.endsWith(".json")) contentType = "application/json";
-        else contentType = "text/plain";
-      } else {
-         res.status(404).json({
-           error: `${fileType} File not found in template!`,
-         });
-        return;
-      }
+    // Determine file path and content type based on request
+    const fileInfo = await resolveFilePath(templateDir, fileType);
+    
+    if (!fileInfo) {
+      return res.status(404).json({
+        success: false,
+        error: `'${fileType}' file not found in template!`,
+      });
     }
 
     // Try to read the file
     try {
-      const fileContent = await fs.readFile(filePath, "utf-8");
+      const fileContent = await fs.readFile(fileInfo.filePath, "utf-8");
 
       // Set content type
-      res.setHeader("Content-Type", contentType);
+      res.setHeader("Content-Type", fileInfo.contentType);
 
       // Serve file content
-       res.status(200).send(fileContent);
-       return;
+      return res.status(200).send(fileContent);
     } catch (error: any) {
-       res.status(404).json({
-        
-        error: `File could not be read: ${error.message}!`,
+      return res.status(404).json({
+        success: false,
+        error: `File could not be read: ${error.message}`,
       });
-      return;
     }
   } catch (error) {
     console.error(`Error fetching template file:`, error);
-     res.status(500).json({
-       error: "Internal server error!",
-     });
-    return;
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error!",
+    });
   }
-
 };
+
+/**
+ * Resolves the file path based on the requested file type
+ * Returns the file path and content type if found
+ */
+async function resolveFilePath(templateDir: string, fileType: string): Promise<{ filePath: string; contentType: string } | null> {
+  // Map of content types by file extension
+  const contentTypeMap: Record<string, string> = {
+    ".html": "text/html",
+    ".css": "text/css",
+    ".js": "application/javascript",
+    ".json": "application/json",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".ico": "image/x-icon",
+    ".ttf": "font/ttf",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+  };
+
+  // Get all files in the template directory recursively
+  const allFiles = await getAllFiles(templateDir);
+  
+  // Handle common page aliases
+  if (["index", "home", "main"].includes(fileType)) {
+    return findFileByName(allFiles, "index.html", contentTypeMap);
+  }
+  
+  // Handle HTML page requests (about, blog, product, etc.)
+  if (["about", "blog", "product", "marketplace", "product-details"].includes(fileType)) {
+    return findFileByName(allFiles, `${fileType}.html`, contentTypeMap);
+  }
+  
+  // Handle component requests
+  if (fileType.startsWith("component/") || fileType.startsWith("components/")) {
+    const componentName = fileType.split("/")[1];
+    const componentPath = allFiles.find(file => 
+      file.includes(`/components/`) && file.endsWith(`${componentName}.html`)
+    );
+    
+    if (componentPath) {
+      return {
+        filePath: componentPath,
+        contentType: "text/html"
+      };
+    }
+  }
+  
+  // Handle CSS requests
+  if (fileType === "css") {
+    // First try styles.css, then main.css, then first CSS file
+    const cssOptions = ["styles.css", "main.css", "style.css"];
+    
+    for (const option of cssOptions) {
+      const result = findFileByName(allFiles, option, contentTypeMap);
+      if (result) return result;
+    }
+    
+    // If none of the main CSS files are found, return the first CSS file
+    const firstCssFile = allFiles.find(file => file.endsWith(".css"));
+    if (firstCssFile) {
+      return {
+        filePath: firstCssFile,
+        contentType: "text/css"
+      };
+    }
+    
+    return null;
+  }
+  
+  // Handle JS requests
+  if (fileType === "js") {
+    // First try script.js, then main.js, then first JS file
+    const jsOptions = ["script.js", "main.js", "index.js"];
+    
+    for (const option of jsOptions) {
+      const result = findFileByName(allFiles, option, contentTypeMap);
+      if (result) return result;
+    }
+    
+    // If none of the main JS files are found, return the first JS file
+    const firstJsFile = allFiles.find(file => file.endsWith(".js"));
+    if (firstJsFile) {
+      return {
+        filePath: firstJsFile,
+        contentType: "application/javascript"
+      };
+    }
+    
+    return null;
+  }
+  
+  // Handle specific CSS files
+  if (fileType.endsWith("-styles.css") || fileType.endsWith(".css")) {
+    const cssFileName = fileType;
+    return findFileByName(allFiles, cssFileName, contentTypeMap);
+  }
+  
+  // Handle specific JS files
+  if (fileType.endsWith(".js")) {
+    const jsFileName = fileType;
+    return findFileByName(allFiles, jsFileName, contentTypeMap);
+  }
+  
+  // Check if the file exists directly with its name
+  const directMatch = allFiles.find(file => path.basename(file) === fileType);
+  if (directMatch) {
+    const ext = path.extname(directMatch);
+    return {
+      filePath: directMatch,
+      contentType: contentTypeMap[ext] || "text/plain"
+    };
+  }
+  
+  // If direct match not found, try to find a file with the given name and any extension
+  const fileWithoutExt = path.basename(fileType, path.extname(fileType));
+  const possibleMatch = allFiles.find(file => {
+    const basename = path.basename(file, path.extname(file));
+    return basename === fileWithoutExt;
+  });
+  
+  if (possibleMatch) {
+    const ext = path.extname(possibleMatch);
+    return {
+      filePath: possibleMatch,
+      contentType: contentTypeMap[ext] || "text/plain"
+    };
+  }
+  
+  return null;
+}
+
+/**
+ * Find a file by name in the list of files
+ */
+function findFileByName(
+  allFiles: string[],
+  fileName: string,
+  contentTypeMap: Record<string, string>
+): { filePath: string; contentType: string } | null {
+  const file = allFiles.find(file => path.basename(file) === fileName);
+  if (file) {
+    const ext = path.extname(file);
+    return {
+      filePath: file,
+      contentType: contentTypeMap[ext] || "text/plain"
+    };
+  }
+  return null;
+}
+
+/**
+ * Get all files in a directory recursively
+ */
+async function getAllFiles(dir: string): Promise<string[]> {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  
+  const files = await Promise.all(entries.map(async entry => {
+    const fullPath = path.join(dir, entry.name);
+    return entry.isDirectory() ? 
+      await getAllFiles(fullPath) : 
+      fullPath;
+  }));
+  
+  return files.flat();
+}
