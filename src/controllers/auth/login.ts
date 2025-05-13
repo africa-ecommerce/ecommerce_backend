@@ -12,8 +12,10 @@ export const login = (req: Request, res: Response, next: NextFunction) => {
     async (err: any, user: Express.User) => {
       try {
         // 1. Handle authentication errors
-        if (err) return next(err);
-        if (!user) {
+        if (err) {
+          return res.status(500).json({ error: "Authentication error" });
+        }
+          if (!user) {
           return res.status(401).json({ error: "Invalid credentials!" });
         }
 

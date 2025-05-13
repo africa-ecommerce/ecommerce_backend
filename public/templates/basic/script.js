@@ -1,62 +1,154 @@
 // Configuration object that can be updated from Studio
 const config = {
-    // Colors
-    colorPrimary: null, // Default is black (#000000)
-    colorSecondary: null, // Default is dark gray (#333333)
-    colorAccent: null, // Default is purple (#5D5FEF)
-    colorBackground: null, // Default is white (#FFFFFF)
-    colorText: null, // Default is dark gray (#333333)
-    colorTextLight: null, // Default is medium gray (#666666)
-    colorBorder: null, // Default is light gray (#E5E5E5)
-    colorFooterBg: null, // Default is very dark gray (#111111)
-    colorFooterText: null, // Default is white (#FFFFFF)
+
+    templateId: "basic",
+
+    styles: {
+        FONT_FAMILY: null,
+        TEXT_COLOR: null,
+        BACKGROUND_COLOR: null,
+        PRIMARY_COLOR: null,
+        SECONDARY_COLOR: null,
+        ACCENT_COLOR: null,
+        FOOTER_BACKGROUND: null,
+        FOOTER_TEXT_COLOR: null,
+      },
     
-    // Content
-    heroTitle: null, // Default is "Phone 13 Pro"
-    heroSubtitle: null, // Default is "The ultimate smartphone experience"
-    heroDescription: null, // Default is the description in the HTML
+
+    content: {
+        BRAND_NAME: null,
+        
+        HERO_TITLE: null,
+        HERO_DESCRIPTION:
+          null,
+        PRIMARY_CTA_TEXT: null,
+        SECONDARY_CTA_TEXT: null,
+      
+        ABOUT_TEXT:
+          null,
+       
+        INSTAGRAM_LINK: null,
+        FACEBOOK_LINK: null,
+        TWITTER_LINK: null,
+        PHONE_NUMBER: null,
+        MAIL: null,
+      },
+   
     
     // Products
     featuredProducts: null, // Default is the products in the HTML
+
+    metadata: {
+        title: null,
+        description: null,
+      },
     
-    // Categories
-    categories: null, // Default is the categories in the HTML
     
-    // Sale
-    saleTitle: null, // Default is "Big Summer Sale"
-    saleDescription: null, // Default is "Up to 50% off on selected items"
+   
 };
 
+
+
 // Function to apply configuration from Studio
+
 function applyConfig() {
     const root = document.documentElement;
     
-    // Apply colors if provided
-    if (config.colorPrimary) root.style.setProperty('--color-primary', config.colorPrimary);
-    if (config.colorSecondary) root.style.setProperty('--color-secondary', config.colorSecondary);
-    if (config.colorAccent) root.style.setProperty('--color-accent', config.colorAccent);
-    if (config.colorBackground) root.style.setProperty('--color-background', config.colorBackground);
-    if (config.colorText) root.style.setProperty('--color-text', config.colorText);
-    if (config.colorTextLight) root.style.setProperty('--color-text-light', config.colorTextLight);
-    if (config.colorBorder) root.style.setProperty('--color-border', config.colorBorder);
-    if (config.colorFooterBg) root.style.setProperty('--color-footer-bg', config.colorFooterBg);
-    if (config.colorFooterText) root.style.setProperty('--color-footer-text', config.colorFooterText);
+    // Apply styles if provided
+    if (config.styles.FONT_FAMILY) root.style.setProperty('--font-family', config.styles.FONT_FAMILY);
+    if (config.styles.PRIMARY_COLOR) root.style.setProperty('--color-primary', config.styles.PRIMARY_COLOR);
+    if (config.styles.SECONDARY_COLOR) root.style.setProperty('--color-secondary', config.styles.SECONDARY_COLOR);
+    if (config.styles.ACCENT_COLOR) root.style.setProperty('--color-accent', config.styles.ACCENT_COLOR);
+    if (config.styles.BACKGROUND_COLOR) root.style.setProperty('--color-background', config.styles.BACKGROUND_COLOR);
+    if (config.styles.TEXT_COLOR) root.style.setProperty('--color-text', config.styles.TEXT_COLOR);
+    if (config.styles.FOOTER_BACKGROUND) root.style.setProperty('--color-footer-bg', config.styles.FOOTER_BACKGROUND);
+    if (config.styles.FOOTER_TEXT_COLOR) root.style.setProperty('--color-footer-text', config.styles.FOOTER_TEXT_COLOR);
     
-    // Apply content if provided
+    // Apply brand name if provided
+    if (config.content.BRAND_NAME) {
+        // Update all logo elements
+        const logoElements = document.querySelectorAll('.logo a, .logo');
+        logoElements.forEach(element => {
+            element.textContent = config.content.BRAND_NAME;
+        });
+        
+        // Update footer brand name
+        const footerTitle = document.querySelector('.footer-title');
+        if (footerTitle) footerTitle.textContent = config.content.BRAND_NAME;
+        
+        // Update copyright text
+        const copyrightElement = document.querySelector('.footer-bottom p');
+        if (copyrightElement) {
+            copyrightElement.textContent = `© ${new Date().getFullYear()} ${config.content.BRAND_NAME}. All rights reserved.`;
+        }
+        
+        // Update title tag if no specific title is set
+        if (!config.metadata.title) {
+            document.title = config.content.BRAND_NAME + ' - Premium Electronics';
+        }
+    }
+    
+    // Apply hero content if provided
     const heroTitleEl = document.querySelector('.hero h1');
-    const heroSubtitleEl = document.querySelector('.hero .subtitle');
     const heroDescriptionEl = document.querySelector('.hero .description');
     
-    if (config.heroTitle && heroTitleEl) heroTitleEl.textContent = config.heroTitle;
-    if (config.heroSubtitle && heroSubtitleEl) heroSubtitleEl.textContent = config.heroSubtitle;
-    if (config.heroDescription && heroDescriptionEl) heroDescriptionEl.textContent = config.heroDescription;
+    if (config.content.HERO_TITLE && heroTitleEl) heroTitleEl.textContent = config.content.HERO_TITLE;
+    if (config.content.HERO_DESCRIPTION && heroDescriptionEl) heroDescriptionEl.textContent = config.content.HERO_DESCRIPTION;
     
-    // Apply sale content if provided
-    const saleTitleEl = document.querySelector('.sale-text h2');
-    const saleDescriptionEl = document.querySelector('.sale-text p');
+    // Apply CTA button text if provided
+    const primaryCTABtn = document.querySelector('.hero-actions .btn-primary');
+    const secondaryCTABtn = document.querySelector('.hero-actions .btn-outline');
     
-    if (config.saleTitle && saleTitleEl) saleTitleEl.textContent = config.saleTitle;
-    if (config.saleDescription && saleDescriptionEl) saleDescriptionEl.textContent = config.saleDescription;
+    if (config.content.PRIMARY_CTA_TEXT && primaryCTABtn) primaryCTABtn.textContent = config.content.PRIMARY_CTA_TEXT;
+    if (config.content.SECONDARY_CTA_TEXT && secondaryCTABtn) secondaryCTABtn.textContent = config.content.SECONDARY_CTA_TEXT;
+    
+    // Apply about text if provided
+    const aboutTextElement = document.querySelector('.about-text');
+    if (config.content.ABOUT_TEXT && aboutTextElement) {
+        // Check if the text contains paragraph tags
+        if (config.content.ABOUT_TEXT.trim().startsWith('<p>')) {
+            aboutTextElement.innerHTML = config.content.ABOUT_TEXT;
+        } else {
+            // Split text by newlines and create paragraphs
+            const paragraphs = config.content.ABOUT_TEXT.split('\n\n');
+            aboutTextElement.innerHTML = '';
+            paragraphs.forEach(paragraph => {
+                if (paragraph.trim()) {
+                    const p = document.createElement('p');
+                    p.textContent = paragraph.trim();
+                    aboutTextElement.appendChild(p);
+                }
+            });
+        }
+    }
+    
+    // Apply social media links if provided
+    const socialLinks = document.querySelectorAll('.social-links a');
+    if (socialLinks.length >= 3) {
+        if (config.content.FACEBOOK_LINK) socialLinks[0].href = config.content.FACEBOOK_LINK;
+        if (config.content.TWITTER_LINK) socialLinks[1].href = config.content.TWITTER_LINK;
+        if (config.content.INSTAGRAM_LINK) socialLinks[2].href = config.content.INSTAGRAM_LINK;
+    }
+    
+    // Apply contact information if provided
+    // Find elements by checking all paragraphs in footer columns
+    const footerParagraphs = document.querySelectorAll('.footer-column p');
+    let emailElement = null;
+    let phoneElement = null;
+    
+    footerParagraphs.forEach(p => {
+        const text = p.textContent.toLowerCase();
+        if (text.includes('email')) emailElement = p;
+        if (text.includes('phone')) phoneElement = p;
+    });
+    
+    if (config.content.MAIL && emailElement) {
+        emailElement.textContent = `Email: ${config.content.MAIL}`;
+    }
+    
+    if (config.content.PHONE_NUMBER && phoneElement) {
+        phoneElement.textContent = `Phone: ${config.content.PHONE_NUMBER}`;
+    }
     
     // Apply featured products if provided
     if (config.featuredProducts && Array.isArray(config.featuredProducts)) {
@@ -64,17 +156,21 @@ function applyConfig() {
         if (productGrid) {
             productGrid.innerHTML = '';
             config.featuredProducts.forEach(product => {
-                const productCard = document.createElement('div');
+                const productCard = document.createElement('a');
                 productCard.className = 'product-card';
+                productCard.href = `product-details.html?id=${product.id || '1'}`;
                 productCard.innerHTML = `
                     <div class="product-image">
                         <img src="${product.image || '/placeholder.svg?height=200&width=150'}" alt="${product.title}">
                     </div>
                     <div class="product-info">
                         <h3 class="product-title">${product.title}</h3>
-                        <p class="product-variant">${product.variant}</p>
+                        ${product.variant ? `<p class="product-variant">${product.variant}</p>` : ''}
                         <p class="product-price">${product.price}</p>
-                        <button class="btn btn-sm btn-dark">Add to Cart</button>
+                        <div class="product-actions">
+                            <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                            <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                        </div>
                     </div>
                 `;
                 productGrid.appendChild(productCard);
@@ -82,24 +178,24 @@ function applyConfig() {
         }
     }
     
-    // Apply categories if provided
-    if (config.categories && Array.isArray(config.categories)) {
-        const categoryGrid = document.querySelector('.category-grid');
-        if (categoryGrid) {
-            categoryGrid.innerHTML = '';
-            config.categories.forEach(category => {
-                const categoryCard = document.createElement('div');
-                categoryCard.className = 'category-card';
-                categoryCard.innerHTML = `
-                    <div class="category-image">
-                        <img src="${category.image || '/placeholder.svg?height=150&width=150'}" alt="${category.title}">
-                    </div>
-                    <h3 class="category-title">${category.title}</h3>
-                    <a href="${category.link || '#'}" class="category-link">View All</a>
-                `;
-                categoryGrid.appendChild(categoryCard);
-            });
+    // Apply metadata if provided
+    if (config.metadata.title) {
+        document.title = config.metadata.title;
+    }
+    
+    if (config.metadata.description) {
+        // Look for existing meta description tag
+        let metaDescription = document.querySelector('meta[name="description"]');
+        
+        // If it doesn't exist, create it
+        if (!metaDescription) {
+            metaDescription = document.createElement('meta');
+            metaDescription.setAttribute('name', 'description');
+            document.head.appendChild(metaDescription);
         }
+        
+        // Set content attribute
+        metaDescription.setAttribute('content', config.metadata.description);
     }
 }
 

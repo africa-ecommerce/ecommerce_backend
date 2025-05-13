@@ -43,11 +43,11 @@ export const generateTokens = async (
 
 
 export const verifyAccessToken = (token: string) => {
-  return jwt.verify(token, jwtSecret) as { userId: string };
+  return jwt.verify(token, jwtSecret)  as { userId: string};
 };
 
 export const verifyRefreshToken = (token: string) => {
-  return jwt.verify(token, refreshTokenSecret) as { userId: string };
+  return jwt.verify(token, refreshTokenSecret)  as { userId: string};
 };
 
 
@@ -103,9 +103,19 @@ export const cookieConfig = {
      }
 
      // Generate new tokens
-     const newTokens = await generateTokens(user.id, user.isOnboarded, user.userType);
+     const newTokens = await generateTokens(
+       user.id,
+       user.isOnboarded,
+       user.userType
+     );
 
-     return { success: true, user, newTokens };
+    
+     
+     return {
+       success: true,
+       user,
+       newTokens,
+     };
    } catch (error: any) {
      // Handle JWT verification errors
      return { success: false, error: error.message };
@@ -123,8 +133,16 @@ export const setAuthCookies = (res: Response, tokens: Tokens) => {
     .cookie("refreshToken", tokens.refreshToken, {
       ...cookieConfig,
       maxAge: REFRESH_TOKEN_EXPIRY * 1000,
-      path: "/", // Keep this specific path for refresh token
+      // path: "/", // Keep this specific path for refresh token
     });
+};
+
+
+// New helper method to clear auth cookies
+export const clearAuthCookies = (res: Response) => {
+  res
+    .clearCookie("accessToken", cookieConfig)
+    .clearCookie("refreshToken", cookieConfig);
 };
 
 

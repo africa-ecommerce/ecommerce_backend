@@ -59,7 +59,7 @@
 
 
 import { Request, Response } from "express";
-import { refreshSession, setAuthCookies } from "../../helper/token";
+import { clearAuthCookies, refreshSession, setAuthCookies } from "../../helper/token";
 import jwt from "jsonwebtoken";
 
 export const refreshToken = async (req: Request, res: Response) => {
@@ -79,22 +79,10 @@ export const refreshToken = async (req: Request, res: Response) => {
 
     if (!result.success) {
       // Clear cookies on authentication failure
-      res.clearCookie("accessToken", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        path: "/",
-      });
-
-      res.clearCookie("refreshToken", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        path: "/",
-      });
+      clearAuthCookies(res)
 
        res.status(401).json({
-        error: result.error,
+        error: result.error || "Invalid refresh token!",
         code: "INVALID_REFRESH",
       });
 
@@ -107,7 +95,6 @@ export const refreshToken = async (req: Request, res: Response) => {
     // Return success response with the tokens in the response body
     // This allows the middleware to access them directly rather than relying on forwarding Set-Cookie headers
      res.status(200).json({
-      success: true,
       accessToken: result.newTokens!.accessToken,
       refreshToken: result.newTokens!.refreshToken,
     });
@@ -116,41 +103,19 @@ export const refreshToken = async (req: Request, res: Response) => {
   } catch (error) {
     // More specific error handling
     if (error instanceof jwt.TokenExpiredError) {
-      res.clearCookie("accessToken", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        path: "/",
-      });
+      // Clear cookies on authentication failure
+      clearAuthCookies(res);
 
-      res.clearCookie("refreshToken", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        path: "/",
-      });
-
-       res.status(401).json({
+      res.status(401).json({
         error: "Refresh token expired!",
         code: "TOKEN_EXPIRED",
       });
       return;
     } else if (error instanceof jwt.JsonWebTokenError) {
-      res.clearCookie("accessToken", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        path: "/",
-      });
+      // Clear cookies on authentication failure
+      clearAuthCookies(res);
 
-      res.clearCookie("refreshToken", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        path: "/",
-      });
-
-       res.status(401).json({
+      res.status(401).json({
         error: "Invalid refresh token!",
         code: "INVALID_TOKEN",
       });
@@ -158,19 +123,8 @@ export const refreshToken = async (req: Request, res: Response) => {
     } else {
       console.error("Refresh failed:", error);
 
-      res.clearCookie("accessToken", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        path: "/",
-      });
-
-      res.clearCookie("refreshToken", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        path: "/",
-      });
+       // Clear cookies on authentication failure
+       clearAuthCookies(res)
 
        res.status(401).json({
         error: "Authentication refresh failed!",

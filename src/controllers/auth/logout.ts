@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { prisma } from "../../config";
 import { AuthRequest } from "../../types";
+import { clearAuthCookies } from "../../helper/token";
 
 export const logout = async (req: AuthRequest, res: Response) => {
   try {
@@ -18,16 +19,17 @@ export const logout = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Clear client-side cookies
-    res
-      .clearCookie("accessToken")
-      .clearCookie("refreshToken")
-      .status(200)
-      .json({ message: "Logged out successfully!" });
+    // Clear authentication cookies
+    clearAuthCookies(res);
+
+    // Return success response
+    res.status(200).json({ message: "Logged out successfully!" });
   } catch (error) {
     console.error("Logout error:", error);
+
+    // Still clear cookies even if DB update fails
+    clearAuthCookies(res);
     res.status(500).json({
-      success: false,
       error: "Internal server error!",
     });
   }

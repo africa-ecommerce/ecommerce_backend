@@ -6,6 +6,7 @@ declare global {
     interface User extends Omit<PrismaUser, "password"> {
       plug?: Plug | null;
       supplier?: Supplier | null;
+      
     }
   }
 }

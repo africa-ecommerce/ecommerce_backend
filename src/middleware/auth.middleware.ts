@@ -7,6 +7,7 @@ import {
   verifyAccessToken,
 } from "../helper/token";
 import { AuthRequest } from "../types";
+import passport from "passport";
 
 
 const authenticateJWT = async (
@@ -31,7 +32,25 @@ const authenticateJWT = async (
       }
     }
 
-    // 2. Attempt refresh token flow
+    //  Check for Bearer token in Authorization header
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ")) {
+      // Use passport JWT strategy to validate token
+      return passport.authenticate("jwt", { session: false }, (err:any, user:any) => {
+        if (err) {
+          return res.status(401).json({ error: "Invalid token" });
+        }
+
+        if (!user) {
+          return res.status(401).json({ error: "Authentication failed" });
+        }
+
+        req.user = user;
+        return next();
+      })(req, res, next);
+    }
+
+    // Attempt refresh token flow
     const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) {
       // Clear invalid credentials

@@ -48,13 +48,28 @@ passport.use(
     async (payload, done) => {
       try {
         // 1. Find user by ID from JWT payload
-        const user = await prisma.user.findUnique({ where: payload.sub });
+        const user = await prisma.user.findUnique({ 
+          where: { id: payload.userId },
+          include: {
+            plug: true,
+            supplier: true,
+          },
+        });
 
         // 2. Check user exists and email is verified
         if (!user) return done(null, false);
         if (!user.emailVerified) return done(null, false);
 
-        return done(null, user);
+        // Strip sensitive data
+        const secureUser = {
+          ...user,
+          plug: user.plug || undefined,
+          supplier: user.supplier || undefined,
+          password: undefined, // Ensure password is removed
+          refreshToken: undefined, // Don't expose refresh token
+        };
+
+        return done(null, secureUser);
       } catch (error) {
         return done(error);
       }
@@ -62,7 +77,7 @@ passport.use(
   )
 );
 
-// Serialize and deserialize user for session support
+// // Serialize and deserialize user for session support
 passport.serializeUser((user: any, done) => {
   done(null, user.id);
 });

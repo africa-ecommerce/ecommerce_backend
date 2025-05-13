@@ -20,18 +20,13 @@ import {
 import marketPlaceRoutes from "./routes/marketplace.routes";
 import templateRoutes from "./routes/template.routes";
 import path from "path";
+import dotenv from "dotenv";
+
+// Load environment variables
+dotenv.config();
+
 
 const app = express();
-app.use(cookieParser());
-
-// Then: Body parsers
-app.use(express.json()); // For JSON bodies
-app.use(express.urlencoded({ extended: true })); // For URL-encoded bodies
-
-
-// Serve static files from the public directory
-// This makes files in the public folder directly accessible via their path
-app.use(express.static(path.join(__dirname, '../public')));
 
 
 // Only allow requests from your frontend URL
@@ -42,7 +37,7 @@ const corsOptions = {
 };
 
 // Trust proxy is critical when behind Vercel's proxy
-app.set('trust proxy', 1);
+// app.set('trust proxy', 1);
 
 app.use(cors(corsOptions));
 app.use(
@@ -63,6 +58,20 @@ app.use(
     },
   })
 );
+
+
+
+// Then: Body parsers
+app.use(express.json()); // For JSON bodies
+app.use(express.urlencoded({ extended: true })); // For URL-encoded bodies
+
+app.use(cookieParser());
+// Serve static files from the public directory
+// This makes files in the public folder directly accessible via their path
+app.use(express.static(path.join(__dirname, '../public')));
+
+
+
 app.use(morgan("dev"));
 
 // Configure session middleware -> passport need this internally
@@ -71,10 +80,7 @@ app.use(
     secret: process.env.SESSION_SECRET! || "yourSecret",
     resave: false,
     saveUninitialized: false,
-    cookie: {
-      ...cookieConfig,
-       maxAge: 24 * 60 * 60 * 1000, // 1 day
-    },
+    cookie: { maxAge: 60000 },
   })
 );
 
