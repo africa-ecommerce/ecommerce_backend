@@ -93,12 +93,11 @@ export const getTemplateById = async (req: Request, res: Response) => {
     return;
   }
 };
-
 /**
  * Get a specific file from a template
- * Returns the content of the requested file
+ * For HTML pages, returns a fully rendered page with all CSS and JS injected
+ * For other files, returns the raw content
  */
-
 export const getTemplateFile = async (req: Request, res: Response) => {
   const { id, fileType } = req.params;
 
@@ -113,8 +112,8 @@ export const getTemplateFile = async (req: Request, res: Response) => {
         success: false,
         error: `Template '${id}' not found!`,
       });
-
-      return
+      
+      return;
     }
 
     // Determine file path and content type based on request
@@ -131,15 +130,23 @@ export const getTemplateFile = async (req: Request, res: Response) => {
 
     // Try to read the file
     try {
-      const fileContent = await fs.readFile(fileInfo.filePath, "utf-8");
+      let fileContent = await fs.readFile(fileInfo.filePath, "utf-8");
 
-      // Set content type
-      res.setHeader("Content-Type", fileInfo.contentType);
-
-      // Serve file content
-       res.status(200).send(fileContent);
-
-       return;
+      // If this is an HTML file (but not a component), inject assets directly
+      if (fileInfo.contentType === "text/html" && !fileType.startsWith("component")) {
+        const pageName = path.basename(fileInfo.filePath, ".html");
+        fileContent = await injectPageAssets(fileContent, templateDir, pageName);
+        
+        // Set content type and send full HTML
+        res.setHeader("Content-Type", "text/html");
+        res.status(200).send(fileContent);
+        return;
+      } else {
+        // For non-HTML files or component files, just send the content
+        res.setHeader("Content-Type", fileInfo.contentType);
+        res.status(200).send(fileContent);
+        return;
+      }
     } catch (error: any) {
        res.status(404).json({
         success: false,
@@ -153,10 +160,173 @@ export const getTemplateFile = async (req: Request, res: Response) => {
       success: false,
       error: "Internal server error!",
     });
-
+    
     return;
   }
 };
+
+/**
+ * Injects all assets (CSS, JS, components) into an HTML page
+ * @param htmlContent The original HTML content
+ * @param templateDir The template directory
+ * @param pageName The name of the page (without extension)
+ * @returns The HTML with all assets injected
+ */
+async function injectPageAssets(htmlContent: string, templateDir: string, pageName: string): Promise<string> {
+  const allFiles = await getAllFiles(templateDir);
+  
+  try {
+    // First, inject components
+    const componentRegex = /<!--\s*INCLUDE\s+COMPONENT\s*:\s*([A-Za-z0-9_-]+)\s*-->/g;
+    let match;
+    
+    // Look for component include tags and replace them
+    while ((match = componentRegex.exec(htmlContent)) !== null) {
+      const componentName = match[1];
+      const componentPath = allFiles.find(file => 
+        file.includes(`/components/`) && path.basename(file, ".html") === componentName
+      );
+      
+      if (componentPath) {
+        const componentContent = await fs.readFile(componentPath, "utf-8");
+        htmlContent = htmlContent.replace(match[0], componentContent);
+      }
+    }
+    
+    // Collect CSS files
+    const cssFiles: { path: string, content: string }[] = [];
+    
+    // Check for page-specific CSS (e.g., blog.css for blog.html)
+    const pageSpecificCss = allFiles.find(file => 
+      path.basename(file) === `${pageName}.css` || 
+      path.basename(file) === `${pageName}-styles.css`
+    );
+    
+    if (pageSpecificCss) {
+      cssFiles.push({
+        path: pageSpecificCss,
+        content: await fs.readFile(pageSpecificCss, "utf-8")
+      });
+    }
+    
+    // Check for common CSS files
+    const commonCssFiles = ["styles.css", "style.css", "main.css", "components.css"];
+    for (const cssFile of commonCssFiles) {
+      const cssFilePath = allFiles.find(file => path.basename(file) === cssFile);
+      if (cssFilePath) {
+        cssFiles.push({
+          path: cssFilePath,
+          content: await fs.readFile(cssFilePath, "utf-8")
+        });
+      }
+    }
+    
+    // Collect JS files
+    const jsFiles: { path: string, content: string }[] = [];
+    
+    // Check for page-specific JS
+    const pageSpecificJs = allFiles.find(file => 
+      path.basename(file) === `${pageName}.js`
+    );
+    
+    if (pageSpecificJs) {
+      jsFiles.push({
+        path: pageSpecificJs,
+        content: await fs.readFile(pageSpecificJs, "utf-8")
+      });
+    }
+    
+    // Check for common JS files
+    const commonJsFiles = ["script.js", "main.js", "layout.js"];
+    for (const jsFile of commonJsFiles) {
+      const jsFilePath = allFiles.find(file => path.basename(file) === jsFile);
+      if (jsFilePath) {
+        jsFiles.push({
+          path: jsFilePath,
+          content: await fs.readFile(jsFilePath, "utf-8")
+        });
+      }
+    }
+    
+    // Inject CSS into head
+    if (cssFiles.length > 0) {
+      const cssContent = cssFiles.map(css => 
+        `<style>/* ${path.basename(css.path)} */\n${css.content}\n</style>`
+      ).join('\n');
+      
+      // Try to find the end of head tag to insert styles
+      if (htmlContent.includes('</head>')) {
+        htmlContent = htmlContent.replace('</head>', `${cssContent}\n</head>`);
+      } else {
+        // If no head tag, try to insert at the beginning of the html
+        const htmlStart = htmlContent.indexOf('<html');
+        if (htmlStart !== -1) {
+          const htmlEndTag = htmlContent.indexOf('>', htmlStart);
+          if (htmlEndTag !== -1) {
+            htmlContent = htmlContent.slice(0, htmlEndTag + 1) + 
+                         `\n<head>${cssContent}\n</head>\n` + 
+                         htmlContent.slice(htmlEndTag + 1);
+          }
+        }
+      }
+    }
+    
+    // Inject JS before end of body
+    if (jsFiles.length > 0) {
+      const jsContent = jsFiles.map(js => 
+        `<script>/* ${path.basename(js.path)} */\n${js.content}\n</script>`
+      ).join('\n');
+      
+      // Try to find the end of body tag to insert scripts
+      if (htmlContent.includes('</body>')) {
+        htmlContent = htmlContent.replace('</body>', `${jsContent}\n</body>`);
+      } else {
+        // If no body tag, append to the end of html
+        htmlContent = htmlContent + `\n${jsContent}\n`;
+      }
+    }
+    
+    return htmlContent;
+  } catch (error) {
+    console.error(`Error injecting page assets:`, error);
+    return htmlContent; // Return original HTML if there was an error
+  }
+}
+
+/**
+ * Get all files in a directory recursively
+ */
+async function getAllFiles(dir: string): Promise<string[]> {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  
+  const files = await Promise.all(entries.map(async entry => {
+    const fullPath = path.join(dir, entry.name);
+    return entry.isDirectory() ? 
+      await getAllFiles(fullPath) : 
+      fullPath;
+  }));
+  
+  return files.flat();
+}
+
+/**
+ * Find a file by name in the list of files
+ */
+function findFileByName(
+  allFiles: string[],
+  fileName: string,
+  contentTypeMap: Record<string, string>
+): { filePath: string; contentType: string } | null {
+  const file = allFiles.find(file => path.basename(file) === fileName);
+  if (file) {
+    const ext = path.extname(file);
+    return {
+      filePath: file,
+      contentType: contentTypeMap[ext] || "text/plain"
+    };
+  }
+  return null;
+}
 
 /**
  * Resolves the file path based on the requested file type
@@ -291,39 +461,4 @@ async function resolveFilePath(templateDir: string, fileType: string): Promise<{
   }
   
   return null;
-}
-
-/**
- * Find a file by name in the list of files
- */
-function findFileByName(
-  allFiles: string[],
-  fileName: string,
-  contentTypeMap: Record<string, string>
-): { filePath: string; contentType: string } | null {
-  const file = allFiles.find(file => path.basename(file) === fileName);
-  if (file) {
-    const ext = path.extname(file);
-    return {
-      filePath: file,
-      contentType: contentTypeMap[ext] || "text/plain"
-    };
-  }
-  return null;
-}
-
-/**
- * Get all files in a directory recursively
- */
-async function getAllFiles(dir: string): Promise<string[]> {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  
-  const files = await Promise.all(entries.map(async entry => {
-    const fullPath = path.join(dir, entry.name);
-    return entry.isDirectory() ? 
-      await getAllFiles(fullPath) : 
-      fullPath;
-  }));
-  
-  return files.flat();
 }
