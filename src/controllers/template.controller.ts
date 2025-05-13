@@ -109,20 +109,24 @@ export const getTemplateFile = async (req: Request, res: Response) => {
     try {
       await fs.access(templateDir);
     } catch (error) {
-      return res.status(404).json({
+       res.status(404).json({
         success: false,
         error: `Template '${id}' not found!`,
       });
+
+      return
     }
 
     // Determine file path and content type based on request
     const fileInfo = await resolveFilePath(templateDir, fileType);
     
     if (!fileInfo) {
-      return res.status(404).json({
+       res.status(404).json({
         success: false,
         error: `'${fileType}' file not found in template!`,
       });
+
+      return;
     }
 
     // Try to read the file
@@ -133,19 +137,24 @@ export const getTemplateFile = async (req: Request, res: Response) => {
       res.setHeader("Content-Type", fileInfo.contentType);
 
       // Serve file content
-      return res.status(200).send(fileContent);
+       res.status(200).send(fileContent);
+
+       return;
     } catch (error: any) {
-      return res.status(404).json({
+       res.status(404).json({
         success: false,
         error: `File could not be read: ${error.message}`,
       });
+      return;
     }
   } catch (error) {
     console.error(`Error fetching template file:`, error);
-    return res.status(500).json({
+     res.status(500).json({
       success: false,
       error: "Internal server error!",
     });
+
+    return;
   }
 };
 

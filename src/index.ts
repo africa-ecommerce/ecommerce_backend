@@ -108,7 +108,7 @@ app.use("/onboarding", onboardingRoutes);
 app.use("/marketplace", marketPlaceRoutes);
 app.use("/products", productRoutes);
 app.use("/plug/products", plugProductRoutes);
-app.use("/templates", templateRoutes);
+app.use("/template", templateRoutes);
 
 // Global error handling middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
