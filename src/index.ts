@@ -18,6 +18,8 @@ import {
   shutdownPriceUpdateScheduler,
 } from "./helper/workers/priceUpdater";
 import marketPlaceRoutes from "./routes/marketplace.routes";
+import templateRoutes from "./routes/template.routes";
+import path from "path";
 
 const app = express();
 app.use(cookieParser());
@@ -25,6 +27,12 @@ app.use(cookieParser());
 // Then: Body parsers
 app.use(express.json()); // For JSON bodies
 app.use(express.urlencoded({ extended: true })); // For URL-encoded bodies
+
+
+// Serve static files from the public directory
+// This makes files in the public folder directly accessible via their path
+app.use(express.static(path.join(__dirname, '../public')));
+
 
 // Only allow requests from your frontend URL
 const corsOptions = {
@@ -100,6 +108,7 @@ app.use("/onboarding", onboardingRoutes);
 app.use("/marketplace", marketPlaceRoutes);
 app.use("/products", productRoutes);
 app.use("/plug/products", plugProductRoutes);
+app.use("/templates", templateRoutes);
 
 // Global error handling middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {

@@ -1,4 +1,3 @@
-// src/controllers/product.controller.ts
 import { Response } from "express";
 import { invalidateProductCache, prisma } from "../config";
 import { AuthRequest } from "../types";
