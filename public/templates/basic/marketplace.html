@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Products - Store</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="components.css">
+    <link rel="stylesheet" href="marketplace-styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <a href="/">Store</a>
+                </div>
+                <nav class="main-nav">
+                    <ul>
+                        <li><a href="index.html" class="nav-link">Home</a></li>
+                        <li><a href="marketplace.html" class="nav-link active">Products</a></li>
+                        <li><a href="blog.html" class="nav-link">Blog</a></li>
+                    </ul>
+                </nav>
+                <div class="header-actions">
+                    <div class="search-container">
+                        <button class="icon-btn search-toggle">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" class="lucide lucide-search">
+                                <circle cx="11" cy="11" r="8" />
+                                <path d="m21 21-4.3-4.3" />
+                            </svg>
+                        </button>
+                        <form class="search-form">
+                            <input type="text" placeholder="Search products..." class="search-input">
+                            <button type="submit" class="search-submit">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" class="lucide lucide-search">
+                                    <circle cx="11" cy="11" r="8" />
+                                    <path d="m21 21-4.3-4.3" />
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                    <button class="icon-btn cart-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="lucide lucide-shopping-cart">
+                            <circle cx="8" cy="21" r="1" />
+                            <circle cx="19" cy="21" r="1" />
+                            <path
+                                d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+                        </svg>
+                        <span class="cart-count">0</span>
+                    </button>
+                    <button class="mobile-menu-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="lucide lucide-menu">
+                            <line x1="4" x2="20" y1="12" y2="12" />
+                            <line x1="4" x2="20" y1="6" y2="6" />
+                            <line x1="4" x2="20" y1="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Sidebar Navigation -->
+        <div class="sidebar-overlay"></div>
+        <div class="mobile-sidebar">
+            <div class="sidebar-header">
+                <div class="logo">Store</div>
+                <button class="sidebar-close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-x">
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                    </svg>
+                </button>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="marketplace.html" class="active">Products</a></li>
+                    <li><a href="blog.html">Blog</a></li>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- Cart Modal -->
+        <div class="cart-modal">
+            <div class="cart-modal-header">
+                <h3>Your Cart</h3>
+                <button class="cart-close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-x">
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="cart-modal-items">
+                <div class="cart-empty">
+                    <p>Your cart is empty</p>
+                    <a href="marketplace.html" class="btn btn-primary">Shop Now</a>
+                </div>
+                <!-- Cart items will be dynamically added here -->
+            </div>
+            <div class="cart-modal-footer">
+                <div class="cart-total">
+                    <span>Total:</span>
+                    <span class="total-amount">$0.00</span>
+                </div>
+                <div class="cart-actions">
+                    <a href="checkout.html" class="btn btn-primary">Checkout</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="marketplace-header">
+                <h1 class="page-title">All Products</h1>
+                
+
+            <div class="marketplace-layout">
+                <!-- Filters Sidebar -->
+                <aside class="filters-sidebar">
+                    <div class="filters-header">
+                        <h2>Filters</h2>
+                        <button class="clear-filters-btn">Clear All</button>
+                    </div>
+
+                  
+                    <div class="filter-group">
+                        <h3 class="filter-title">Price Range</h3>
+                        <div class="price-range-control">
+                            <div class="price-inputs">
+                                <div class="price-input">
+                                    <label for="min-price">Min</label>
+                                    <div class="input-wrapper">
+                                        <span class="currency">$</span>
+                                        <input type="number" id="min-price" min="0" value="0">
+                                    </div>
+                                </div>
+                                <div class="price-input">
+                                    <label for="max-price">Max</label>
+                                    <div class="input-wrapper">
+                                        <span class="currency">$</span>
+                                        <input type="number" id="max-price" min="0" value="2000">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="price-slider-container">
+                                <div class="price-slider" id="price-slider"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                 
+                    <button class="btn btn-primary apply-filters-btn">Apply Filters</button>
+                </aside>
+
+                <!-- Products Grid -->
+                <div class="products-container">
+                    <div class="product-grid">
+                        <!-- Product 1 -->
+                        <a href="product-details.html?id=1" class="product-card">
+                            <div class="product-image">
+                                <img src="/placeholder.svg?height=200&width=150" alt="Phone 13 Pro - Black">
+                            </div>
+                            <div class="product-info">
+                                <h3 class="product-title">Phone 13 Pro</h3>
+                                <p class="product-price">$999</p>
+                                <div class="product-actions">
+                                    <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                    <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- Product 2 -->
+                        <a href="product-details.html?id=2" class="product-card">
+                            <div class="product-image">
+                                <img src="/placeholder.svg?height=200&width=150" alt="Phone 13 - Blue">
+                            </div>
+                            <div class="product-info">
+                                <h3 class="product-title">Phone 13</h3>
+                                <p class="product-price">$799</p>
+                                <div class="product-actions">
+                                    <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                    <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- Product 3 -->
+                        <a href="product-details.html?id=3" class="product-card">
+                            <div class="product-image">
+                                <img src="/placeholder.svg?height=200&width=150" alt="Phone 13 Pro Max - Gold">
+                            </div>
+                            <div class="product-info">
+                                <h3 class="product-title">Phone 13 Pro Max</h3>
+                                <p class="product-price">$1099</p>
+                                <div class="product-actions">
+                                    <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                    <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- Product 4 -->
+                        <a href="product-details.html?id=4" class="product-card">
+                            <div class="product-image">
+                                <img src="/placeholder.svg?height=200&width=150" alt="Wireless Earbuds">
+                            </div>
+                            <div class="product-info">
+                                <h3 class="product-title">Wireless Earbuds</h3>
+                                <p class="product-price">$199</p>
+                                <div class="product-actions">
+                                    <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                    <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- Product 5 -->
+                        <a href="product-details.html?id=5" class="product-card">
+                            <div class="product-image">
+                                <img src="/placeholder.svg?height=200&width=150" alt="Smart Watch">
+                            </div>
+                            <div class="product-info">
+                                <h3 class="product-title">Smart Watch</h3>
+                                <p class="product-price">$399</p>
+                                <div class="product-actions">
+                                    <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                    <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- Product 6 -->
+                        <a href="product-details.html?id=6" class="product-card">
+                            <div class="product-image">
+                                <img src="/placeholder.svg?height=200&width=150" alt="Tablet Pro">
+                            </div>
+                            <div class="product-info">
+                                <h3 class="product-title">Tablet Pro</h3>
+                                <p class="product-price">$799</p>
+                                <div class="product-actions">
+                                    <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                    <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- Product 7 -->
+                        <a href="product-details.html?id=7" class="product-card">
+                            <div class="product-image">
+                                <img src="/placeholder.svg?height=200&width=150" alt="Wireless Headphones">
+                            </div>
+                            <div class="product-info">
+                                <h3 class="product-title">Wireless Headphones</h3>
+                                <p class="product-price">$349</p>
+                                <div class="product-actions">
+                                    <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                    <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- Product 8 -->
+                        <a href="product-details.html?id=8" class="product-card">
+                            <div class="product-image">
+                                <img src="/placeholder.svg?height=200&width=150" alt="Laptop Pro">
+                            </div>
+                            <div class="product-info">
+                                <h3 class="product-title">Laptop Pro</h3>
+                                <p class="product-price">$1299</p>
+                                <div class="product-actions">
+                                    <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                    <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- Product 9 -->
+                        <a href="product-details.html?id=9" class="product-card">
+                            <div class="product-image">
+                                <img src="/placeholder.svg?height=200&width=150" alt="Smart Speaker">
+                            </div>
+                            <div class="product-info">
+                                <h3 class="product-title">Smart Speaker</h3>
+                                <p class="product-price">$99</p>
+                                <div class="product-actions">
+                                    <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                    <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- Product 10 -->
+                        <a href="product-details.html?id=10" class="product-card">
+                            <div class="product-image">
+                                <img src="/placeholder.svg?height=200&width=150" alt="Wireless Charger">
+                            </div>
+                            <div class="product-info">
+                                <h3 class="product-title">Wireless Charger</h3>
+                                <p class="product-price">$49</p>
+                                <div class="product-actions">
+                                    <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                    <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- Product 11 -->
+                        <a href="product-details.html?id=11" class="product-card">
+                            <div class="product-image">
+                                <img src="/placeholder.svg?height=200&width=150" alt="Phone Case">
+                            </div>
+                            <div class="product-info">
+                                <h3 class="product-title">Phone 13 Pro Case</h3>
+                                <p class="product-price">$29</p>
+                                <div class="product-actions">
+                                    <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                    <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- Product 12 -->
+                        <a href="product-details.html?id=12" class="product-card">
+                            <div class="product-image">
+                                <img src="/placeholder.svg?height=200&width=150" alt="Screen Protector">
+                            </div>
+                            <div class="product-info">
+                                <h3 class="product-title">Screen Protector</h3>
+                                <p class="product-price">$19</p>
+                                <div class="product-actions">
+                                    <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                    <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="pagination">
+                        <button class="pagination-btn active">1</button>
+                        <button class="pagination-btn">2</button>
+                        <button class="pagination-btn">3</button>
+                        <button class="pagination-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" class="lucide lucide-chevron-right">
+                                <path d="m9 18 6-6-6-6" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <div id="footer-container"></div>
+
+
+    <script src="layout.js"></script>
+    <script src="cart.js"></script>
+    <script src="marketplace.js"></script>
+    <script src="script.js"></script>
+
+</body>
+
+</html>

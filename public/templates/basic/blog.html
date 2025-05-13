@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog - Store</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="components.css">
+    <link rel="stylesheet" href="blog-styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <a href="/">Store</a>
+                </div>
+                <nav class="main-nav">
+                    <ul>
+                        <li><a href="index.html" class="nav-link">Home</a></li>
+                        <li><a href="marketplace.html" class="nav-link">Products</a></li>
+                        <li><a href="blog.html" class="nav-link active">Blog</a></li>
+                    </ul>
+                </nav>
+                <div class="header-actions">
+                    <div class="search-container">
+                        <button class="icon-btn search-toggle">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" class="lucide lucide-search">
+                                <circle cx="11" cy="11" r="8" />
+                                <path d="m21 21-4.3-4.3" />
+                            </svg>
+                        </button>
+                        <form class="search-form">
+                            <input type="text" placeholder="Search blog..." class="search-input">
+                            <button type="submit" class="search-submit">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" class="lucide lucide-search">
+                                    <circle cx="11" cy="11" r="8" />
+                                    <path d="m21 21-4.3-4.3" />
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                    <button class="icon-btn cart-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="lucide lucide-shopping-cart">
+                            <circle cx="8" cy="21" r="1" />
+                            <circle cx="19" cy="21" r="1" />
+                            <path
+                                d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+                        </svg>
+                        <span class="cart-count">0</span>
+                    </button>
+                    <button class="mobile-menu-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="lucide lucide-menu">
+                            <line x1="4" x2="20" y1="12" y2="12" />
+                            <line x1="4" x2="20" y1="6" y2="6" />
+                            <line x1="4" x2="20" y1="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Sidebar Navigation -->
+        <div class="sidebar-overlay"></div>
+        <div class="mobile-sidebar">
+            <div class="sidebar-header">
+                <div class="logo">Store</div>
+                <button class="sidebar-close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-x">
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                    </svg>
+                </button>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="marketplace.html">Products</a></li>
+                    <li><a href="blog.html" class="active">Blog</a></li>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- Cart Modal -->
+        <div class="cart-modal">
+            <div class="cart-modal-header">
+                <h3>Your Cart</h3>
+                <button class="cart-close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-x">
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="cart-modal-items">
+                <div class="cart-empty">
+                    <p>Your cart is empty</p>
+                    <a href="marketplace.html" class="btn btn-primary">Shop Now</a>
+                </div>
+                <!-- Cart items will be dynamically added here -->
+            </div>
+            <div class="cart-modal-footer">
+                <div class="cart-total">
+                    <span>Total:</span>
+                    <span class="total-amount">$0.00</span>
+                </div>
+                <div class="cart-actions">
+                    <a href="checkout.html" class="btn btn-primary">Checkout</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="blog-header">
+                <h1 class="page-title">Our Blog</h1>
+                <p class="blog-subtitle">Stay updated with the latest news, tips, and insights about our products and
+                    the tech industry.</p>
+            </div>
+
+            <div class="blog-layout">
+                <!-- Blog Sidebar -->
+                <!-- <aside class="blog-sidebar">
+                    <div class="sidebar-section">
+                        <h3 class="sidebar-title">Categories</h3>
+                        <ul class="category-list">
+                            <li><a href="#" class="active">All Categories</a></li>
+                            <li><a href="#">Technology</a> <span class="count">(12)</span></li>
+                            <li><a href="#">Reviews</a> <span class="count">(8)</span></li>
+                            <li><a href="#">Tutorials</a> <span class="count">(5)</span></li>
+                            <li><a href="#">News</a> <span class="count">(10)</span></li>
+                            <li><a href="#">Tips & Tricks</a> <span class="count">(7)</span></li>
+                        </ul>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <h3 class="sidebar-title">Recent Posts</h3>
+                        <div class="recent-posts">
+                            <a href="#" class="recent-post">
+                                <div class="recent-post-image">
+                                    <img src="/placeholder.svg?height=60&width=60"
+                                        alt="The Future of Mobile Technology">
+                                </div>
+                                <div class="recent-post-info">
+                                    <h4>The Future of Mobile Technology</h4>
+                                    <span class="post-date">June 15, 2023</span>
+                                </div>
+                            </a>
+                            <a href="#" class="recent-post">
+                                <div class="recent-post-image">
+                                    <img src="/placeholder.svg?height=60&width=60"
+                                        alt="Top 10 Accessories for Your Phone">
+                                </div>
+                                <div class="recent-post-info">
+                                    <h4>Top 10 Accessories for Your Phone</h4>
+                                    <span class="post-date">May 28, 2023</span>
+                                </div>
+                            </a>
+                            <a href="#" class="recent-post">
+                                <div class="recent-post-image">
+                                    <img src="/placeholder.svg?height=60&width=60"
+                                        alt="How to Extend Your Battery Life">
+                                </div>
+                                <div class="recent-post-info">
+                                    <h4>How to Extend Your Battery Life</h4>
+                                    <span class="post-date">May 12, 2023</span>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <h3 class="sidebar-title">Tags</h3>
+                        <div class="tag-cloud">
+                            <a href="#" class="tag">Technology</a>
+                            <a href="#" class="tag">Smartphones</a>
+                            <a href="#" class="tag">Tips</a>
+                            <a href="#" class="tag">Reviews</a>
+                            <a href="#" class="tag">Accessories</a>
+                            <a href="#" class="tag">Gadgets</a>
+                            <a href="#" class="tag">Tutorials</a>
+                            <a href="#" class="tag">News</a>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <h3 class="sidebar-title">Subscribe</h3>
+                        <p class="sidebar-text">Get the latest posts delivered straight to your inbox.</p>
+                        <form class="subscribe-form">
+                            <input type="email" placeholder="Your email address" required>
+                            <button type="submit" class="btn btn-primary">Subscribe</button>
+                        </form>
+                    </div>
+                </aside> -->
+
+                <!-- Blog Content -->
+                <div class="blog-content">
+                    <!-- Toggle between blog posts and empty state -->
+                    <div class="blog-posts" id="blog-posts">
+                        <!-- Blog Post 1 -->
+                        <article class="blog-post">
+                            <div class="blog-post-image">
+                                <img src="/placeholder.svg?height=300&width=600" alt="The Future of Mobile Technology">
+                            </div>
+                            <div class="blog-post-content">
+                                <div class="blog-post-meta">
+                                    <span class="post-category">Technology</span>
+                                    <span class="post-date">June 15, 2023</span>
+                                </div>
+                                <h2 class="blog-post-title">The Future of Mobile Technology: What to Expect in 2024</h2>
+                                <p class="blog-post-excerpt">As we approach 2024, the mobile technology landscape
+                                    continues to evolve at an unprecedented pace. From foldable displays to advanced AI
+                                    capabilities, here's what you can expect from the next generation of smartphones.
+                                </p>
+                                <div class="blog-post-footer">
+                                    <a href="#" class="read-more">Read More</a>
+                                    <div class="blog-post-stats">
+                                        <span class="stat">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round"
+                                                class="lucide lucide-eye">
+                                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                                                <circle cx="12" cy="12" r="3" />
+                                            </svg>
+                                            1.2k
+                                        </span>
+                                        <span class="stat">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round"
+                                                class="lucide lucide-message-square">
+                                                <path
+                                                    d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                            </svg>
+                                            24
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+
+                        <!-- Blog Post 2 -->
+                        <article class="blog-post">
+                            <div class="blog-post-image">
+                                <img src="/placeholder.svg?height=300&width=600"
+                                    alt="Top 10 Accessories for Your Phone">
+                            </div>
+                            <div class="blog-post-content">
+                                <div class="blog-post-meta">
+                                    <span class="post-category">Accessories</span>
+                                    <span class="post-date">May 28, 2023</span>
+                                </div>
+                                <h2 class="blog-post-title">Top 10 Must-Have Accessories for Your New Phone</h2>
+                                <p class="blog-post-excerpt">Just got a new smartphone? Make the most of it with these
+                                    essential accessories that enhance functionality, protection, and style. From
+                                    premium cases to wireless chargers, we've got you covered.</p>
+                                <div class="blog-post-footer">
+                                    <a href="#" class="read-more">Read More</a>
+                                    <div class="blog-post-stats">
+                                        <span class="stat">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round"
+                                                class="lucide lucide-eye">
+                                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                                                <circle cx="12" cy="12" r="3" />
+                                            </svg>
+                                            956
+                                        </span>
+                                        <span class="stat">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round"
+                                                class="lucide lucide-message-square">
+                                                <path
+                                                    d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                            </svg>
+                                            18
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+
+                        <!-- Blog Post 3 -->
+                        <article class="blog-post">
+                            <div class="blog-post-image">
+                                <img src="/placeholder.svg?height=300&width=600" alt="How to Extend Your Battery Life">
+                            </div>
+                            <div class="blog-post-content">
+                                <div class="blog-post-meta">
+                                    <span class="post-category">Tips & Tricks</span>
+                                    <span class="post-date">May 12, 2023</span>
+                                </div>
+                                <h2 class="blog-post-title">How to Extend Your Smartphone's Battery Life: 12 Expert Tips
+                                </h2>
+                                <p class="blog-post-excerpt">Battery life remains one of the biggest concerns for
+                                    smartphone users. Learn practical tips and settings adjustments that can
+                                    significantly extend your device's battery life without compromising functionality.
+                                </p>
+                                <div class="blog-post-footer">
+                                    <a href="#" class="read-more">Read More</a>
+                                    <div class="blog-post-stats">
+                                        <span class="stat">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round"
+                                                class="lucide lucide-eye">
+                                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                                                <circle cx="12" cy="12" r="3" />
+                                            </svg>
+                                            1.5k
+                                        </span>
+                                        <span class="stat">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round"
+                                                class="lucide lucide-message-square">
+                                                <path
+                                                    d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                            </svg>
+                                            32
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+
+                        <!-- Blog Post 4 -->
+                        <article class="blog-post">
+                            <div class="blog-post-image">
+                                <img src="/placeholder.svg?height=300&width=600" alt="Phone 13 Pro Review">
+                            </div>
+                            <div class="blog-post-content">
+                                <div class="blog-post-meta">
+                                    <span class="post-category">Reviews</span>
+                                    <span class="post-date">April 30, 2023</span>
+                                </div>
+                                <h2 class="blog-post-title">Phone 13 Pro: A Comprehensive Review After 3 Months</h2>
+                                <p class="blog-post-excerpt">After using the Phone 13 Pro as my daily driver for three
+                                    months, I'm sharing my in-depth review covering camera performance, battery life,
+                                    display quality, and overall user experience. Is it worth the premium price tag?</p>
+                                <div class="blog-post-footer">
+                                    <a href="#" class="read-more">Read More</a>
+                                    <div class="blog-post-stats">
+                                        <span class="stat">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round"
+                                                class="lucide lucide-eye">
+                                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                                                <circle cx="12" cy="12" r="3" />
+                                            </svg>
+                                            2.3k
+                                        </span>
+                                        <span class="stat">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round"
+                                                class="lucide lucide-message-square">
+                                                <path
+                                                    d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                            </svg>
+                                            45
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+
+                    <!-- Empty State (hidden by default) -->
+                    <div class="blog-empty-state" id="blog-empty-state" style="display: none;">
+                        <div class="empty-state-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"
+                                stroke-linejoin="round" class="lucide lucide-file-text">
+                                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                                <polyline points="14 2 14 8 20 8" />
+                                <line x1="16" x2="8" y1="13" y2="13" />
+                                <line x1="16" x2="8" y1="17" y2="17" />
+                                <line x1="10" x2="8" y1="9" y2="9" />
+                            </svg>
+                        </div>
+                        <h2>No Blog Posts Yet</h2>
+                        <p>We're working on creating valuable content for you. Check back soon for articles, guides, and
+                            news!</p>
+                        <div class="empty-state-actions">
+                            <button class="btn btn-primary" id="create-demo-posts">View Sample Posts</button>
+                            <a href="index.html" class="btn btn-outline">Back to Home</a>
+                        </div>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="pagination" id="blog-pagination">
+                        <button class="pagination-btn active">1</button>
+                        <button class="pagination-btn">2</button>
+                        <button class="pagination-btn">3</button>
+                        <button class="pagination-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" class="lucide lucide-chevron-right">
+                                <path d="m9 18 6-6-6-6" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <div id="footer-container"></div>
+
+
+    <script src="layout.js"></script>
+    <script src="cart.js"></script>
+    <script src="blog.js"></script>
+    <script src="script.js"></script>
+
+</body>
+
+</html>
