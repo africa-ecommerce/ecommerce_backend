@@ -19,6 +19,7 @@ export const createSiteConfig = async (req: AuthRequest, res: Response) => {
     // Validate subdomain
 
     const {data} = req.body
+    console.log("data", data);
     subdomain = data.siteName;
     try {
       subdomainSchema.parse({ subdomain });
