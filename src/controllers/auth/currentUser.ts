@@ -47,7 +47,7 @@ export const getCurrentUser = async (
             aboutBusiness: true,
             niches: true,
             generalMerchant: true,
-
+            subdomain: true
           },
         },
       },
