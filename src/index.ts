@@ -35,8 +35,9 @@ const corsOptions = {
   credentials: true, // Required for cookies
 };
 
-// Trust proxy is critical when behind Vercel's proxy
-// app.set('trust proxy', 1);
+// Ensure Express trusts your TLS terminator or proxy
+app.set('trust proxy', true);
+
 
 app.use(cors(corsOptions));
 app.use(

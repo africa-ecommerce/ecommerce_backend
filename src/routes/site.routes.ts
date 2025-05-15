@@ -20,6 +20,6 @@ router.post("/", createSiteConfig);
 router.get("/", getSiteConfig);
 router.put("/", updateSiteConfig);
 router.delete("/", deleteSiteConfig);
-router.get("/check-subdomain", checkSubdomainAvailability);
+router.post("/check-subdomain", checkSubdomainAvailability);
 
 export default router;

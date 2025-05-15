@@ -296,7 +296,6 @@ export const checkSubdomainAvailability = async (
     const available = !existing;
 
     res.status(200).json({
-      subdomain,
       available,
     });
   } catch (error) {
