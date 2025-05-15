@@ -19,6 +19,8 @@ export const createSiteConfig = async (req: AuthRequest, res: Response) => {
     // Validate subdomain
 
     // Parse the product data from FormData
+
+    console.log("data", req.body);
     let data;
     try {
       data = JSON.parse(req.body.data);
@@ -29,6 +31,11 @@ export const createSiteConfig = async (req: AuthRequest, res: Response) => {
 
     console.log("data", data);
     subdomain = data.siteName;
+
+    if (!subdomain) {
+      res.status(400).json({ error: "Con is required!" });
+      return;
+    }
     try {
       subdomainSchema.parse({ subdomain });
     } catch (error) {
@@ -64,7 +71,7 @@ export const createSiteConfig = async (req: AuthRequest, res: Response) => {
     // Save config to MinIO
     configUrl = await saveSiteConfigToMinio(subdomain, config);
 
-    // Update Plug record with subdomain as businessName if not already set
+    // Update Plug record with subdomain and configUrl if not already set
     await prisma.plug.update({
       where: { id: plug.id },
       data: {
