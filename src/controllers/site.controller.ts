@@ -18,7 +18,15 @@ export const createSiteConfig = async (req: AuthRequest, res: Response) => {
 
     // Validate subdomain
 
-    const {data} = req.body
+    // Parse the product data from FormData
+    let data;
+    try {
+      data = JSON.parse(req.body.data);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid site data format!" });
+      return;
+    }
+
     console.log("data", data);
     subdomain = data.siteName;
     try {
