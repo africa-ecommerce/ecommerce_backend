@@ -148,10 +148,8 @@ export type SiteConfig = z.infer<typeof SiteConfigSchema>;
 
 
 // Zod schema for validating subdomain
-export const subdomainSchema = z.object({
-  subdomain: z
-    .string()
-    .min(3)
-    .max(63)
-    .regex(/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/),
-});
+export const subdomainSchema = z
+  .string()
+  .min(3)
+  .max(63)
+  .regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/, "Invalid subdomain");

@@ -36,7 +36,7 @@ export const createSiteConfig = async (req: AuthRequest, res: Response) => {
 
     // Validate subdomain
     try {
-      subdomainSchema.parse({ subdomain });
+      subdomainSchema.parse(subdomain);
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: "Invalid subdomain format!" });
@@ -275,7 +275,7 @@ export const checkSubdomainAvailability = async (
 
     // Validate subdomain format
     try {
-      subdomainSchema.parse({ subdomain });
+      subdomainSchema.parse(subdomain);
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({
