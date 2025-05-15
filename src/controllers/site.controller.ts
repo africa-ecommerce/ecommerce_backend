@@ -10,8 +10,8 @@ import {
 import { subdomainSchema } from "../lib/zod/schema";
 import { AuthRequest } from "../types";
 
-// Create site configuration
-export const createSiteConfig = async (req: AuthRequest, res: Response) => {
+// Create site
+export const createSite = async (req: AuthRequest, res: Response) => {
   let configUrl;
   let subdomain;
   try {
@@ -81,7 +81,7 @@ export const createSiteConfig = async (req: AuthRequest, res: Response) => {
       const siteUrl = `https://${subdomain}.pluggn.com`;
 
       res.status(201).json({
-        message: "Site configured successfully!",
+        message: "Site created successfully!",
         siteUrl,
       });
     } catch (error) {
@@ -91,60 +91,60 @@ export const createSiteConfig = async (req: AuthRequest, res: Response) => {
         await deleteSiteConfigFromMinio(subdomain);
       }
       throw error; // Re-throw to be caught by outer catch block
-    }
+    } 
   } catch (error) {
-    console.error("Error creating site config:", error);
-    res.status(500).json({ error: "Failed to configure site!" });
+    console.error("Error creating site:", error);
+    res.status(500).json({ error: "Failed to create site!" });
   }
 };
 
-// Get site configuration
-export const getSiteConfig = async (req: Request, res: Response) => {
-  try {
-    const plugId = req.params.plugId;
+// // Get site configuration
+// export const getSiteConfig = async (req: Request, res: Response) => {
+//   try {
+//     const plugId = req.params.plugId;
 
-    // Find the plug by ID
-    const plug = await prisma.plug.findUnique({
-      where: { id: plugId },
-    });
+//     // Find the plug by ID
+//     const plug = await prisma.plug.findUnique({
+//       where: { id: plugId },
+//     });
 
-    // Check if user has a site configuration
-    if (!plug?.subdomain || !plug?.configUrl) {
-      res.status(404).json({ error: "User has no site configuration!" });
-      return;
-    }
+//     // Check if user has a site configuration
+//     if (!plug?.subdomain || !plug?.configUrl) {
+//       res.status(404).json({ error: "User has no site configuration!" });
+//       return;
+//     }
 
-    // Get config from MinIO
-    const config = await getSiteConfigFromMinio(plug?.subdomain);
+//     // Get config from MinIO
+//     const config = await getSiteConfigFromMinio(plug?.subdomain);
 
-    if (!config) {
-      res.status(404).json({ error: "Site configuration not found!" });
-      return;
-    }
+//     if (!config) {
+//       res.status(404).json({ error: "Site configuration not found!" });
+//       return;
+//     }
 
-    // Generate site URL based on subdomain
-    const siteUrl = `https://${plug?.subdomain}.pluggn.com`;
+//     // Generate site URL based on subdomain
+//     const siteUrl = `https://${plug?.subdomain}.pluggn.com`;
 
-    res.status(200).json({
-      siteUrl,
-      config,
-    });
-  } catch (error) {
-    console.error("Error getting site config:", error);
-    res.status(500).json({ error: "Failed to fetch site configuration!" });
-  }
-};
+//     res.status(200).json({
+//       siteUrl,
+//       config,
+//     });
+//   } catch (error) {
+//     console.error("Error getting site config:", error);
+//     res.status(500).json({ error: "Failed to fetch site configuration!" });
+//   }
+// };
 
-/// Update site configuration
-export const updateSiteConfig = async (req: AuthRequest, res: Response) => {
+/// Update site 
+export const updateSite = async (req: AuthRequest, res: Response) => {
   let configUrl;
   let oldSubdomain;
   try {
     const plug = req.plug!;
 
-    // Check if user has a site configuration
+    // Check if user has a site 
     if (!plug.subdomain || !plug.configUrl) {
-      res.status(404).json({ error: "User has no site configuration!" });
+      res.status(404).json({ error: "User has no site!" });
       return;
     }
 
@@ -202,7 +202,7 @@ export const updateSiteConfig = async (req: AuthRequest, res: Response) => {
       const siteUrl = `https://${subdomain}.pluggn.com`;
 
       res.status(200).json({
-        message: "Site configuration updated successfully!",
+        message: "Site updated successfully!",
         siteUrl,
       });
     } catch (error) {
@@ -215,19 +215,19 @@ export const updateSiteConfig = async (req: AuthRequest, res: Response) => {
       throw error; // Re-throw to be caught by outer catch block
     }
   } catch (error) {
-    console.error("Error updating site config:", error);
-    res.status(500).json({ error: "Failed to update site configuration!" });
+    console.error("Error updating site:", error);
+    res.status(500).json({ error: "Failed to update site!" });
   }
 };
 
-// Delete site configuration
-export const deleteSiteConfig = async (req: AuthRequest, res: Response) => {
+// Delete site 
+export const deleteSite = async (req: AuthRequest, res: Response) => {
   try {
     const plug = req.plug!;
 
-    // Check if user has a site configuration
+    // Check if user has a site
     if (!plug.subdomain || !plug.configUrl) {
-      res.status(404).json({ error: "User has no site configuration!" });
+      res.status(404).json({ error: "User has no site!" });
       return;
     }
 
@@ -251,7 +251,7 @@ export const deleteSiteConfig = async (req: AuthRequest, res: Response) => {
       dbUpdated = true;
 
       res.status(200).json({
-        message: "Site configuration deleted successfully!",
+        message: "Site deleted successfully!",
       });
     } catch (error) {
       // If MinIO delete succeeded but database update failed
@@ -264,8 +264,8 @@ export const deleteSiteConfig = async (req: AuthRequest, res: Response) => {
       throw error; // Re-throw to be caught by outer catch block
     }
   } catch (error) {
-    console.error("Error deleting site config:", error);
-    res.status(500).json({ error: "Failed to delete site configuration!" });
+    console.error("Error deleting site:", error);
+    res.status(500).json({ error: "Failed to delete site!" });
   }
 };
 
@@ -276,6 +276,7 @@ export const checkSubdomainAvailability = async (
 ) => {
   try {
     const { subdomain } = req.body;
+    const plug = req.plug!;
 
     // Validate subdomain format
     try {
@@ -293,6 +294,7 @@ export const checkSubdomainAvailability = async (
     const existing = await prisma.plug.findFirst({
       where: {
         subdomain,
+        id: { not: plug.id }, // Exclude current plug
       },
     });
 

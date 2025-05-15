@@ -1,9 +1,9 @@
 import { Router } from "express";
 import {
-  createSiteConfig,
-  getSiteConfig,
-  updateSiteConfig,
-  deleteSiteConfig,
+  createSite,
+  // getSiteConfig,
+  updateSite,
+  deleteSite,
   checkSubdomainAvailability,
 } from "../controllers/site.controller";
 import { isPlug } from "../middleware/role.middleware";
@@ -11,19 +11,15 @@ import authenticateJWT from "../middleware/auth.middleware";
 
 const router = Router();
 
-router.get("/:plugId", getSiteConfig);
+// router.get("/:plugId", getSiteConfig);
 // Middleware to ensure user is authenticated and is a plug
 const plugAuth = [authenticateJWT, isPlug];
 
 router.use(plugAuth);
 // Protected routes requiring plug authentication
 router.post("/check-subdomain", checkSubdomainAvailability);
-
-router.post("/", createSiteConfig);
-
-
-
-router.put("/", updateSiteConfig);
-router.delete("/", deleteSiteConfig);
+router.post("/", createSite);
+router.put("/", updateSite);
+router.delete("/", deleteSite);
 
 export default router;
