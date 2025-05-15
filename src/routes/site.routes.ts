@@ -17,6 +17,7 @@ const plugAuth = [authenticateJWT, isPlug];
 router.use(plugAuth);
 // Protected routes requiring plug authentication
 router.post("/check-subdomain", checkSubdomainAvailability);
+
 router.post("/", createSiteConfig);
 router.get("/", getSiteConfig);
 router.put("/", updateSiteConfig);
