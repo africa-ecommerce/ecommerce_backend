@@ -151,7 +151,7 @@ export const updateSiteConfig = async (req: AuthRequest, res: Response) => {
     if (newSubdomain && newSubdomain !== oldSubdomain) {
       // Validate new subdomain
       try {
-        subdomainSchema.parse({ subdomain: newSubdomain });
+        subdomainSchema.parse(newSubdomain);
       } catch (error) {
         if (error instanceof z.ZodError) {
           res.status(400).json({ error: "Invalid subdomain format!" });
@@ -163,7 +163,6 @@ export const updateSiteConfig = async (req: AuthRequest, res: Response) => {
       const existing = await prisma.plug.findFirst({
         where: {
           subdomain: newSubdomain,
-          id: { not: plug.id }, // Exclude current plug
         },
       });
 
@@ -223,7 +222,7 @@ export const deleteSiteConfig = async (req: AuthRequest, res: Response) => {
 
     // Check if user has a site configuration
     if (!plug.subdomain || !plug.configUrl) {
-      res.status(404).json({ error: "Site configuration not found!" });
+      res.status(404).json({ error: "User has no site configuration!" });
       return;
     }
 
@@ -271,9 +270,7 @@ export const checkSubdomainAvailability = async (
   res: Response
 ) => {
   try {
-    const  subdomain = req.body;
-    
-    console.log("body", req.body)
+    const { subdomain } = req.body;
 
     // Validate subdomain format
     try {
@@ -281,7 +278,6 @@ export const checkSubdomainAvailability = async (
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({
-          available: false,
           error: "Invalid subdomain format!",
         });
         return;
@@ -298,6 +294,7 @@ export const checkSubdomainAvailability = async (
     const available = !existing;
 
     res.status(200).json({
+      message: "Subdomain checked successfully!",
       available,
     });
   } catch (error) {
