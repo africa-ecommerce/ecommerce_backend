@@ -272,6 +272,7 @@ export const checkSubdomainAvailability = async (
 ) => {
   try {
     const  subdomain = req.body;
+    console.log("body", req.body)
 
     // Validate subdomain format
     try {
