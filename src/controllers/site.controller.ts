@@ -16,24 +16,15 @@ export const createSiteConfig = async (req: AuthRequest, res: Response) => {
   try {
     const plug = req.plug!;
 
+    const { data } = req.body;
+
     // Validate subdomain
-
-    // Parse the product data from FormData
-
-    console.log("data", req.body);
-    let data;
-    try {
-      data = JSON.parse(req.body.data);
-    } catch (error) {
-      res.status(400).json({ error: "Invalid site data format!" });
-      return;
-    }
 
     console.log("data", data);
     subdomain = data.siteName;
 
     if (!subdomain) {
-      res.status(400).json({ error: "Con is required!" });
+      res.status(400).json({ error: "Subdomain is required!" });
       return;
     }
     try {
@@ -67,6 +58,12 @@ export const createSiteConfig = async (req: AuthRequest, res: Response) => {
 
     // Get config from request body
     const { config } = data;
+
+
+    if (!config) {
+      res.status(400).json({ error: "Config data is required!" });
+      return;
+    }
 
     // Save config to MinIO
     configUrl = await saveSiteConfigToMinio(subdomain, config);
