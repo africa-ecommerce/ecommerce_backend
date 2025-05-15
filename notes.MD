@@ -28,7 +28,7 @@ LOADING, EMPTY STATE
 remove try again on auth cerror callbackor or contact us there
 THREE DAYS PENDING TIME WHEN IT GETS UPDATED
 
-
+order do we update supplier inventory, when do we update, what if they returned do we still go and update again
 
 image compressing
 image resizing tip

@@ -11,6 +11,7 @@ import authenticateJWT from "../middleware/auth.middleware";
 
 const router = Router();
 
+router.get("/:plugId", getSiteConfig);
 // Middleware to ensure user is authenticated and is a plug
 const plugAuth = [authenticateJWT, isPlug];
 
@@ -21,7 +22,7 @@ router.post("/check-subdomain", checkSubdomainAvailability);
 router.post("/", createSiteConfig);
 
 
-router.get("/", getSiteConfig);
+
 router.put("/", updateSiteConfig);
 router.delete("/", deleteSiteConfig);
 

@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { z } from "zod";
 import { prisma } from "../config";
 import {
@@ -99,18 +99,23 @@ export const createSiteConfig = async (req: AuthRequest, res: Response) => {
 };
 
 // Get site configuration
-export const getSiteConfig = async (req: AuthRequest, res: Response) => {
+export const getSiteConfig = async (req: Request, res: Response) => {
   try {
-    const plug = req.plug!;
+    const plugId = req.params.plugId;
+
+    // Find the plug by ID
+    const plug = await prisma.plug.findUnique({
+      where: { id: plugId },
+    });
 
     // Check if user has a site configuration
-    if (!plug.subdomain || !plug.configUrl) {
+    if (!plug?.subdomain || !plug?.configUrl) {
       res.status(404).json({ error: "User has no site configuration!" });
       return;
     }
 
     // Get config from MinIO
-    const config = await getSiteConfigFromMinio(plug.subdomain);
+    const config = await getSiteConfigFromMinio(plug?.subdomain);
 
     if (!config) {
       res.status(404).json({ error: "Site configuration not found!" });
@@ -118,7 +123,7 @@ export const getSiteConfig = async (req: AuthRequest, res: Response) => {
     }
 
     // Generate site URL based on subdomain
-    const siteUrl = `https://${plug.subdomain}.pluggn.com`;
+    const siteUrl = `https://${plug?.subdomain}.pluggn.com`;
 
     res.status(200).json({
       siteUrl,
