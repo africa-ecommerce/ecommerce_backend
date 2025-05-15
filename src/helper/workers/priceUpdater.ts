@@ -1,5 +1,8 @@
 import { prisma } from "../../config";
 import cron from "node-cron";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 // Keep track of active scheduled tasks
 const scheduledTasks = new Map();

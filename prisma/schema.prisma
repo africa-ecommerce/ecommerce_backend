@@ -25,11 +25,11 @@ model User {
   password      String
   name          String
   emailVerified Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
   refreshToken  String?   @unique
   isOnboarded   Boolean   @default(false)
   userType      UserType  @default(UNSET)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   //  EITHER SUPPLIER OR PLUG
   supplier      Supplier?
   plug          Plug?
@@ -39,6 +39,7 @@ model User {
   passwordTokens     PasswordToken[]
 
   @@index([email, name])
+
 }
 
 model EmailVerification {
@@ -60,6 +61,7 @@ model PasswordToken {
   user    User     @relation(fields: [userId], references: [id],  onDelete: Cascade)
 
   @@unique([email, token])
+  @@index([token])
 }
 
 
@@ -146,6 +148,8 @@ model Supplier {
   verified       Boolean   @default(false)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+
+  @@index([businessName])
 }
 
 model Plug {
@@ -156,6 +160,11 @@ model Plug {
   aboutBusiness   String?
   niches          String[] // Array of strings
   generalMerchant Boolean
+
+   // Add site configuration fields
+  subdomain       String?       @unique
+  configUrl   String?
+
   plugProduct     PlugProduct[]
   userId          String        @unique
   user            User          @relation(fields: [userId], references: [id],  onDelete: Cascade)
@@ -211,7 +220,7 @@ model ProductVariation {
   updatedAt  DateTime @updatedAt
 
   @@index([productId])
-  @@index([size, color])
+  @@index([size, color, stock])
 }
 
 model PlugProduct {
@@ -230,4 +239,5 @@ model PlugProduct {
   @@unique([plugId, originalId]) // Ensure a plug can't add the same product twice
   @@index([plugId])
   @@index([originalId]) // Index for efficient lookup of original products
+  @@index([price])
 }

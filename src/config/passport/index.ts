@@ -1,13 +1,15 @@
 import passport from "passport";
 import { Strategy as JWTStrategy, ExtractJwt } from "passport-jwt";
 import { Strategy as LocalStrategy } from "passport-local";
-import { jwtSecret, prisma } from "../index";
+import {
+  backendUrl,
+  googleClientId,
+  googleClientSecret,
+  jwtSecret,
+  prisma,
+} from "../index";
 import bcrypt from "bcryptjs";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
 
 passport.use(
   new LocalStrategy(
@@ -48,28 +50,13 @@ passport.use(
     async (payload, done) => {
       try {
         // 1. Find user by ID from JWT payload
-        const user = await prisma.user.findUnique({ 
-          where: { id: payload.userId },
-          include: {
-            plug: true,
-            supplier: true,
-          },
-        });
+        const user = await prisma.user.findUnique({ where: payload.sub });
 
         // 2. Check user exists and email is verified
         if (!user) return done(null, false);
         if (!user.emailVerified) return done(null, false);
 
-        // Strip sensitive data
-        const secureUser = {
-          ...user,
-          plug: user.plug || undefined,
-          supplier: user.supplier || undefined,
-          password: undefined, // Ensure password is removed
-          refreshToken: undefined, // Don't expose refresh token
-        };
-
-        return done(null, secureUser);
+        return done(null, user);
       } catch (error) {
         return done(error);
       }
@@ -77,7 +64,7 @@ passport.use(
   )
 );
 
-// // Serialize and deserialize user for session support
+// Serialize and deserialize user for session support
 passport.serializeUser((user: any, done) => {
   done(null, user.id);
 });
@@ -110,10 +97,10 @@ passport.deserializeUser(async (id: string, done) => {
 passport.use(
   new GoogleStrategy(
     {
-      clientID: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      callbackURL: `${process.env.BACKEND_URL}/auth/google/callback`,
-      passReqToCallback: true, 
+      clientID: googleClientId,
+      clientSecret: googleClientSecret,
+      callbackURL: `${backendUrl}/auth/google/callback`,
+      passReqToCallback: true,
     },
     async (req, accessToken, refreshToken, profile, done) => {
       try {
@@ -144,5 +131,4 @@ passport.use(
   )
 );
 
-
- export default passport;
+export default passport;

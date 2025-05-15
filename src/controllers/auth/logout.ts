@@ -23,7 +23,7 @@ export const logout = async (req: AuthRequest, res: Response) => {
     clearAuthCookies(res);
 
     // Return success response
-    res.status(200).json({ message: "Logged out successfully!" });
+    res.status(200).json({ message: "Logout successfully!" });
   } catch (error) {
     console.error("Logout error:", error);
 

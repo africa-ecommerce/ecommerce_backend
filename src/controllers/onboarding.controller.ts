@@ -8,7 +8,7 @@ import {
   uploadMiddleware,
   uploadImages,
   deleteImages,
-} from "../helper/minioObjectStore/productImage";
+} from "../helper/minioObjectStore/image";
 import { z } from "zod";
 
 export const onboarding = [
@@ -19,7 +19,6 @@ export const onboarding = [
     let avatarUrl: string | null = null;
 
     try {
-      
       const userId = req.user?.id;
       if (!userId) {
         res.status(401).json({ error: "Unauthorized!" });
@@ -39,7 +38,6 @@ export const onboarding = [
         return;
       }
 
-     
       let supplierData: z.infer<typeof supplierInfoSchema> | null = null;
       if (userData.userType === UserType.SUPPLIER) {
         // pull directly from req.body
@@ -108,7 +106,6 @@ export const onboarding = [
         }
       }
 
-      
       await prisma.$transaction(async (tx) => {
         // mark user onboarded
         await tx.user.update({

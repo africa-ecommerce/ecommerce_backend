@@ -1,3 +1,5 @@
+import { frontendUrl } from "../config";
+
 // Helper function to validate the callback URL
 export const isValidCallbackUrl = (url: string): boolean => {
   try {
@@ -9,7 +11,7 @@ export const isValidCallbackUrl = (url: string): boolean => {
     // For an absolute URL, parse it.
     const parsedUrl = new URL(url);
     // Compare its hostname with your allowed hostname.
-    const allowedHostname = process.env.APP_URL;
+    const allowedHostname = frontendUrl;
     return parsedUrl.hostname === allowedHostname;
   } catch (error) {
     // If URL parsing fails, it's invalid.

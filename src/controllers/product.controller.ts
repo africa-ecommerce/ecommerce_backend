@@ -6,15 +6,11 @@ import {
   deleteImages,
   uploadMiddleware,
   uploadImages,
-} from "../helper/minioObjectStore/productImage";
+} from "../helper/minioObjectStore/image";
 import { formatProductWithImagesAndVariations } from "../helper/formatProduct";
-
-
-
 
 // Controller methods
 export const productController = {
-
   createProduct: [
     uploadMiddleware.array("images", 3), // Allow up to 3 images
     async (req: AuthRequest, res: Response) => {
@@ -100,7 +96,7 @@ export const productController = {
                 select: {
                   businessName: true,
                   pickupLocation: true,
-                  avatar: true
+                  avatar: true,
                 },
               },
             },
@@ -110,7 +106,7 @@ export const productController = {
           return formatProductWithImagesAndVariations(product);
         });
 
-       // invalidate cache after creating product
+        // invalidate cache after creating product
         invalidateProductCache();
         res.status(201).json({
           message: "Product created successfully!",
@@ -142,11 +138,11 @@ export const productController = {
         orderBy: { createdAt: "desc" },
         include: {
           variations: true,
-           supplier: {
+          supplier: {
             select: {
               businessName: true,
               pickupLocation: true,
-              avatar: true
+              avatar: true,
             },
           },
         },
@@ -162,75 +158,74 @@ export const productController = {
       res.status(200).json({
         message: "Products fetched successfully!",
         data: formattedProducts,
-      }); 
+      });
       return;
     } catch (error) {
       console.error("Error fetching supplier products:", error);
-      res.status(500).json({ error: "Internal server error!" }); 
+      res.status(500).json({ error: "Internal server error!" });
       return;
     }
   },
 
-  getProductById : async (req: AuthRequest, res: Response) => {
-     try {
-       const productId = req.params.productId;
-  
-       const product = await prisma.product.findUnique({
-         where: { id: productId },
-         include: {
-           supplier: {
-             select: {
-               businessName: true,
-               pickupLocation: true,
-               avatar: true,
-             },
-           },
-           variations: true,
-         },
-       });
-  
-       if (!product) {
-         res.status(404).json({ error: "Product not found!" });
-         return;
-       }
-  
-       // Format the product with images and variations
-       const formattedProduct = formatProductWithImagesAndVariations(product);
-  
-       // Check if user is a plug and add isPlugged flag
-       if (req.user && req.user.userType === "PLUG") {
-         // Check if this product is in the plug's database
-         const pluggedProduct = await prisma.plugProduct.findFirst({
-           where: {
-             plugId: req.user?.plug?.id,
-             originalId: productId,
-           },
-         });
-  
-         // Add isPlugged flag to the response
-         res.status(200).json({
-           message: "Product fetched successfully!",
-           data: {
-             ...formattedProduct,
-             isPlugged: !!pluggedProduct, // Convert to boolean
-           },
-         });
-         return;
-       }
-  
-       // Regular response for non-plug users
-       res.status(200).json({
-         message: "Product fetched successfully!",
-         data: formattedProduct,
-       });
-       return;
-     } catch (error) {
-       console.error("Error fetching product:", error);
-       res.status(500).json({ error: "Internal server error!" });
-       return;
-     }
-   },
-  
+  getProductById: async (req: AuthRequest, res: Response) => {
+    try {
+      const productId = req.params.productId;
+
+      const product = await prisma.product.findUnique({
+        where: { id: productId },
+        include: {
+          supplier: {
+            select: {
+              businessName: true,
+              pickupLocation: true,
+              avatar: true,
+            },
+          },
+          variations: true,
+        },
+      });
+
+      if (!product) {
+        res.status(404).json({ error: "Product not found!" });
+        return;
+      }
+
+      // Format the product with images and variations
+      const formattedProduct = formatProductWithImagesAndVariations(product);
+
+      // Check if user is a plug and add isPlugged flag
+      if (req.user && req.user.userType === "PLUG") {
+        // Check if this product is in the plug's database
+        const pluggedProduct = await prisma.plugProduct.findFirst({
+          where: {
+            plugId: req.user?.plug?.id,
+            originalId: productId,
+          },
+        });
+
+        // Add isPlugged flag to the response
+        res.status(200).json({
+          message: "Product fetched successfully!",
+          data: {
+            ...formattedProduct,
+            isPlugged: !!pluggedProduct, // Convert to boolean
+          },
+        });
+        return;
+      }
+
+      // Regular response for non-plug users
+      res.status(200).json({
+        message: "Product fetched successfully!",
+        data: formattedProduct,
+      });
+      return;
+    } catch (error) {
+      console.error("Error fetching product:", error);
+      res.status(500).json({ error: "Internal server error!" });
+      return;
+    }
+  },
 
   // Update product
   updateProduct: [
@@ -257,7 +252,7 @@ export const productController = {
           where: {
             id: productId,
             supplierId: supplier.id,
-          }
+          },
         });
 
         if (!existingProduct) {
@@ -464,7 +459,7 @@ export const productController = {
     }
   },
 
-// Delete all products for a supplier
+  // Delete all products for a supplier
   deleteAllProducts: async (req: AuthRequest, res: Response) => {
     try {
       const supplier = req.supplier!;
@@ -484,7 +479,6 @@ export const productController = {
         // Delete all products
         const deleteResult = await tx.product.deleteMany({
           where: { supplierId: supplier.id },
-          
         });
 
         return { count: deleteResult.count, images: allImages };
@@ -494,7 +488,6 @@ export const productController = {
       if (result.images.length > 0) {
         await deleteImages(result.images);
       }
-
 
       // Invalidate cache after deleting all products
       invalidateProductCache();

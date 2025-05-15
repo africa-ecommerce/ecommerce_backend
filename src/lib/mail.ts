@@ -1,4 +1,3 @@
-
 // import { Resend } from "resend";
 
 // const resend = new Resend(process.env.RESEND_API_KEY);
@@ -8,8 +7,7 @@
 //   html: string
 // ) => {
 //   // Configure your transporter using environment variables for production-grade security
- 
-   
+
 //   await resend.emails.send({
 //     from: "onboarding@resend.dev",
 //     to: email,
@@ -17,13 +15,10 @@
 //     html: html,
 //   });
 
-
-  
 // };
 
-
 import nodemailer from "nodemailer";
-
+import { emailFrom, emailPassword, emailUser } from "../config";
 
 // Create reusable transporter
 let transporter: nodemailer.Transporter;
@@ -34,14 +29,13 @@ const initializeTransporter = () => {
   transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
-      user: process.env.EMAIL_USER || "", // your Gmail address
-      pass: process.env.EMAIL_PASSWORD || "", // your Gmail app password (not your regular password)
+      user: emailUser, // your Gmail address
+      pass: emailPassword, // your Gmail app password (not your regular password)
     },
   });
 
   return transporter;
 };
-
 
 // Get or initialize transporter
 const getTransporter = () => {
@@ -52,25 +46,21 @@ const getTransporter = () => {
 };
 
 // Single recipient email
-export const mail = async (
-  email: string,
-  subject: string,
-  html: string
-) => {
+export const mail = async (email: string, subject: string, html: string) => {
   const transport = getTransporter();
-  
+
   try {
     const info = await transport.sendMail({
-      from: process.env.EMAIL_FROM || '"Your App" <your-app@example.com>',
+      from: emailFrom,
       to: email,
       subject: subject,
       html: html,
     });
-    
-    console.log('Email sent successfully:', info.messageId);
+
+    console.log("Email sent successfully:", info.messageId);
     return info;
   } catch (error) {
-    console.error('Error sending email:', error);
-    throw new Error('Failed to send email');
+    console.error("Error sending email:", error);
+    throw new Error("Failed to send email");
   }
 };

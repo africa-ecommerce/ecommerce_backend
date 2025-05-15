@@ -5,7 +5,7 @@ import {
   uploadMiddleware,
   uploadImages,
   deleteImages,
-} from "../../helper/minioObjectStore/productImage";
+} from "../../helper/minioObjectStore/image";
 import { supplierInfoSchema, updatePlugInfoSchema } from "../../lib/zod/schema";
 
 export const updateProfile = [

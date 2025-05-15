@@ -105,3 +105,51 @@ export const productVariationSchema = z.object({
 });
 
 export const productVariationsSchema = z.array(productVariationSchema);
+
+
+
+
+
+// Zod schema for site configuration validation
+export const SiteConfigSchema = z.object({
+  // Colors (all optional with null as valid option)
+  colorPrimary: z.string().nullable().optional(),
+  colorSecondary: z.string().nullable().optional(),
+  colorAccent: z.string().nullable().optional(),
+  colorBackground: z.string().nullable().optional(),
+  colorText: z.string().nullable().optional(),
+  colorTextLight: z.string().nullable().optional(),
+  colorBorder: z.string().nullable().optional(),
+  colorFooterBg: z.string().nullable().optional(),
+  colorFooterText: z.string().nullable().optional(),
+  
+  // Content
+  heroTitle: z.string().optional(),
+  heroSubtitle: z.string().nullable().optional(),
+  heroDescription: z.string().nullable().optional(),
+  
+  // Products
+  featuredProducts: z.array(z.any()).nullable().optional(),
+  
+  // Categories
+  categories: z.array(z.any()).nullable().optional(),
+  
+  // Sale
+  saleTitle: z.string().nullable().optional(),
+  saleDescription: z.string().nullable().optional(),
+});
+
+// Export type based on the schema
+export type SiteConfig = z.infer<typeof SiteConfigSchema>;
+
+
+
+
+// Zod schema for validating subdomain
+export const subdomainSchema = z.object({
+  subdomain: z
+    .string()
+    .min(3)
+    .max(63)
+    .regex(/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/),
+});

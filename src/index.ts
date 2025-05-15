@@ -2,11 +2,12 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import { port } from "./config";
+import { frontendUrl, minioBaseUrl, port, sessionSecret } from "./config";
 import authRoutes from "./routes/auth.routes";
 import onboardingRoutes from "./routes/onboarding.routes";
 import productRoutes from "./routes/product.routes";
 import plugProductRoutes from "./routes/plugProduct.routes";
+import siteRoutes from "./routes/site.routes";
 import session from "express-session";
 import passport from "./config/passport";
 import { Request, Response, NextFunction } from "express";
@@ -25,13 +26,11 @@ import dotenv from "dotenv";
 // Load environment variables
 dotenv.config();
 
-
 const app = express();
-
 
 // Only allow requests from your frontend URL
 const corsOptions = {
-  origin: process.env.APP_URL, // Replace with your frontend's URL
+  origin: frontendUrl, // Replace with your frontend's URL
   optionsSuccessStatus: 200, // Some legacy browsers choke on 204
   credentials: true, // Required for cookies
 };
@@ -47,8 +46,8 @@ app.use(
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "https://play.min.io"],
-        connectSrc: ["'self'", process.env.APP_URL!],
+        imgSrc: ["'self'", "data:", minioBaseUrl],
+        connectSrc: ["'self'", frontendUrl],
       },
     },
     hsts: {
@@ -59,8 +58,6 @@ app.use(
   })
 );
 
-
-
 // Then: Body parsers
 app.use(express.json()); // For JSON bodies
 app.use(express.urlencoded({ extended: true })); // For URL-encoded bodies
@@ -68,19 +65,20 @@ app.use(express.urlencoded({ extended: true })); // For URL-encoded bodies
 app.use(cookieParser());
 // Serve static files from the public directory
 // This makes files in the public folder directly accessible via their path
-app.use(express.static(path.join(__dirname, '../public')));
-
-
+app.use(express.static(path.join(__dirname, "../public")));
 
 app.use(morgan("dev"));
 
 // Configure session middleware -> passport need this internally
 app.use(
   session({
-    secret: process.env.SESSION_SECRET! || "yourSecret",
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 60000 },
+    cookie: {
+      ...cookieConfig,
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+    },
   })
 );
 
@@ -115,13 +113,14 @@ app.use("/marketplace", marketPlaceRoutes);
 app.use("/products", productRoutes);
 app.use("/plug/products", plugProductRoutes);
 app.use("/template", templateRoutes);
+app.use("/site", siteRoutes);
 
 // Global error handling middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error("Unhandled error:", err);
-  // res
-  //   .status(500)
-  //   .json({ error: "Unexpected error occured!" });
+  res
+    .status(500)
+    .json({ error: "Unexpected error occured!" });
 });
 
 const server = app.listen(port, "0.0.0.0", () => {

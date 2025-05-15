@@ -19,6 +19,7 @@ import { resendNewPasswordMail } from "../controllers/auth/forgotPassword";
 import { refreshToken } from "../controllers/auth/refreshToken";
 import { updateProfile } from "../controllers/auth/updateProfile";
 import { updatePassword } from "../controllers/auth/updatePassword";
+import { frontendUrl } from "../config";
 
 const router = Router();
 
@@ -65,7 +66,7 @@ router.get("/google", google);
 router.get(
   "/google/callback",
   passport.authenticate("google", {
-    failureRedirect: `${process.env.APP_URL}/auth/login`,
+    failureRedirect: `${frontendUrl}/auth/login`,
   }),
   googleCallback
 );

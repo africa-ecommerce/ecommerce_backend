@@ -1,9 +1,10 @@
+import { frontendUrl } from "../config";
 import { mail } from "../lib/mail";
 
 // Helper function to send a reset password email
 export const sendResetPasswordMail = async (email: string, token: string) => {
   const subject = "Reset Your Password";
-  const resetUrl = `${process.env.APP_URL}/auth/reset-password?token=${token}`;
+  const resetUrl = `${frontendUrl}/auth/reset-password?token=${token}`;
 
   const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #f9f9f9;">

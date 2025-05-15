@@ -1,4 +1,3 @@
-import { PlugProduct } from "@prisma/client";
 
 // Helper function to format plug products with complete details
 export const formatPlugProductWithDetails = (plugProduct: any) => {
@@ -30,7 +29,7 @@ export const formatPlugProductWithDetails = (plugProduct: any) => {
       dimensions: variation.dimensions
         ? JSON.parse(variation.dimensions)
         : null,
-       stocks: variation.stock 
+      stocks: variation.stock,
     };
   });
 
@@ -85,8 +84,7 @@ export function formatProductWithImagesAndVariations(product: any) {
   // Extract supplier details if available
   const supplierDetails = product.supplier
     ? {
-          businessName:
-          product.supplier.businessName || "",
+        businessName: product.supplier.businessName || "",
         pickupLocation: product.supplier.pickupLocation || "",
         image: product.supplier.avatar,
       }
@@ -97,6 +95,6 @@ export function formatProductWithImagesAndVariations(product: any) {
     ...product,
     images,
     variations: formattedVariations,
-    supplier: supplierDetails
+    supplier: supplierDetails,
   };
 }

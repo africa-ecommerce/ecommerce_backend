@@ -5,6 +5,7 @@ import path from "path";
 // Templates directory path
 const templatesDir = path.join(__dirname, "../../public/templates");
 
+//---------------------------> FIX
 /**
  * Get all available templates
  * Lists all template directories in the public/templates folder
@@ -37,6 +38,7 @@ export const getAllTemplates = async (req: Request, res: Response) => {
   }
 };
 
+//---------------------------> FIX
 /**
  * Get a specific template by ID
  * Lists all files available in the specified template directory
@@ -45,6 +47,8 @@ export const getTemplateById = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
+
+    //specific template directory
     const templateDir = path.join(templatesDir, id);
 
     // Check if directory exists
@@ -112,7 +116,7 @@ export const getTemplateFile = async (req: Request, res: Response) => {
     } catch (error) {
       res.status(404).json({
         success: false,
-        error: `Template '${id}' not found!`,
+        error: ` '${id}' Template not found!`,
       });
       
       return;
@@ -152,7 +156,7 @@ export const getTemplateFile = async (req: Request, res: Response) => {
     } catch (error: any) {
       res.status(404).json({
         success: false,
-        error: `File could not be read: ${error.message}`,
+        error: `Error fetching template file!`,
       });
       return;
     }
@@ -166,6 +170,9 @@ export const getTemplateFile = async (req: Request, res: Response) => {
     return;
   }
 };
+
+
+
 
 /**
  * Injects all assets (CSS, JS, components) into an HTML page

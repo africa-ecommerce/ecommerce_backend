@@ -59,7 +59,7 @@ export const getCurrentUser = async (
     }
 
     // Return the user data with business information
-    res.status(200).json({ user: currentUser });
+    res.status(200).json({ message: "User fetched successfully!", user: currentUser });
     return;
   } catch (error) {
      res.status(500).json({ error: "Internal server error!" });
