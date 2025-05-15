@@ -145,6 +145,8 @@ export type SiteConfig = z.infer<typeof SiteConfigSchema>;
 
 
 
+
+
 // Zod schema for validating subdomain
 export const subdomainSchema = z.object({
   subdomain: z
