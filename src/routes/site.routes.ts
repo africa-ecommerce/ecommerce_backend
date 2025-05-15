@@ -1,5 +1,11 @@
 import { Router } from "express";
-import { createSiteConfig } from "../controllers/site.controller";
+import {
+  createSiteConfig,
+  getSiteConfig,
+  updateSiteConfig,
+  deleteSiteConfig,
+  checkSubdomainAvailability,
+} from "../controllers/site.controller";
 import { isPlug } from "../middleware/role.middleware";
 import authenticateJWT from "../middleware/auth.middleware";
 
@@ -9,23 +15,11 @@ const router = Router();
 const plugAuth = [authenticateJWT, isPlug];
 
 router.use(plugAuth);
-/**
- * Site Configuration Routes
- */
-
-// Create site configuration
+// Protected routes requiring plug authentication
 router.post("/", createSiteConfig);
-
-// // Get site configuration
-// router.get("/", fetchSiteConfig);
-
-// // List all available site configurations
-// router.get("/list", listAllSiteConfigs);
-
-// // Update site configuration (partial)
-// router.patch("/", updateSiteConfig);
-
-// // Delete site configuration
-// router.delete("/", removeSiteConfig);
+router.get("/", getSiteConfig);
+router.put("/", updateSiteConfig);
+router.delete("/", deleteSiteConfig);
+router.get("/check-subdomain", checkSubdomainAvailability);
 
 export default router;

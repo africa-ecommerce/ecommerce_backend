@@ -1,10 +1,6 @@
-
-     import { minioClient, getMinioUrl, SITE_CONFIG_BUCKET } from '../../config/minio';
+import { minioClient, getMinioUrl, SITE_CONFIG_BUCKET } from '../../config/minio';
   
-  
- 
-  
-  // Generate config object name using domain as identifier
+// Generate config object name using domain as identifier
   const generateConfigKey = (subdomain: string): string => {
     return `config/${subdomain}.json`;
   };
@@ -112,41 +108,11 @@
   // };
   
   // // Update the database with site config reference
-  // export const updatePlugWithSiteConfig = async (
-  //   userId: string,
-  //   subdomain: string,
-  //   configUrl: string
-  // ): Promise<void> => {
-  //   try {
-  //     // First check if the plug exists
-  //     const plug = await prisma.plug.findUnique({
-  //       where: {
-  //         userId: userId
-  //       }
-  //     });
-  
-  //     if (!plug) {
-  //       throw new Error('Plug not found for this user');
-  //     }
-      
-  //     // Update the plug with the site URL (or any other reference you want to store)
-  //     // Note: You might need to add a siteUrl field to your Plug model
-  //     await prisma.plug.update({
-  //       where: {
-  //         id: plug.id
-  //       },
-  //       data: {
-  //         // This is just a placeholder - you would need to add this field to your schema
-  //         // siteUrl: configUrl
-  //         // For now, you could store it in the aboutBusiness field or extend your schema
-  //         aboutBusiness: `${plug.aboutBusiness || ''}\nSite URL: ${configUrl}`
-  //       }
-  //     });
-  //   } catch (error) {
-  //     console.error(`Failed to update plug with site config: ${error}`);
-  //     throw error;
-  //   }
-  // };
-  
-  
-  
+  // Update site configuration in MinIO
+export const updateSiteConfigInMinio = async (
+  subdomain: string,
+  config: any
+): Promise<string> => {
+  // We can reuse the save function since MinIO will overwrite existing objects
+  return saveSiteConfigToMinio(subdomain, config);
+};

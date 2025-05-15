@@ -118,9 +118,7 @@ app.use("/site", siteRoutes);
 // Global error handling middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error("Unhandled error:", err);
-  res
-    .status(500)
-    .json({ error: "Unexpected error occured!" });
+  res.status(500).json({ error: "Unexpected error occured!" });
 });
 
 const server = app.listen(port, "0.0.0.0", () => {
