@@ -19,6 +19,8 @@ router.use(plugAuth);
 router.post("/check-subdomain", checkSubdomainAvailability);
 
 router.post("/", createSiteConfig);
+
+
 router.get("/", getSiteConfig);
 router.put("/", updateSiteConfig);
 router.delete("/", deleteSiteConfig);
