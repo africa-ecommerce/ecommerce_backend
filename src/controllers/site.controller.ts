@@ -16,7 +16,7 @@ export const createSiteConfig = async (req: AuthRequest, res: Response) => {
   try {
     const plug = req.plug!;
 
-    const { data } = req.body;
+    const  data  = req.body;
 
     // Validate subdomain
 
