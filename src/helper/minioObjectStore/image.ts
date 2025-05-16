@@ -69,12 +69,28 @@ const getContentDisposition = (filename: string): string => {
 
 
 // Upload multiple images to MinIO
-export const uploadImages = async (
-  files: Express.Multer.File[]
-): Promise<string[]> => {
-  const uploadPromises = files.map(file => uploadImage(file));
-  return Promise.all(uploadPromises);
-};
+// export const uploadImages = async (
+//   files: Express.Multer.File[]
+// ): Promise<string[]> => {
+//   const uploadPromises = files.map(file => uploadImage(file));
+//   return Promise.all(uploadPromises);
+// };
+
+
+export async function uploadImages(files: Express.Multer.File[]): Promise<string[]> {
+  const results: string[] = [];
+  for (const file of files) {
+    try {
+      const url = await uploadImage(file);
+      results.push(url);
+    } catch (err) {
+      console.error(`Failed to upload ${file.originalname}:`, err);
+      // continue uploading the rest
+    }
+  }
+  return results;
+}
+
 
 // Upload a single image to MinIO
 export const uploadImage = async (
@@ -118,20 +134,43 @@ export const extractObjectName = (url: string): string => {
 };
 
 // Delete images from MinIO
-export const deleteImages = async (urls: string[]): Promise<void> => {
-  if (!urls.length) return;
+// export const deleteImages = async (urls: string[]): Promise<void> => {
+//   if (!urls.length) return;
   
+//   for (const url of urls) {
+//     try {
+//       const objectName = extractObjectName(url);
+//       await minioClient.removeObject(IMAGES_BUCKET, objectName);
+//       console.log(`Deleted image from MinIO: ${objectName}`);
+//     } catch (error) {
+//       console.error(`Failed to delete image ${url}:`, error);
+//       throw error;
+//     }
+//   }
+// };
+
+
+
+
+export async function deleteImages(urls: string[]): Promise<void> {
   for (const url of urls) {
+    const key = extractObjectName(url);
     try {
-      const objectName = extractObjectName(url);
-      await minioClient.removeObject(IMAGES_BUCKET, objectName);
-      console.log(`Deleted image from MinIO: ${objectName}`);
-    } catch (error) {
-      console.error(`Failed to delete image ${url}:`, error);
-      throw error;
+      await minioClient.removeObject(IMAGES_BUCKET, key);
+      console.log(`Deleted image: ${key}`);
+    } catch (err: any) {
+      if (err.code === 'NoSuchKey') {
+        // Already gone, ignore
+        console.warn(`Image not found (already deleted?): ${key}`);
+      } else {
+        console.error(`Error deleting image ${key}:`, err);
+        // bubble up only on unexpected errors
+        throw err;
+      }
     }
   }
-};
+}
+
 
 // Get image information from MinIO
 export const getImageInfo = async (url: string) => {
