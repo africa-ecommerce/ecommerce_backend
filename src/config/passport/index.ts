@@ -20,6 +20,9 @@ passport.use(
     async (email, password, done) => {
       try {
         // 1. Find user by email
+
+        // Sanitize input
+        email = email.trim().toLowerCase();
         const user = await prisma.user.findUnique({ where: { email } });
 
         // 2. Check user exists

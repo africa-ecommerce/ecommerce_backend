@@ -59,7 +59,7 @@ export const getCurrentUser = async (
       return;
     }
 
-    // Return the user data with business information
+    // Return the user data w
     res.status(200).json({ message: "User fetched successfully!", user: currentUser });
     return;
   } catch (error) {

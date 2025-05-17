@@ -2,11 +2,11 @@ import { Request, Response } from "express";
 import {prisma } from "../config";
 import { formatProductWithImagesAndVariations } from "../helper/formatProduct";
 
-export const  getProductById = async (req: Request, res: Response) => {
+export const getProductById = async (req: Request, res: Response) => {
      try {
-       const productId = req.params.productId;
-       const plugId = req.body;
-  
+      
+       const data = req.body;
+        const { plugId, productId} = data;
        const product = await prisma.plugProduct.findUnique({
          where: { id: productId, plugId: plugId },
          include: {
