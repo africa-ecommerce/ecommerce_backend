@@ -366,7 +366,7 @@ export const createSite = async (req: AuthRequest, res: Response) => {
     const subdomain = data.subdomain ? data.subdomain.trim().toLowerCase() : undefined;
 
     if (!subdomain) {
-      res.status(400).json({ error: "Subdomain is required!" });
+      res.status(400).json({ error: "Domain is required!" });
       return;
     }
 
@@ -375,7 +375,7 @@ export const createSite = async (req: AuthRequest, res: Response) => {
       subdomainSchema.parse(subdomain);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid subdomain format!" });
+        res.status(400).json({ error: "Invalid domain format!" });
         return;
       }
     }
@@ -388,7 +388,7 @@ export const createSite = async (req: AuthRequest, res: Response) => {
 
     // Check if subdomain is available
     if (!!available) {
-      res.status(409).json({ error: "Subdomain already in use!" });
+      res.status(409).json({ error: "Domain already in use!" });
       return;
     }
 
@@ -473,7 +473,7 @@ export const updateSite = async (req: AuthRequest, res: Response) => {
         subdomainSchema.parse(newSubdomain);
       } catch (error) {
         if (error instanceof z.ZodError) {
-          res.status(400).json({ error: "Invalid subdomain format!" });
+          res.status(400).json({ error: "Invalid domain format!" });
           return;
         }
       }
@@ -486,7 +486,7 @@ export const updateSite = async (req: AuthRequest, res: Response) => {
       });
 
       if (!!existing) {
-        res.status(409).json({ error: "Subdomain already in use!" });
+        res.status(409).json({ error: "Domain already in use!" });
         return;
       }
     }
@@ -659,7 +659,7 @@ export const checkSubdomainAvailability = async (
     const subdomain = data.subdomain ? data.subdomain.trim().toLowerCase() : undefined;
     
     if (!subdomain) {
-      res.status(400).json({ error: "Subdomain is required!" });
+      res.status(400).json({ error: "Domain is required!" });
       return;
     }
     
@@ -669,7 +669,7 @@ export const checkSubdomainAvailability = async (
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({
-          error: "Invalid subdomain format!",
+          error: "Invalid domain format!",
         });
         return;
       }
@@ -686,11 +686,11 @@ export const checkSubdomainAvailability = async (
     const available = !existing;
 
     res.status(200).json({
-      message: "Subdomain checked successfully!",
+      message: "Domain checked successfully!",
       available,
     });
   } catch (error) {
-    console.error("Error checking subdomain availability:", error);
-    res.status(500).json({ error: "Error checking subdomain!" });
+    console.error("Error checking domain availability:", error);
+    res.status(500).json({ error: "Error checking domain!" });
   }
 };

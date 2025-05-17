@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="View detailed product information and specifications at TechVibe.">
+    <title>Product Details - TechVibe</title>
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/product-details.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <a href="index.html">TechVibe</a>
+                </div>
+                <nav class="main-nav">
+                    <ul>
+                        <li><a href="index.html" class="nav-link">Home</a></li>
+                        <li><a href="marketplace.html" class="nav-link">Products</a></li>
+                        <li><a href="blog.html" class="nav-link">Blog</a></li>
+                    </ul>
+                </nav>
+                <div class="header-actions">
+                    <div class="search-container">
+                        <button class="icon-btn search-toggle">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8" />
+                                <path d="m21 21-4.3-4.3" />
+                            </svg>
+                        </button>
+                        <form class="search-form">
+                            <input type="text" placeholder="Search products..." class="search-input">
+                            <button type="submit" class="search-submit">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <circle cx="11" cy="11" r="8" />
+                                    <path d="m21 21-4.3-4.3" />
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                    <button class="icon-btn cart-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="8" cy="21" r="1" />
+                            <circle cx="19" cy="21" r="1" />
+                            <path
+                                d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+                        </svg>
+                        <span class="cart-count">0</span>
+                    </button>
+                    <button class="mobile-menu-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="4" x2="20" y1="12" y2="12" />
+                            <line x1="4" x2="20" y1="6" y2="6" />
+                            <line x1="4" x2="20" y1="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Sidebar Navigation -->
+        <div class="sidebar-overlay"></div>
+        <div class="mobile-sidebar">
+            <div class="sidebar-header">
+                <div class="logo">TechVibe</div>
+                <button class="sidebar-close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                    </svg>
+                </button>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="marketplace.html">Products</a></li>
+                    <li><a href="blog.html">Blog</a></li>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- Cart Modal -->
+        <div class="cart-modal">
+            <div class="cart-modal-header">
+                <h3>Your Cart</h3>
+                <button class="cart-close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="cart-modal-items">
+                <div class="cart-empty">
+                    <p>Your cart is empty</p>
+                    <a href="marketplace.html" class="btn btn-primary">Shop Now</a>
+                </div>
+            </div>
+            <div class="cart-modal-footer">
+                <div class="cart-total">
+                    <span>Total:</span>
+                    <span class="total-amount">$0.00</span>
+                </div>
+                <div class="cart-actions">
+                    <a href="#" class="btn btn-primary">Checkout</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Breadcrumbs -->
+        <div class="container">
+            <div class="breadcrumbs">
+                <a href="index.html">Home</a>
+                <span>/</span>
+                <a href="marketplace.html">Products</a>
+                <span>/</span>
+                <span id="product-title-breadcrumb">Product Details</span>
+            </div>
+        </div>
+
+        <!-- Product Details -->
+        <section class="product-details">
+            <div class="container">
+                <div class="product-details-content">
+                    <!-- Product Gallery -->
+                    <div class="product-gallery">
+                        <div class="main-image">
+                            <img id="main-product-image" src="/placeholder.svg?height=400&width=400"
+                                alt="Product Image">
+                        </div>
+                        <div class="thumbnail-images">
+                            <div class="thumbnail active" data-image="/placeholder.svg?height=400&width=400">
+                                <img src="/placeholder.svg?height=100&width=100" alt="Thumbnail 1">
+                            </div>
+                            <div class="thumbnail" data-image="/placeholder.svg?height=400&width=400&text=Image%202">
+                                <img src="/placeholder.svg?height=100&width=100&text=Image%202" alt="Thumbnail 2">
+                            </div>
+                            <div class="thumbnail" data-image="/placeholder.svg?height=400&width=400&text=Image%203">
+                                <img src="/placeholder.svg?height=100&width=100&text=Image%203" alt="Thumbnail 3">
+                            </div>
+                            <div class="thumbnail" data-image="/placeholder.svg?height=400&width=400&text=Image%204">
+                                <img src="/placeholder.svg?height=100&width=100&text=Image%204" alt="Thumbnail 4">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Product Info -->
+                    <div class="product-info">
+                        <h2 id="product-title">Product Title</h2>
+                        <div class="product-meta">
+                            
+                        </div>
+                        <div class="product-price">
+                            <span id="product-price">$999</span>
+                            <!-- <span class="product-discount">$1,299</span> -->
+                        </div>
+                        <!-- <div class="product-description">
+                            <p id="product-description">
+                                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed euismod, nisl vel ultricies
+                                lacinia, nisl nisl aliquam nisl, eget aliquam nisl nisl sit amet nisl. Sed euismod, nisl
+                                vel ultricies lacinia, nisl nisl aliquam nisl, eget aliquam nisl nisl sit amet nisl.
+                            </p>
+                        </div> -->
+                        <!-- <div class="product-variants">
+                            <h3>Color</h3>
+                            <div class="variant-options">
+                                <div class="color-option active" style="background-color: #000000;" data-color="Black">
+                                </div>
+                                <div class="color-option" style="background-color: #FFFFFF; border: 1px solid #E5E7EB;"
+                                    data-color="White"></div>
+                                <div class="color-option" style="background-color: #0369A1;" data-color="Blue"></div>
+                                <div class="color-option" style="background-color: #B91C1C;" data-color="Red"></div>
+                            </div>
+                        </div> -->
+                        <div class="product-quantity">
+                            <h3>Quantity</h3>
+                            <div class="quantity-selector">
+                                <button class="quantity-btn decrease-quantity">-</button>
+                                <input type="number" id="quantity" value="1" min="1" max="10">
+                                <button class="quantity-btn increase-quantity">+</button>
+                            </div>
+                        </div>
+                        <div class="product-actions">
+                            <button id="add-to-cart" class="btn btn-dark">Add to Cart</button>
+                            <button id="buy-now" class="btn btn-primary">Buy Now</button>
+                        </div>
+                        <div class="product-features">
+                            <div class="feature">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path
+                                        d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
+                                    <path d="m9 12 2 2 4-4" />
+                                </svg>
+                                <span>Free shipping on orders over $50</span>
+                            </div>
+                            <div class="feature">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path
+                                        d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
+                                    <path d="m9 12 2 2 4-4" />
+                                </svg>
+                                <span>30-day money-back guarantee</span>
+                            </div>
+                            <div class="feature">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path
+                                        d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
+                                    <path d="m9 12 2 2 4-4" />
+                                </svg>
+                                <span>1-year warranty</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Product Tabs -->
+        <section class="product-tabs">
+            <div class="container">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="description">Description</button>
+                    <button class="tab-btn" data-tab="specifications">Specifications</button>
+                    <button class="tab-btn" data-tab="reviews">Reviews</button>
+                </div>
+                <div class="tab-content">
+                    <div class="tab-pane active" id="description">
+                        <h2>Product Description</h2>
+                        <p>
+                            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed euismod, nisl vel ultricies
+                            lacinia, nisl nisl aliquam nisl, eget aliquam nisl nisl sit amet nisl. Sed euismod, nisl vel
+                            ultricies lacinia, nisl nisl aliquam nisl, eget aliquam nisl nisl sit amet nisl.
+                        </p>
+                        <p>
+                            Sed euismod, nisl vel ultricies lacinia, nisl nisl aliquam nisl, eget aliquam nisl nisl sit
+                            amet nisl. Sed euismod, nisl vel ultricies lacinia, nisl nisl aliquam nisl, eget aliquam
+                            nisl nisl sit amet nisl.
+                        </p>
+                        <h3>Key Features</h3>
+                        <ul>
+                            <li>Feature 1: Lorem ipsum dolor sit amet</li>
+                            <li>Feature 2: Consectetur adipiscing elit</li>
+                            <li>Feature 3: Sed euismod, nisl vel ultricies lacinia</li>
+                            <li>Feature 4: Nisl nisl aliquam nisl, eget aliquam nisl nisl sit amet nisl</li>
+                        </ul>
+                    </div>
+                    <div class="tab-pane" id="specifications">
+                        <h2>Product Specifications</h2>
+                        <table class="specs-table">
+                            <tbody>
+                                <tr>
+                                    <th>Dimensions</th>
+                                    <td>146.7 x 71.5 x 7.4 mm</td>
+                                </tr>
+                                <tr>
+                                    <th>Weight</th>
+                                    <td>174 g</td>
+                                </tr>
+                                <tr>
+                                    <th>Display</th>
+                                    <td>6.1 inches, Super Retina XDR OLED</td>
+                                </tr>
+                                <tr>
+                                    <th>Resolution</th>
+                                    <td>1170 x 2532 pixels</td>
+                                </tr>
+                                <tr>
+                                    <th>Processor</th>
+                                    <td>A15 Bionic</td>
+                                </tr>
+                                <tr>
+                                    <th>Storage</th>
+                                    <td>128GB, 256GB, 512GB, 1TB</td>
+                                </tr>
+                                <tr>
+                                    <th>Camera</th>
+                                    <td>12 MP, f/1.5, 26mm (wide), 12 MP, f/2.8, 77mm (telephoto), 12 MP, f/1.8, 13mm
+                                        (ultrawide)</td>
+                                </tr>
+                                <tr>
+                                    <th>Battery</th>
+                                    <td>3095 mAh</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="tab-pane" id="reviews">
+                        <h2>Customer Reviews</h2>
+                        <div class="reviews-summary">
+                            <div class="average-rating">
+                                <div class="rating-number">4.0</div>
+                                <div class="stars">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                        fill="currentColor" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <polygon
+                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                    </svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                        fill="currentColor" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <polygon
+                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                    </svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                        fill="currentColor" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <polygon
+                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                    </svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                        fill="currentColor" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <polygon
+                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                    </svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <polygon
+                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                    </svg>
+                                </div>
+                                <div class="total-reviews">Based on 24 reviews</div>
+                            </div>
+                            <div class="rating-bars">
+                                <div class="rating-bar">
+                                    <div class="rating-label">5 stars</div>
+                                    <div class="bar-container">
+                                        <div class="bar" style="width: 60%;"></div>
+                                    </div>
+                                    <div class="rating-count">15</div>
+                                </div>
+                                <div class="rating-bar">
+                                    <div class="rating-label">4 stars</div>
+                                    <div class="bar-container">
+                                        <div class="bar" style="width: 20%;"></div>
+                                    </div>
+                                    <div class="rating-count">5</div>
+                                </div>
+                                <div class="rating-bar">
+                                    <div class="rating-label">3 stars</div>
+                                    <div class="bar-container">
+                                        <div class="bar" style="width: 12%;"></div>
+                                    </div>
+                                    <div class="rating-count">3</div>
+                                </div>
+                                <div class="rating-bar">
+                                    <div class="rating-label">2 stars</div>
+                                    <div class="bar-container">
+                                        <div class="bar" style="width: 4%;"></div>
+                                    </div>
+                                    <div class="rating-count">1</div>
+                                </div>
+                                <div class="rating-bar">
+                                    <div class="rating-label">1 star</div>
+                                    <div class="bar-container">
+                                        <div class="bar" style="width: 0%;"></div>
+                                    </div>
+                                    <div class="rating-count">0</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="reviews-list">
+                            <div class="review">
+                                <div class="review-header">
+                                    <div class="reviewer-info">
+                                        <div class="reviewer-name">John D.</div>
+                                        <div class="review-date">October 15, 2023</div>
+                                    </div>
+                                    <div class="review-rating">
+                                        <div class="stars">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon
+                                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                            </svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon
+                                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                            </svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon
+                                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                            </svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon
+                                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                            </svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon
+                                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="review-title">Excellent product, highly recommend!</div>
+                                <div class="review-content">
+                                    <p>
+                                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed euismod, nisl vel
+                                        ultricies lacinia, nisl nisl aliquam nisl, eget aliquam nisl nisl sit amet nisl.
+                                        Sed euismod, nisl vel ultricies lacinia, nisl nisl aliquam nisl, eget aliquam
+                                        nisl nisl sit amet nisl.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="review">
+                                <div class="review-header">
+                                    <div class="reviewer-info">
+                                        <div class="reviewer-name">Sarah M.</div>
+                                        <div class="review-date">October 10, 2023</div>
+                                    </div>
+                                    <div class="review-rating">
+                                        <div class="stars">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon
+                                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                            </svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon
+                                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                            </svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon
+                                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                            </svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon
+                                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                            </svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon
+                                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="review-title">Great product, but battery life could be better</div>
+                                <div class="review-content">
+                                    <p>
+                                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed euismod, nisl vel
+                                        ultricies lacinia, nisl nisl aliquam nisl, eget aliquam nisl nisl sit amet nisl.
+                                        Sed euismod, nisl vel ultricies lacinia, nisl nisl aliquam nisl, eget aliquam
+                                        nisl nisl sit amet nisl.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="review">
+                                <div class="review-header">
+                                    <div class="reviewer-info">
+                                        <div class="reviewer-name">Michael T.</div>
+                                        <div class="review-date">October 5, 2023</div>
+                                    </div>
+                                    <div class="review-rating">
+                                        <div class="stars">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon
+                                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                            </svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon
+                                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                            </svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon
+                                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                            </svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon
+                                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                            </svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon
+                                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="review-title">Good value for the price</div>
+                                <div class="review-content">
+                                    <p>
+                                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed euismod, nisl vel
+                                        ultricies lacinia, nisl nisl aliquam nisl, eget aliquam nisl nisl sit amet nisl.
+                                        Sed euismod, nisl vel ultricies lacinia, nisl nisl aliquam nisl, eget aliquam
+                                        nisl nisl sit amet nisl.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="load-more-container">
+                            <button class="btn btn-outline load-more-btn">Load More Reviews</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Related Products -->
+        <!-- <section class="related-products">
+            <div class="container">
+                <h2 class="section-title">You May Also Like</h2>
+                <div class="product-grid">
+                    <a href="product-details.html?id=2" class="product-card" data-id="2">
+                        <div class="product-image">
+                            <img src="/placeholder.svg?height=200&width=200" alt="Laptop Ultra">
+                        </div>
+                        <div class="product-info">
+                            <h3 class="product-title">Laptop Ultra</h3>
+                            <p class="product-price">$1299</p>
+                            <div class="product-actions">
+                                <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                            </div>
+                        </div>
+                    </a>
+                    <a href="product-details.html?id=3" class="product-card" data-id="3">
+                        <div class="product-image">
+                            <img src="/placeholder.svg?height=200&width=200" alt="Wireless Earbuds">
+                        </div>
+                        <div class="product-info">
+                            <h3 class="product-title">Wireless Earbuds</h3>
+                            <p class="product-price">$149</p>
+                            <div class="product-actions">
+                                <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                            </div>
+                        </div>
+                    </a>
+                    <a href="product-details.html?id=4" class="product-card" data-id="4">
+                        <div class="product-image">
+                            <img src="/placeholder.svg?height=200&width=200" alt="Smart Watch">
+                        </div>
+                        <div class="product-info">
+                            <h3 class="product-title">Smart Watch</h3>
+                            <p class="product-price">$299</p>
+                            <div class="product-actions">
+                                <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                            </div>
+                        </div>
+                    </a>
+                    <a href="product-details.html?id=5" class="product-card" data-id="5">
+                        <div class="product-image">
+                            <img src="/placeholder.svg?height=200&width=200" alt="Tablet Pro">
+                        </div>
+                        <div class="product-info">
+                            <h3 class="product-title">Tablet Pro</h3>
+                            <p class="product-price">$799</p>
+                            <div class="product-actions">
+                                <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </section> -->
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-column">
+                    <h3 class="footer-title">TechVibe</h3>
+                    <ul class="footer-links">
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="marketplace.html">Products</a></li>
+                        <li><a href="blog.html">Blog</a></li>
+                        <li><a href="#">About Us</a></li>
+                    </ul>
+                </div>
+                <!-- <div class="footer-column">
+                    <h3 class="footer-title">Shop</h3>
+                    <ul class="footer-links">
+                        <li><a href="marketplace.html?category=smartphones">Smartphones</a></li>
+                        <li><a href="marketplace.html?category=laptops">Laptops</a></li>
+                        <li><a href="marketplace.html?category=tablets">Tablets</a></li>
+                        <li><a href="marketplace.html?category=accessories">Accessories</a></li>
+                    </ul>
+                </div> -->
+                <div class="footer-column">
+                    <h3 class="footer-title">Customer Service</h3>
+                    <ul class="footer-links">
+                        <li><a href="#">FAQ</a></li>
+                        <li><a href="#">Shipping</a></li>
+                        <li><a href="#">Returns</a></li>
+                        <li><a href="#">Order Status</a></li>
+                        <li><a href="#">Payment Options</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h3 class="footer-title">Contact Us</h3>
+                    <p>Email: support@techvibe.com</p>
+                    <p>Phone: +1 (123) 456-7890</p>
+                    <div class="social-links">
+                        <a href="#" class="social-link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+                            </svg>
+                        </a>
+                        <a href="#" class="social-link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path
+                                    d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
+                            </svg>
+                        </a>
+                        <a href="#" class="social-link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+                                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2023 TechVibe. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/product-details.js"></script>
+</body>
+
+</html>

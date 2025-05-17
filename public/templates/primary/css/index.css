@@ -1,0 +1,151 @@
+/* Hero Section */
+.hero {
+    padding: 20px;
+    background:  var(--color-background);
+    position: relative;
+    /* overflow: hidden; */
+    max-height: 60vh;
+
+  }
+  
+  .hero-content {
+    display: flex;
+    flex-direction: row;
+    align-items: left;
+    gap: var(--spacing-8);
+  }
+  
+  .hero-text {
+    text-align: left;
+    max-width: 600px;
+  }
+  
+  .hero h1 {
+    font-size: var(--font-size-2xl);
+    padding-top: 40px;
+    margin-bottom: var(--spacing-4);
+    background: var(--color-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    /* text-fill-color: transparent; */
+  }
+  
+  .hero .description {
+    font-size: var(--font-size-base);
+    color: var(--color-text-light);
+    margin-bottom: var(--spacing-6);
+    padding-top: 20px;
+  }
+  
+  .hero-actions {
+    display: flex;
+    gap: var(--spacing-4);
+    justify-content: center;
+    flex-direction: column;
+    font-size: var(--font-size-sm);
+
+  }
+  
+  /* .hero-image {
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+    animation: float 6s ease-in-out infinite;
+  } */
+  
+  @keyframes float {
+    0% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+    100% {
+      transform: translateY(0px);
+    }
+  }
+  
+  /* Featured Categories */
+  .featured-categories {
+    padding: var(--spacing-16) 0;
+  }
+  
+  
+  
+ 
+  
+ 
+  
+  /* Featured Products */
+  .featured-products {
+    padding: var(--spacing-16) 0;
+    background-color: var(--color-background);
+  }
+  
+  /* About Us */
+  .about-us {
+    padding: var(--spacing-16) 0;
+  }
+  
+  .about-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-8);
+  }
+  
+  .about-text {
+    flex: 1;
+    font-size: var(--font-size-sm);
+  }
+  
+ 
+  
+  
+  
+
+  @media (min-width: 768px) {
+    .hero-content {
+      flex-direction: row;
+      text-align: left;
+    }
+    .hero h1 {
+        font-size: var(--font-size-4xl);
+    }
+
+    .hero .description {
+        font-size: var(--font-size-lg);
+        
+      }
+
+    .hero {
+        padding: 80px;
+        height: 60vh;
+
+      }
+
+    .hero-actions {
+        display: flex;
+        gap: var(--spacing-4);
+        justify-content: center;
+        flex-direction: row;
+    
+      }
+    
+    .hero-text {
+      text-align: left;
+      font-size: var(--font-size-base);
+    }
+    
+    .hero-actions {
+      justify-content: flex-start;
+    }
+    
+    .about-content {
+      flex-direction: row;
+    }
+    
+   
+  }
+  
+ 

@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="TechVibe - Premium Electronics Store. Shop the latest smartphones, laptops, and accessories.">
+    <title>TechVibe - Premium Electronics Store</title>
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <a href="index.html">TechVibe</a>
+                </div>
+                <nav class="main-nav">
+                    <ul>
+                        <li><a href="index.html" class="nav-link">Home</a></li>
+                        <li><a href="marketplace.html" class="nav-link">Products</a></li>
+                        <li><a href="blog.html" class="nav-link">Blog</a></li>
+                    </ul>
+                </nav>
+                <div class="header-actions">
+                    <div class="search-container">
+                        <button class="icon-btn search-toggle">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8" />
+                                <path d="m21 21-4.3-4.3" />
+                            </svg>
+                        </button>
+                        <form class="search-form">
+                            <input type="text" placeholder="Search products..." class="search-input">
+                            <button type="submit" class="search-submit">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <circle cx="11" cy="11" r="8" />
+                                    <path d="m21 21-4.3-4.3" />
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                    <button class="icon-btn cart-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="8" cy="21" r="1" />
+                            <circle cx="19" cy="21" r="1" />
+                            <path
+                                d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+                        </svg>
+                        <span class="cart-count">0</span>
+                    </button>
+                    <button class="mobile-menu-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="4" x2="20" y1="12" y2="12" />
+                            <line x1="4" x2="20" y1="6" y2="6" />
+                            <line x1="4" x2="20" y1="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Sidebar Navigation -->
+        <div class="sidebar-overlay"></div>
+        <div class="mobile-sidebar">
+            <div class="sidebar-header">
+                <div class="logo">TechVibe</div>
+                <button class="sidebar-close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                    </svg>
+                </button>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="marketplace.html">Products</a></li>
+                    <li><a href="blog.html">Blog</a></li>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- Cart Modal -->
+        <div class="cart-modal">
+            <div class="cart-modal-header">
+                <h3>Your Cart</h3>
+                <button class="cart-close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="cart-modal-items">
+                <div class="cart-empty">
+                    <p>Your cart is empty</p>
+                    <a href="marketplace.html" class="btn btn-primary">Shop Now</a>
+                </div>
+            </div>
+            <div class="cart-modal-footer">
+                <div class="cart-total">
+                    <span>Total:</span>
+                    <span class="total-amount">$0.00</span>
+                </div>
+                <div class="cart-actions">
+                    <a href="#" class="btn btn-primary">Checkout</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="container">
+                <div class="hero-content">
+                    <div class="hero-text">
+                        <h1>Next-Gen Tech at Your Fingertips</h1>
+                        <p class="description">
+                            Discover the latest in cutting-edge technology. Premium devices with exceptional
+                            performance, stunning design, and innovative features.
+                        </p>
+                        <div class="hero-actions">
+                            <a href="marketplace.html" class="btn btn-primary">Shop Now</a>
+                            <button class="btn btn-outline">Learn More</button>
+                        </div>
+                    </div>
+                    <!-- <div class="hero-image">
+                        <img src="/placeholder.svg?height=500&width=500" alt="Latest smartphone">
+                    </div> -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Featured Categories -->
+        <!-- <section class="featured-categories">
+            <div class="container">
+                <h2 class="section-title">Shop by Category</h2>
+                <div class="categories-grid">
+                    <a href="marketplace.html?category=smartphones" class="category-card">
+                        <div class="category-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                                <line x1="12" y1="18" x2="12" y2="18" />
+                            </svg>
+                        </div>
+                        <h3>Smartphones</h3>
+                    </a>
+                    <a href="marketplace.html?category=laptops" class="category-card">
+                        <div class="category-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                                <line x1="2" y1="20" x2="22" y2="20" />
+                            </svg>
+                        </div>
+                        <h3>Laptops</h3>
+                    </a>
+                    <a href="marketplace.html?category=tablets" class="category-card">
+                        <div class="category-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
+                                <line x1="12" y1="18" x2="12" y2="18" />
+                            </svg>
+                        </div>
+                        <h3>Tablets</h3>
+                    </a>
+                    <a href="marketplace.html?category=accessories" class="category-card">
+                        <div class="category-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M6 3v12" />
+                                <circle cx="18" cy="6" r="3" />
+                                <circle cx="6" cy="18" r="3" />
+                                <path d="M18 9a9 9 0 0 1-9 9" />
+                            </svg>
+                        </div>
+                        <h3>Accessories</h3>
+                    </a>
+                </div>
+            </div>
+        </section> -->
+
+        <!-- Featured Products -->
+        <section class="featured-products">
+            <div class="container">
+                <h2 class="section-title">Featured Products</h2>
+                <div class="product-grid">
+                    <a href="product-details.html?id=1" class="product-card" data-id="1">
+                        <div class="product-image">
+                            <img src="/placeholder.svg?height=200&width=200" alt="Smartphone Pro">
+                        </div>
+                        <div class="product-info">
+                            <h3 class="product-title">Smartphone Pro</h3>
+                            <p class="product-price">$999</p>
+                            <div class="product-actions">
+                                <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                            </div>
+                        </div>
+                    </a>
+                    <a href="product-details.html?id=2" class="product-card" data-id="2">
+                        <div class="product-image">
+                            <img src="/placeholder.svg?height=200&width=200" alt="Laptop Ultra">
+                        </div>
+                        <div class="product-info">
+                            <h3 class="product-title">Laptop Ultra</h3>
+                            <p class="product-price">$1299</p>
+                            <div class="product-actions">
+                                <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                            </div>
+                        </div>
+                    </a>
+                    <a href="product-details.html?id=3" class="product-card" data-id="3">
+                        <div class="product-image">
+                            <img src="/placeholder.svg?height=200&width=200" alt="Wireless Earbuds">
+                        </div>
+                        <div class="product-info">
+                            <h3 class="product-title">Wireless Earbuds</h3>
+                            <p class="product-price">$149</p>
+                            <div class="product-actions">
+                                <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                            </div>
+                        </div>
+                    </a>
+                    <a href="product-details.html?id=4" class="product-card" data-id="4">
+                        <div class="product-image">
+                            <img src="/placeholder.svg?height=200&width=200" alt="Smart Watch">
+                        </div>
+                        <div class="product-info">
+                            <h3 class="product-title">Smart Watch</h3>
+                            <p class="product-price">$299</p>
+                            <div class="product-actions">
+                                <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                            </div>
+                        </div>
+                    </a>
+                    <a href="product-details.html?id=5" class="product-card" data-id="5">
+                        <div class="product-image">
+                            <img src="/placeholder.svg?height=200&width=200" alt="Tablet Pro">
+                        </div>
+                        <div class="product-info">
+                            <h3 class="product-title">Tablet Pro</h3>
+                            <p class="product-price">$799</p>
+                            <div class="product-actions">
+                                <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                            </div>
+                        </div>
+                    </a>
+                    <a href="product-details.html?id=6" class="product-card" data-id="6">
+                        <div class="product-image">
+                            <img src="/placeholder.svg?height=200&width=200" alt="Wireless Headphones">
+                        </div>
+                        <div class="product-info">
+                            <h3 class="product-title">Wireless Headphones</h3>
+                            <p class="product-price">$249</p>
+                            <div class="product-actions">
+                                <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                            </div>
+                        </div>
+                    </a>
+                    <a href="product-details.html?id=7" class="product-card" data-id="7">
+                        <div class="product-image">
+                            <img src="/placeholder.svg?height=200&width=200" alt="Bluetooth Speaker">
+                        </div>
+                        <div class="product-info">
+                            <h3 class="product-title">Bluetooth Speaker</h3>
+                            <p class="product-price">$129</p>
+                            <div class="product-actions">
+                                <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                            </div>
+                        </div>
+                    </a>
+                    <a href="product-details.html?id=8" class="product-card" data-id="8">
+                        <div class="product-image">
+                            <img src="/placeholder.svg?height=200&width=200" alt="Wireless Charger">
+                        </div>
+                        <div class="product-info">
+                            <h3 class="product-title">Wireless Charger</h3>
+                            <p class="product-price">$59</p>
+                            <div class="product-actions">
+                                <button class="btn btn-sm btn-dark add-to-cart-btn">Add to Cart</button>
+                                <button class="btn btn-sm btn-primary buy-now-btn">Buy Now</button>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="view-all-container">
+                    <a href="marketplace.html" class="btn btn-outline view-all-btn">View All Products</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Us Section -->
+        <section class="about-us">
+            <div class="container">
+                <h2 class="section-title">About Us</h2>
+                <div class="about-content">
+                    <div class="about-text">
+                        <p class="about-text">
+                            Welcome to TechVibe, your premier destination for cutting-edge electronics and tech
+                            accessories. Founded in 2018, we've been committed to providing our customers with the
+                            latest innovations and exceptional service.
+                        </p>
+                        <p>
+                            Our mission is to make technology accessible to everyone by offering high-quality products
+                            at competitive prices. We carefully select each item in our inventory to ensure it meets our
+                            standards for performance, reliability, and value.
+                        </p>
+                        <p>
+                            At TechVibe, we believe that technology should enhance your life, not complicate it. That's
+                            why we offer detailed product information, expert advice, and responsive customer support to
+                            help you make informed decisions.
+                        </p>
+                    </div>
+                   
+                </div>
+            </div>
+        </section>
+
+       
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-column">
+                    <h3 class="footer-title">TechVibe</h3>
+                    <ul class="footer-links">
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="marketplace.html">Products</a></li>
+                        <li><a href="blog.html">Blog</a></li>
+                        <li><a href="#">About Us</a></li>
+                    </ul>
+                </div>
+                <!-- <div class="footer-column">
+                    <h3 class="footer-title">Shop</h3>
+                    <ul class="footer-links">
+                        <li><a href="marketplace.html?category=smartphones">Smartphones</a></li>
+                        <li><a href="marketplace.html?category=laptops">Laptops</a></li>
+                        <li><a href="marketplace.html?category=tablets">Tablets</a></li>
+                        <li><a href="marketplace.html?category=accessories">Accessories</a></li>
+                    </ul>
+                </div> -->
+                <div class="footer-column">
+                    <h3 class="footer-title">Customer Service</h3>
+                    <ul class="footer-links">
+                        <li><a href="#">FAQ</a></li>
+                        <li><a href="#">Shipping</a></li>
+                        <li><a href="#">Returns</a></li>
+                        <li><a href="#">Order Status</a></li>
+                        <li><a href="#">Payment Options</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h3 class="footer-title">Contact Us</h3>
+                    <p>Email: support@techvibe.com</p>
+                    <p>Phone: +1 (123) 456-7890</p>
+                    <div class="social-links">
+                        <a href="#" class="social-link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+                            </svg>
+                        </a>
+                        <a href="#" class="social-link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path
+                                    d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
+                            </svg>
+                        </a>
+                        <a href="#" class="social-link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+                                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2023 TechVibe. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/index.js"></script>
+</body>
+
+</html>

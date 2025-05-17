@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Read the latest tech news, reviews, and guides on TechVibe's blog.">
+  <title>Blog - TechVibe</title>
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/blog.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <div class="logo">
+          <a href="index.html">TechVibe</a>
+        </div>
+        <nav class="main-nav">
+          <ul>
+            <li><a href="index.html" class="nav-link">Home</a></li>
+            <li><a href="marketplace.html" class="nav-link">Products</a></li>
+            <li><a href="blog.html" class="nav-link">Blog</a></li>
+          </ul>
+        </nav>
+        <div class="header-actions">
+          <div class="search-container">
+            <button class="icon-btn search-toggle">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+            </button>
+            <form class="search-form">
+              <input type="text" placeholder="Search articles..." class="search-input">
+              <button type="submit" class="search-submit">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+              </button>
+            </form>
+          </div>
+          <button class="icon-btn cart-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="8" cy="21" r="1" />
+              <circle cx="19" cy="21" r="1" />
+              <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+            </svg>
+            <span class="cart-count">0</span>
+          </button>
+          <button class="mobile-menu-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="4" x2="20" y1="12" y2="12" />
+              <line x1="4" x2="20" y1="6" y2="6" />
+              <line x1="4" x2="20" y1="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  
+    <!-- Mobile Sidebar Navigation -->
+    <div class="sidebar-overlay"></div>
+    <div class="mobile-sidebar">
+      <div class="sidebar-header">
+        <div class="logo">TechVibe</div>
+        <button class="sidebar-close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="marketplace.html">Products</a></li>
+          <li><a href="blog.html">Blog</a></li>
+        </ul>
+      </nav>
+    </div>
+  
+    <!-- Cart Modal -->
+    <div class="cart-modal">
+      <div class="cart-modal-header">
+        <h3>Your Cart</h3>
+        <button class="cart-close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="cart-modal-items">
+        <div class="cart-empty">
+          <p>Your cart is empty</p>
+          <a href="marketplace.html" class="btn btn-primary">Shop Now</a>
+        </div>
+      </div>
+      <div class="cart-modal-footer">
+        <div class="cart-total">
+          <span>Total:</span>
+          <span class="total-amount">$0.00</span>
+        </div>
+        <div class="cart-actions">
+          <a href="#" class="btn btn-primary">Checkout</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Page Header -->
+    <section class="page-header">
+      <div class="container">
+        <h1>Tech Blog</h1>
+        <p>Stay updated with the latest tech news, reviews, and guides.</p>
+      </div>
+    </section>
+
+    <!-- Featured Post -->
+    <section class="featured-post">
+      <div class="container">
+        <div class="featured-post-content">
+          <div class="featured-post-image">
+            <img src="/placeholder.svg?height=500&width=800" alt="Featured post image">
+          </div>
+          <div class="featured-post-info">
+            <div class="post-meta">
+              <span class="post-category">Technology</span>
+              <span class="post-date">October 15, 2023</span>
+            </div>
+            <h2 class="post-title">The Future of Artificial Intelligence in Consumer Electronics</h2>
+            <p class="post-excerpt">
+              Explore how AI is revolutionizing the consumer electronics industry, from smartphones to smart homes, and what the future holds for this exciting technology.
+            </p>
+            <a href="#" class="btn btn-primary">Read More</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Blog Posts -->
+    <section class="blog-posts">
+      <div class="container">
+        <div class="blog-layout">
+          <!-- Posts Grid -->
+          <div class="posts-grid">
+            <article class="post-card">
+              <div class="post-image">
+                <img src="/placeholder.svg?height=300&width=500" alt="Post image">
+              </div>
+              <div class="post-content">
+                <div class="post-meta">
+                  <span class="post-category">Reviews</span>
+                  <span class="post-date">October 12, 2023</span>
+                </div>
+                <h3 class="post-title">Smartphone Pro Review: Is It Worth the Hype?</h3>
+                <p class="post-excerpt">
+                  We spent two weeks with the latest Smartphone Pro to find out if it lives up to the hype. Here's our in-depth review.
+                </p>
+                <a href="#" class="read-more">Read More</a>
+              </div>
+            </article>
+            <article class="post-card">
+              <div class="post-image">
+                <img src="/placeholder.svg?height=300&width=500" alt="Post image">
+              </div>
+              <div class="post-content">
+                <div class="post-meta">
+                  <span class="post-category">Guides</span>
+                  <span class="post-date">October 10, 2023</span>
+                </div>
+                <h3 class="post-title">10 Essential Accessories for Your New Laptop</h3>
+                <p class="post-excerpt">
+                  Just got a new laptop? Here are the essential accessories you need to maximize your productivity and protect your investment.
+                </p>
+                <a href="#" class="read-more">Read More</a>
+              </div>
+            </article>
+            <article class="post-card">
+              <div class="post-image">
+                <img src="/placeholder.svg?height=300&width=500" alt="Post image">
+              </div>
+              <div class="post-content">
+                <div class="post-meta">
+                  <span class="post-category">News</span>
+                  <span class="post-date">October 8, 2023</span>
+                </div>
+                <h3 class="post-title">The Latest Tech Announcements from the Annual Tech Expo</h3>
+                <p class="post-excerpt">
+                  A roundup of the most exciting announcements and product reveals from this year's Tech Expo event.
+                </p>
+                <a href="#" class="read-more">Read More</a>
+              </div>
+            </article>
+            <article class="post-card">
+              <div class="post-image">
+                <img src="/placeholder.svg?height=300&width=500" alt="Post image">
+              </div>
+              <div class="post-content">
+                <div class="post-meta">
+                  <span class="post-category">How-to</span>
+                  <span class="post-date">October 5, 2023</span>
+                </div>
+                <h3 class="post-title">How to Set Up Your Smart Home for Maximum Convenience</h3>
+                <p class="post-excerpt">
+                  A step-by-step guide to setting up your smart home devices for a seamless and convenient experience.
+                </p>
+                <a href="#" class="read-more">Read More</a>
+              </div>
+            </article>
+            <article class="post-card">
+              <div class="post-image">
+                <img src="/placeholder.svg?height=300&width=500" alt="Post image">
+              </div>
+              <div class="post-content">
+                <div class="post-meta">
+                  <span class="post-category">Comparisons</span>
+                  <span class="post-date">October 3, 2023</span>
+                </div>
+                <h3 class="post-title">Wireless Earbuds Showdown: Top 5 Models Compared</h3>
+                <p class="post-excerpt">
+                  We compare the top 5 wireless earbuds on the market to help you find the perfect pair for your needs and budget.
+                </p>
+                <a href="#" class="read-more">Read More</a>
+              </div>
+            </article>
+            <article class="post-card">
+              <div class="post-image">
+                <img src="/placeholder.svg?height=300&width=500" alt="Post image">
+              </div>
+              <div class="post-content">
+                <div class="post-meta">
+                  <span class="post-category">Tips</span>
+                  <span class="post-date">October 1, 2023</span>
+                </div>
+                <h3 class="post-title">5 Ways to Extend Your Smartphone's Battery Life</h3>
+                <p class="post-excerpt">
+                  Simple but effective tips to help you get more battery life out of your smartphone throughout the day.
+                </p>
+                <a href="#" class="read-more">Read More</a>
+              </div>
+            </article>
+          </div>
+
+          <!-- Sidebar -->
+          <div class="blog-sidebar">
+            <!-- Categories -->
+            <div class="sidebar-widget">
+              <h3 class="widget-title">Categories</h3>
+              <ul class="category-list">
+                <li><a href="#">Technology <span>(12)</span></a></li>
+                <li><a href="#">Reviews <span>(8)</span></a></li>
+                <li><a href="#">Guides <span>(6)</span></a></li>
+                <li><a href="#">News <span>(10)</span></a></li>
+                <li><a href="#">How-to <span>(5)</span></a></li>
+                <li><a href="#">Comparisons <span>(4)</span></a></li>
+                <li><a href="#">Tips <span>(7)</span></a></li>
+              </ul>
+            </div>
+
+            <!-- Popular Posts -->
+            <div class="sidebar-widget">
+              <h3 class="widget-title">Popular Posts</h3>
+              <div class="popular-posts">
+                <div class="popular-post">
+                  <div class="popular-post-image">
+                    <img src="/placeholder.svg?height=80&width=80" alt="Popular post image">
+                  </div>
+                  <div class="popular-post-content">
+                    <h4><a href="#">The Best Tech Gifts for the Holiday Season</a></h4>
+                    <span class="post-date">September 28, 2023</span>
+                  </div>
+                </div>
+                <div class="popular-post">
+                  <div class="popular-post-image">
+                    <img src="/placeholder.svg?height=80&width=80" alt="Popular post image">
+                  </div>
+                  <div class="popular-post-content">
+                    <h4><a href="#">How to Choose the Right Laptop for Your Needs</a></h4>
+                    <span class="post-date">September 25, 2023</span>
+                  </div>
+                </div>
+                <div class="popular-post">
+                  <div class="popular-post-image">
+                    <img src="/placeholder.svg?height=80&width=80" alt="Popular post image">
+                  </div>
+                  <div class="popular-post-content">
+                    <h4><a href="#">The Impact of 5G on Mobile Technology</a></h4>
+                    <span class="post-date">September 20, 2023</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Newsletter -->
+            <div class="sidebar-widget">
+              <h3 class="widget-title">Newsletter</h3>
+              <div class="newsletter-widget">
+                <p>Subscribe to our newsletter to get the latest tech news and updates.</p>
+                <form class="newsletter-form">
+                  <input type="email" placeholder="Your email address" required>
+                  <button type="submit" class="btn btn-primary">Subscribe</button>
+                </form>
+              </div>
+            </div>
+
+            <!-- Tags -->
+            <div class="sidebar-widget">
+              <h3 class="widget-title">Tags</h3>
+              <div class="tags">
+                <a href="#" class="tag">Technology</a>
+                <a href="#" class="tag">Smartphones</a>
+                <a href="#" class="tag">Laptops</a>
+                <a href="#" class="tag">Gadgets</a>
+                <a href="#" class="tag">Reviews</a>
+                <a href="#" class="tag">AI</a>
+                <a href="#" class="tag">Smart Home</a>
+                <a href="#" class="tag">Wearables</a>
+                <a href="#" class="tag">Audio</a>
+                <a href="#" class="tag">Gaming</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+          <button class="pagination-btn prev-page" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+            Previous
+          </button>
+          <div class="pagination-numbers">
+            <button class="pagination-number active">1</button>
+            <button class="pagination-number">2</button>
+            <button class="pagination-number">3</button>
+          </div>
+          <button class="pagination-btn next-page">
+            Next
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-column">
+          <h3 class="footer-title">TechVibe</h3>
+          <ul class="footer-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="marketplace.html">Products</a></li>
+            <li><a href="blog.html">Blog</a></li>
+            <li><a href="#">About Us</a></li>
+          </ul>
+        </div>
+        <!-- <div class="footer-column">
+          <h3 class="footer-title">Shop</h3>
+          <ul class="footer-links">
+            <li><a href="marketplace.html?category=smartphones">Smartphones</a></li>
+            <li><a href="marketplace.html?category=laptops">Laptops</a></li>
+            <li><a href="marketplace.html?category=tablets">Tablets</a></li>
+            <li><a href="marketplace.html?category=accessories">Accessories</a></li>
+          </ul>
+        </div> -->
+        <div class="footer-column">
+          <h3 class="footer-title">Customer Service</h3>
+          <ul class="footer-links">
+            <li><a href="#">FAQ</a></li>
+            <li><a href="#">Shipping</a></li>
+            <li><a href="#">Returns</a></li>
+            <li><a href="#">Order Status</a></li>
+            <li><a href="#">Payment Options</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h3 class="footer-title">Contact Us</h3>
+          <p>Email: support@techvibe.com</p>
+          <p>Phone: +1 (123) 456-7890</p>
+          <div class="social-links">
+            <a href="#" class="social-link">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+              </svg>
+            </a>
+            <a href="#" class="social-link">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path
+                  d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
+              </svg>
+            </a>
+            <a href="#" class="social-link">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2023 TechVibe. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/blog.js"></script>
+</body>
+</html>

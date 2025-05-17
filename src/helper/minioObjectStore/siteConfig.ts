@@ -84,12 +84,19 @@ import { minioClient, getMinioUrl, SITE_CONFIG_BUCKET } from '../../config/minio
     try {
       const objectKey = generateConfigKey(subdomain);
       await minioClient.removeObject(SITE_CONFIG_BUCKET, objectKey);
-    } catch (error) {
-      console.error(`Failed to delete site config for ${subdomain}:`, error);
-      throw error;
+    } catch (err: any) {
+      if (err.code === 'NoSuchKey') {
+      console.error(`Site config for ${subdomain} not found, already deleted,:`, err);
+      
+    }
+    else {
+      console.error(`Error deleting site config for ${subdomain}:`, err);
+      // bubble up only on unexpected errors
+      throw err;
     }
   };
-  
+  }  
+
   // Check if a subdomain is available
   // export const isSubdomainAvailable = async (subdomain: string): Promise<boolean> => {
   //   try {

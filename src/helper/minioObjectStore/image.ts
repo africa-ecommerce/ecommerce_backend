@@ -161,7 +161,7 @@ export async function deleteImages(urls: string[]): Promise<void> {
     } catch (err: any) {
       if (err.code === 'NoSuchKey') {
         // Already gone, ignore
-        console.warn(`Image not found (already deleted?): ${key}`);
+        console.warn(`Image not found, already deleted?: ${key}`);
       } else {
         console.error(`Error deleting image ${key}:`, err);
         // bubble up only on unexpected errors
