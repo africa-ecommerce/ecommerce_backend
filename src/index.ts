@@ -68,6 +68,12 @@ app.use(cookieParser());
 // This makes files in the public folder directly accessible via their path
 app.use(express.static(path.join(__dirname, "../public")));
 
+// Serve templates under the "/template" URL prefix
+app.use(
+  "/template",
+  express.static(path.join(__dirname, "../public/templates"))
+);
+
 app.use(morgan("dev"));
 
 // Configure session middleware -> passport need this internally
