@@ -1,6 +1,6 @@
-import express from "express";
+import { Router } from "express";
 import { getProductById } from "../controllers/publicProduct.controller";
-const router = express.Router();
+const router = Router();
 
 // Get all supplier products
 router.post("/", getProductById);
