@@ -122,7 +122,7 @@ app.use("/products", productRoutes);
 app.use("/plug/products", plugProductRoutes);
 app.use("/template", templateRoutes);
 app.use("/site", siteRoutes);
-app.use("/public/products", publicProductRoutes);
+app.use("/general/products", publicProductRoutes);
 
 // Global error handling middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
