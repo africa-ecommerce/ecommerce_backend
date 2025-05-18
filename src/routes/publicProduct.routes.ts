@@ -3,6 +3,6 @@ import { getProductById } from "../controllers/publicProduct.controller";
 const router = express.Router();
 
 // Get all supplier products
-router.get("/", getProductById);
+router.post("/", getProductById);
 
 export default router;
