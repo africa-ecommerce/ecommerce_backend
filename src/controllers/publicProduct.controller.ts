@@ -8,7 +8,7 @@ export const getProductById = async (req: Request, res: Response) => {
        const { plugId, productId} = req.body;
        console.log("Plug ID:", plugId);
        console.log("Product ID:", productId);
-       const product = await prisma.plugProduct.findUnique({
+       const product = await prisma.plugProduct.findFirst({
          where: { id: productId, plugId: plugId },
          include: {
            originalProduct: {
