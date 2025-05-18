@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import {prisma } from "../config";
-import { formatProductWithImagesAndVariations } from "../helper/formatProduct";
+import { formatPlugProductWithDetails } from "../helper/formatProduct";
 
 export const getProductById = async (req: Request, res: Response) => {
      try {
@@ -24,9 +24,9 @@ export const getProductById = async (req: Request, res: Response) => {
        }
   
        // Format the product with images and variations
-       const formattedProduct = formatProductWithImagesAndVariations(product);
+       const formattedProduct = formatPlugProductWithDetails(product);
   
-       // Regular response for non-plug users
+      
        res.status(200).json({
          message: "Product fetched successfully!",
          data: formattedProduct,

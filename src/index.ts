@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth.routes";
 import onboardingRoutes from "./routes/onboarding.routes";
 import productRoutes from "./routes/product.routes";
 import plugProductRoutes from "./routes/plugProduct.routes";
+import publicProductRoutes from "./routes/publicProduct.routes";
 import siteRoutes from "./routes/site.routes";
 import session from "express-session";
 import passport from "./config/passport";
@@ -121,6 +122,7 @@ app.use("/products", productRoutes);
 app.use("/plug/products", plugProductRoutes);
 app.use("/template", templateRoutes);
 app.use("/site", siteRoutes);
+app.use("/public/products", publicProductRoutes);
 
 // Global error handling middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
