@@ -5,8 +5,9 @@ import { formatPlugProductWithDetails } from "../helper/formatProduct";
 export const getProductById = async (req: Request, res: Response) => {
      try {
       
-       const data = req.body;
-        const { plugId, productId} = data;
+       const { plugId, productId} = req.body;
+       console.log("Plug ID:", plugId);
+       console.log("Product ID:", productId);
        const product = await prisma.plugProduct.findUnique({
          where: { id: productId, plugId: plugId },
          include: {
@@ -18,6 +19,8 @@ export const getProductById = async (req: Request, res: Response) => {
          },
        });
 
+
+       console.log("Product:", product);
        if (!product) {
          res.status(404).json({ error: "Product not found!" });
          return;
