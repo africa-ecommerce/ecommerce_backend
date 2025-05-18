@@ -4,8 +4,9 @@ import { formatPlugProductWithDetails } from "../helper/formatProduct";
 
 export const getProductById = async (req: Request, res: Response) => {
      try {
-      
-       const { plugId, productId} = req.body;
+      // const plugId = req.params.plugId;
+      // const productId = req.params.productId;
+       const { plugId, productId} = req.params;
        console.log("Plug ID:", plugId);
        console.log("Product ID:", productId);
        const product = await prisma.plugProduct.findFirst({
