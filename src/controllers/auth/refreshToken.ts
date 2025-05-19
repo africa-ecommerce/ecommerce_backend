@@ -13,6 +13,7 @@ export const refreshToken = async (req: Request, res: Response) => {
          code: "REFRESH_TOKEN_MISSING",
        });
 
+       console.log("!refreshtoken", !refreshToken);
       return;
     }
 
@@ -27,6 +28,7 @@ export const refreshToken = async (req: Request, res: Response) => {
          error: result.error || "Invalid refresh token!",
          code: "INVALID_REFRESH",
        });
+       console.log("!result.success", !result.success);
 
       return;
     }
@@ -54,6 +56,9 @@ export const refreshToken = async (req: Request, res: Response) => {
         error: "Refresh token expired!",
         code: "TOKEN_EXPIRED",
       });
+
+      console.log("jwt.TokenExpiredError", error);
+
       return;
     } else if (error instanceof jwt.JsonWebTokenError) {
       // Clear cookies on authentication failure
@@ -64,6 +69,8 @@ export const refreshToken = async (req: Request, res: Response) => {
         error: "Invalid refresh token!",
         code: "INVALID_TOKEN",
       });
+      console.log("jwt.JsonWebTokenError", error);
+
       return;
     } else {
       console.error("Refresh failed:", error);
@@ -76,6 +83,7 @@ export const refreshToken = async (req: Request, res: Response) => {
          error: "Authentication refresh failed!",
          code: "REFRESH_FAILED",
        });
+       console.log("unknown", error);
       return;
     }
   }
