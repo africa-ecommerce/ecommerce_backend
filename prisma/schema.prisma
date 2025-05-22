@@ -209,10 +209,7 @@ model ProductVariation {
   id         String   @id @default(cuid())
   size       String?
   color      String?
-  // price      Float? // Override price if specific to this variation
   stock      Int      @default(0)
-  // weight     Float? // Weight in grams
-  // dimensions String? // JSON string containing dimensions: {length, width, height, unit}
   productId  String
   product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
     orderItems OrderItem[] // Add this relation
