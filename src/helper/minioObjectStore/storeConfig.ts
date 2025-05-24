@@ -1,12 +1,16 @@
-import { minioClient, getMinioUrl, SITE_CONFIG_BUCKET } from '../../config/minio';
+import {
+  minioClient,
+  getMinioUrl,
+  STORE_CONFIG_BUCKET,
+} from "../../config/minio";
   
 // Generate config object name using domain as identifier
   const generateConfigKey = (subdomain: string): string => {
     return `config/${subdomain}.json`;
   };
   
-  // Save site configuration to MinIO
-  export const saveSiteConfigToMinio = async (
+  // Save store configuration to MinIO
+  export const saveStoreConfigToMinio = async (
     subdomain: string,
     config: any
   ): Promise<string> => {
@@ -18,13 +22,12 @@ import { minioClient, getMinioUrl, SITE_CONFIG_BUCKET } from '../../config/minio
       const metaData = {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
-        // 'X-Amz-Meta-Subdomain': subdomain,
         'X-Amz-Meta-Last-Updated': new Date().toISOString(),
       };
   
       // Upload to MinIO
       await minioClient.putObject(
-        SITE_CONFIG_BUCKET,
+        STORE_CONFIG_BUCKET,
         objectKey,
         configBuffer,
         configBuffer.length,
@@ -32,22 +35,25 @@ import { minioClient, getMinioUrl, SITE_CONFIG_BUCKET } from '../../config/minio
       );
   
       // Return public URL to the config
-      return getMinioUrl(SITE_CONFIG_BUCKET, objectKey);
+      return getMinioUrl(STORE_CONFIG_BUCKET, objectKey);
     } catch (error) {
-      console.error(`Failed to save site config for ${subdomain}:`, error);
+      console.error(`Failed to save store config for ${subdomain}:`, error);
       throw error;
     }
   };
   
-  // Get site configuration from MinIO
-  export const getSiteConfigFromMinio = async (
+  // Get store configuration from MinIO
+  export const getStoreConfigFromMinio = async (
     subdomain: string
   ) => {
     try {
       const objectKey = generateConfigKey(subdomain);
       
       // Get the object from MinIO
-      const dataStream = await minioClient.getObject(SITE_CONFIG_BUCKET, objectKey);
+      const dataStream = await minioClient.getObject(
+        STORE_CONFIG_BUCKET,
+        objectKey
+      );
       
       // Read the stream and parse JSON
       return new Promise((resolve, reject) => {
@@ -74,52 +80,35 @@ import { minioClient, getMinioUrl, SITE_CONFIG_BUCKET } from '../../config/minio
       if (error.code === 'NoSuchKey') {
         return null;
       }
-      console.error(`Failed to get site config for ${subdomain}:`, error);
+      console.error(`Failed to get store config for ${subdomain}:`, error);
       throw error;
     }
   };
   
-  // Delete site configuration from MinIO
-  export const deleteSiteConfigFromMinio = async (subdomain: string): Promise<void> => {
+  // Delete store configuration from MinIO
+  export const deleteStoreConfigFromMinio = async (subdomain: string): Promise<void> => {
     try {
       const objectKey = generateConfigKey(subdomain);
-      await minioClient.removeObject(SITE_CONFIG_BUCKET, objectKey);
+      await minioClient.removeObject(STORE_CONFIG_BUCKET, objectKey);
     } catch (err: any) {
       if (err.code === 'NoSuchKey') {
-      console.error(`Site config for ${subdomain} not found, already deleted,:`, err);
+      console.error(`Store config for ${subdomain} not found, already deleted,:`, err);
       
     }
     else {
-      console.error(`Error deleting site config for ${subdomain}:`, err);
+      console.error(`Error deleting store config for ${subdomain}:`, err);
       // bubble up only on unexpected errors
       throw err;
     }
   };
   }  
 
-  // Check if a subdomain is available
-  // export const isSubdomainAvailable = async (subdomain: string): Promise<boolean> => {
-  //   try {
-  //     // Check if subdomain exists in the database (connected to a plug)
-  //     const plugWithSubdomain = await prisma.plug.findFirst({
-  //       where: {
-  //         subdomain: subdomain,
-  //       },
-  //     });
-  
-  //     return !plugWithSubdomain;
-  //   } catch (error) {
-  //     console.error(`Failed to check subdomain availability for ${subdomain}:`, error);
-  //     throw error;
-  //   }
-  // };
-  
-  // // Update the database with site config reference
-  // Update site configuration in MinIO
-export const updateSiteConfigInMinio = async (
+
+  // Update store configuration in MinIO
+export const updateStoreConfigInMinio = async (
   subdomain: string,
   config: any
 ): Promise<string> => {
   // We can reuse the save function since MinIO will overwrite existing objects
-  return saveSiteConfigToMinio(subdomain, config);
+  return saveStoreConfigToMinio(subdomain, config);
 };

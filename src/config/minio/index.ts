@@ -8,13 +8,13 @@ import {
   minioPort,
   minioRegion,
   minioSecretKey,
-  minioSiteConfigBucket,
+  minioStoreConfigBucket,
 } from "..";
 
 
 
 export const IMAGES_BUCKET = `${minioBucketPrefix}${minioImagesBucket}`;
-export const SITE_CONFIG_BUCKET = `${minioBucketPrefix}${minioSiteConfigBucket}`;
+export const STORE_CONFIG_BUCKET = `${minioBucketPrefix}${minioStoreConfigBucket}`;
 
 // Configuration interface
 interface MinioConfig {
@@ -45,7 +45,7 @@ export const minioClient = new Minio.Client(getMinioConfig());
 export const initializeBuckets = async () => {
   try {
     await initializeImagesBucket();
-    await initializeSiteConfigBucket();
+    await initializeStoreConfigBucket();
     console.log("MinIO buckets initialized successfully");
   } catch (error) {
     console.error("Failed to initialize MinIO buckets:", error);
@@ -117,15 +117,15 @@ const initializeImagesBucket = async () => {
 };
 
 // Initialize static config bucket
-const initializeSiteConfigBucket = async () => {
+const initializeStoreConfigBucket = async () => {
   try {
-    const exists = await minioClient.bucketExists(SITE_CONFIG_BUCKET);
+    const exists = await minioClient.bucketExists(STORE_CONFIG_BUCKET);
 
    
 
     if (!exists) {
-      await minioClient.makeBucket(SITE_CONFIG_BUCKET, minioRegion);
-      console.log(`Bucket '${SITE_CONFIG_BUCKET}' created successfully`);
+      await minioClient.makeBucket(STORE_CONFIG_BUCKET, minioRegion);
+      console.log(`Bucket '${STORE_CONFIG_BUCKET}' created successfully`);
     }
 
     // ALWAYS set bucket policy for static website serving
@@ -137,22 +137,22 @@ const initializeSiteConfigBucket = async () => {
           Effect: "Allow",
           Principal: { AWS: ["*"] },
           Action: ["s3:GetObject"],
-          Resource: [`arn:aws:s3:::${SITE_CONFIG_BUCKET}/*`],
+          Resource: [`arn:aws:s3:::${STORE_CONFIG_BUCKET}/*`],
         },
       ],
     };
 
     await minioClient.setBucketPolicy(
-      SITE_CONFIG_BUCKET,
+      STORE_CONFIG_BUCKET,
       JSON.stringify(policy)
     );
-    console.log(`Public read policy set for '${SITE_CONFIG_BUCKET}'`);
+    console.log(`Public read policy set for '${STORE_CONFIG_BUCKET}'`);
 
     // Verify the policy was applied correctly
     try {
-      const policyJson = await minioClient.getBucketPolicy(SITE_CONFIG_BUCKET);
+      const policyJson = await minioClient.getBucketPolicy(STORE_CONFIG_BUCKET);
       console.log(
-        `Current bucket policy for ${SITE_CONFIG_BUCKET}: ${policyJson}`
+        `Current bucket policy for ${STORE_CONFIG_BUCKET}: ${policyJson}`
       );
     } catch (policyError) {
       console.error(`Error getting bucket policy: ${policyError}`);
@@ -174,16 +174,16 @@ const initializeSiteConfigBucket = async () => {
     try {
       // Set CORS through console notification
       console.log(
-        `CORS should be configured for '${SITE_CONFIG_BUCKET}' through MinIO Console`
+        `CORS should be configured for '${STORE_CONFIG_BUCKET}' through MinIO Console`
       );
     } catch (corsError) {
       console.error(
-        `Error setting CORS for '${SITE_CONFIG_BUCKET}':`,
+        `Error setting CORS for '${STORE_CONFIG_BUCKET}':`,
         corsError
       );
     }
   } catch (error) {
-    console.error(`Error initializing '${SITE_CONFIG_BUCKET}' bucket:`, error);
+    console.error(`Error initializing '${STORE_CONFIG_BUCKET}' bucket:`, error);
     throw error;
   }
 };

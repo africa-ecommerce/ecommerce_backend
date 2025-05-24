@@ -182,6 +182,19 @@ export const productController = {
             },
           },
           variations: true,
+          reviews: {
+            include: {
+              plug: {
+                select: {
+                  businessName: true,
+                  id: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: "desc", // Latest reviews first
+            },
+          },
         },
       });
 
@@ -190,25 +203,56 @@ export const productController = {
         return;
       }
 
+      // Calculate review statistics
+      const reviewStats = {
+        totalReviews: product.reviews.length,
+        // averageRating:
+        //   product.reviews.length > 0
+        //     ? Number(
+        //         (
+        //           product.reviews.reduce(
+        //             (sum, review) => sum + review.rating,
+        //             0
+        //           ) / product.reviews.length
+        //         ).toFixed(1)
+        //       )
+        //     : 0,
+        ratingDistribution: {
+          1: product.reviews.filter((r) => r.rating === 1).length,
+          2: product.reviews.filter((r) => r.rating === 2).length,
+          3: product.reviews.filter((r) => r.rating === 3).length,
+          4: product.reviews.filter((r) => r.rating === 4).length,
+          5: product.reviews.filter((r) => r.rating === 5).length,
+        },
+      };
+
       // Format the product with images and variations
       const formattedProduct = formatProductWithImagesAndVariations(product);
 
-      // Check if user is a plug and add isPlugged flag
-      if (req.user && req.user.userType === "PLUG") {
+      // Check if user is a plug and add isPlugged flag and user's review
+      if (req.user && req.user.userType === "PLUG" && req.user.plug) {
         // Check if this product is in the plug's database
         const pluggedProduct = await prisma.plugProduct.findFirst({
           where: {
-            plugId: req.user?.plug?.id,
+            plugId: req.user.plug.id,
             originalId: productId,
           },
         });
 
-        // Add isPlugged flag to the response
+        // // Check if user has reviewed this product
+        // const userReview = product.reviews.find(
+        //   (review) => review.plugId === req.user.plug!.id
+        // );
+
+        // Add isPlugged flag and user's review to the response
         res.status(200).json({
           message: "Product fetched successfully!",
           data: {
             ...formattedProduct,
             isPlugged: !!pluggedProduct, // Convert to boolean
+            reviewStats,
+            reviews: product.reviews,
+            // userReview: userReview || null,
           },
         });
         return;
@@ -217,7 +261,11 @@ export const productController = {
       // Regular response for non-plug users
       res.status(200).json({
         message: "Product fetched successfully!",
-        data: formattedProduct,
+        data: {
+          ...formattedProduct,
+          reviewStats,
+          reviews: product.reviews,
+        },
       });
       return;
     } catch (error) {

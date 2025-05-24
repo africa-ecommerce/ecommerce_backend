@@ -255,7 +255,141 @@ export const plugProductController = {
       res.status(500).json({ error: "Internal server error!" });
     }
   },
+  reviewProduct: async (req: AuthRequest, res: Response) => {
+    try {
+      const plug = req.plug!;
+      const { productId, rating, review } = req.body;
 
+      // Validation
+      if (!productId || !rating) {
+        res.status(400).json({ error: "Product ID and rating are required!" });
+        return;
+      }
+
+      if (rating < 1 || rating > 5) {
+        res.status(400).json({ error: "Rating must be between 1 and 5!" });
+        return;
+      }
+
+      // Check if product exists
+      const product = await prisma.product.findUnique({
+        where: { id: productId },
+      });
+
+      if (!product) {
+        res.status(404).json({ error: "Product not found!" });
+        return;
+      }
+
+      // // Check if plug has already reviewed this product
+      // const existingReview = await prisma.review.findUnique({
+      //   where: {
+      //     productId_plugId: {
+      //       productId: productId,
+      //       plugId: plug.id,
+      //     },
+      //   },
+      // });
+
+      // if (existingReview) {
+      //   // Update existing review
+      //   const updatedReview = await prisma.review.update({
+      //     where: {
+      //       productId_plugId: {
+      //         productId: productId,
+      //         plugId: plug.id,
+      //       },
+      //     },
+      //     data: {
+      //       rating: rating,
+      //       review: review || null,
+      //     },
+      //     include: {
+      //       plug: {
+      //         select: {
+      //           businessName: true,
+      //           id: true,
+      //         },
+      //       },
+      //     },
+      //   });
+
+      //   res.status(200).json({
+      //     message: "Review updated successfully!",
+      //     data: updatedReview,
+      //   });
+      //   return;
+      // }
+
+      // Create new review
+      const newReview = await prisma.review.create({
+        data: {
+          productId: productId,
+          plugId: plug.id,
+          rating: rating,
+          review: review || null,
+        },
+        include: {
+          plug: {
+            select: {
+              businessName: true,
+              id: true,
+            },
+          },
+        },
+      });
+
+      res.status(201).json({
+        message: "Review created successfully!",
+        data: newReview,
+      });
+      return;
+    } catch (error) {
+      console.error("Error creating review:", error);
+      res.status(500).json({ error: "Internal server error!" });
+      return;
+    }
+  },
+
+  deleteReview: async (req: AuthRequest, res: Response) => {
+    try {
+      const plug = req.plug!;
+      const { productId } = req.params;
+  
+      const review = await prisma.review.findUnique({
+        where: {
+          productId_plugId: {
+            productId: productId,
+            plugId: plug.id
+          }
+        }
+      });
+  
+      if (!review) {
+        res.status(404).json({ error: "Review not found!" });
+        return;
+      }
+  
+      await prisma.review.delete({
+        where: {
+          productId_plugId: {
+            productId: productId,
+            plugId: plug.id
+          }
+        }
+      });
+  
+      res.status(200).json({
+        message: "Review deleted successfully!"
+      });
+      return;
+  
+    } catch (error) {
+      console.error("Error deleting review:", error);
+      res.status(500).json({ error: "Internal server error!" });
+      return;
+    }
+  },
   // Remove product from plug's inventory
   removePlugProduct: async (req: AuthRequest, res: Response) => {
     try {
@@ -417,3 +551,5 @@ export const plugProductController = {
     }
   },
 };
+
+

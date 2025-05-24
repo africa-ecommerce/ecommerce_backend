@@ -166,6 +166,7 @@ model Plug {
   configUrl   String?
 
   plugProduct     PlugProduct[]
+   reviews         Review[]      // Add this relation for reviews
   userId          String        @unique
   user            User          @relation(fields: [userId], references: [id],  onDelete: Cascade)
   createdAt       DateTime      @default(now())
@@ -175,24 +176,25 @@ model Plug {
 }
 
 model Product {
-  id           String             @id @default(cuid())
-  name         String
-  description  String?
-  price        Float 
-  category     String?
-  images       String? // Typically would store JSON or comma-separated strings with image paths
-  supplierId   String
-  size         String?
-  color        String?
-  stock        Int                @default(0)
-  dimensions   String?
-  plugsCount   Int                @default(0) // Counter for number of plugs using this product
-  supplier     Supplier           @relation(fields: [supplierId], references: [id],  onDelete: Cascade)
-  variations   ProductVariation[]
-   orderItems   OrderItem[]        // Add this relation
+  id String @id @default(cuid())
+  name String
+  description String?
+  price Float
+  category String?
+  images String? // Typically would store JSON or comma-separated strings with image paths
+  supplierId String
+  size String?
+  color String?
+  stock Int @default(0)
+  dimensions String?
+  plugsCount Int @default(0) // Counter for number of plugs using this product
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  variations ProductVariation[]
+  orderItems OrderItem[] // Add this relation
   plugProducts PlugProduct[] // Relationship to track which plugs are using this product
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
+  reviews Review[] // Add this relation for reviews
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // indexes to improve query performance
   @@index([price])
@@ -237,4 +239,27 @@ model PlugProduct {
   @@index([plugId])
   @@index([originalId]) // Index for efficient lookup of original products
   @@index([price])
+}
+
+
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int      // Rating from 1-5
+  review    String?  // Optional review text
+  productId String
+  plugId    String
+  
+  // Relations
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  plug      Plug     @relation(fields: [plugId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Ensure one review per plug per product
+  @@unique([productId, plugId])
+  @@index([productId])
+  @@index([plugId])
+  @@index([rating])
+  @@index([createdAt])
 }

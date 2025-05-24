@@ -8,7 +8,7 @@ import onboardingRoutes from "./routes/onboarding.routes";
 import productRoutes from "./routes/product.routes";
 import plugProductRoutes from "./routes/plugProduct.routes";
 import publicProductRoutes from "./routes/publicProduct.routes";
-import siteRoutes from "./routes/site.routes";
+import storeRoutes from "./routes/store.routes";
 import session from "express-session";
 import passport from "./config/passport";
 import { Request, Response, NextFunction } from "express";
@@ -37,8 +37,7 @@ const corsOptions = {
 };
 
 // Ensure Express trusts your TLS terminator or proxy
-app.set('trust proxy', true);
-
+app.set("trust proxy", true);
 
 app.use(cors(corsOptions));
 app.use(
@@ -121,7 +120,7 @@ app.use("/marketplace", marketPlaceRoutes);
 app.use("/products", productRoutes);
 app.use("/plug/products", plugProductRoutes);
 app.use("/template", templateRoutes);
-app.use("/site", siteRoutes);
+app.use("/site", storeRoutes); // -------------> CHANGE TO STORE
 app.use("/public/products", publicProductRoutes);
 
 // Global error handling middleware
