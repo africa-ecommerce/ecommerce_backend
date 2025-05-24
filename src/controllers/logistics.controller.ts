@@ -7,22 +7,39 @@ export const getAddressSuggestions = async (req: AuthRequest, res: Response) => 
     const { searchTerm } = req.query;
 
     if (!searchTerm || typeof searchTerm !== 'string') {
-        return res.status(400).json({ error: "Invalid search term" });
+
+        /**
+         * @dev do res.status with message, then return. A return res.status causes typescript issues
+         */
+         res.status(400).json({ error: "Invalid search term" });
+         return;
     }
 
     try {
-        const response = await fetch(`${DASHSPID_BASE_URL}/api/v1/gasp?searchTerm=${encodeURIComponent(searchTerm)}`);
+      const response = await fetch(
+        `${DASHSPID_BASE_URL}/api/v1/gasp?searchTerm=${encodeURIComponent(
+          searchTerm
+        )}`
+      );
 
-        if (!response.ok) {
-            throw new Error("Failed get address suggestions");
-        }
-        const data = await response.json();
+      if (!response.ok) {
+        throw new Error("Failed get address suggestions");
+      }
+      const data = await response.json();
 
-        return res.status(200).json(data);
-
+      /**
+       * @dev do res.status with message, then return. A return res.status causes typescript issues
+       */
+      res.status(200).json(data);
+      return;
     } catch (error) {
         console.error("Error fetching address suggestions:", error);
-        return res.status(500).json({ error: "Internal server error" });
+
+            /**
+            * @dev do res.status with message, then return. A return res.status causes typescript issues
+            */
+         res.status(500).json({ error: "Internal server error" });
+         return;
     }
 
 } // get locations address
@@ -30,7 +47,8 @@ export const getGeocode = async (req: Request, res: Response) => {
     const { address, placeID } = req.query;
 
     if (!address && !placeID) {
-        return res.status(400).json({ error: "Address or Place ID is required" });
+         res.status(400).json({ error: "Address or Place ID is required" });
+         return;
     }
     try {
         let url = `${DASHSPID_BASE_URL}/api/v1/ggcp?address=${encodeURIComponent(address as string)}+&placeId=${encodeURIComponent(placeID as string)}`;
@@ -42,10 +60,12 @@ export const getGeocode = async (req: Request, res: Response) => {
         }
         const data = await response.json();
 
-        return res.status(200).json(data);
+         res.status(200).json(data);
+         return;
     } catch (error) {
         console.error("Error fetching geocode:", error);
-        return res.status(500).json({ error: "Internal server error" });
+         res.status(500).json({ error: "Internal server error" });
+         return;
     }
 } // get geolocation
 export const getShippingRates = async (req: Request, res: Response) => {
@@ -81,10 +101,12 @@ export const requestShipping = async (req: Request, res: Response) => {
         }
 
         const data = await response.json();
-        return res.status(200).json(data);
+         res.status(200).json(data);
+         return;
     } catch (error) {
         console.error("Error requesting shipping:", error);
-        return res.status(500).json({ error: "Internal server error" });
+         res.status(500).json({ error: "Internal server error" });
+         return;
     }
 } // request shipping
 export const getShippingStatus = async (req: Request, res: Response) => { } // get shipping status / track shipment
