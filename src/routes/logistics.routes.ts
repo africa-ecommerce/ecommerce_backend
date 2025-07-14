@@ -3,5 +3,5 @@ import { logisticsPricing, logisticsTracking } from "../controllers/logistics.co
 const router = Router();
 
 router.get("/pricing", logisticsPricing);
-router.get("/tracking", logisticsTracking);
+router.get("/tracking/:orderNumber", logisticsTracking);
 export default router;
