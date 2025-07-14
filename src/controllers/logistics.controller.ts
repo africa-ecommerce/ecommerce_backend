@@ -126,8 +126,7 @@ export const logisticsTracking = async (
       return;
     }
 
-    let buyerLat = order.buyerLatitude;
-    let buyerLng = order.buyerLongitude;
+
 
     res.status(200).json({
       message: "Logistics tracking info",
@@ -140,11 +139,12 @@ export const logisticsTracking = async (
           state: BASE.state,
         },
         buyer: {
-          latitude: buyerLat,
-          longitude: buyerLng,
+          latitude: order.buyerLatitude,
+          longitude: order.buyerLongitude,
           address: order.buyerAddress,
           lga: order.buyerLga,
           state: order.buyerState,
+          name: order.buyerName,
         },
         status: order.status,
       },
