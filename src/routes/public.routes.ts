@@ -13,7 +13,7 @@ router.get("/products/:productId", getStoreProductById);
 router.get("/order/:orderNumber", getOrderItemByOrderNumber);
 router.put("/order/manage", manageOrder);
 router.get("/store/config", getStoreConfig);
-router.get("/store/products", getStoreProducts);
+router.get("/store/products", getStoreProducts);    
 router.get("/store/pixel", pixelStoreVisitTracker);
 //adjust middleware
 router.get("/store/verifySubdomain", verifySubdomain);

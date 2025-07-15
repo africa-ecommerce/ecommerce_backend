@@ -1,4 +1,4 @@
- import { NextFunction, Response } from "express";
+ import { NextFunction, Request, Response } from "express";
  import { prisma } from "../../config";
  import { AuthRequest } from "../../types";
  import { productSchema, productVariationsSchema } from "../../lib/zod/schema";
@@ -9,10 +9,10 @@
  } from "../../helper/minioObjectStore/image";
  import { formatProduct } from "../../helper/formatData";
  
- export const productController = {
+ export const adminProductController = {
  createProduct: [
     uploadMiddleware.array("images", 3), // Allow up to 3 images
-    async (req: AuthRequest, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, next: NextFunction) => {
       let imageUrls: string[] = []; // Track keys for rollback
       try {
         const supplierId = req.query.supplierId as string;
@@ -108,7 +108,7 @@
    // Update product
     updateProduct: [
       uploadMiddleware.array("images", 3),
-      async (req: AuthRequest, res: Response, next: NextFunction) => {
+      async (req: Request, res: Response, next: NextFunction) => {
         let newImageUrls: string[] = [];
         let imagesToDelete: string[] = [];
         try {
@@ -255,4 +255,61 @@
         }
       },
     ],
+
+    // Delete product with MinIO cleanup
+      deleteProduct: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const productId = req.params.productId;
+          const supplierId = req.query.supplierId as string;
+          // Use transaction for consistency
+          const result = await prisma.$transaction(async (tx) => {
+            // Check if product exists and belongs to this supplier
+            const existingProduct = await prisma.product.findFirst({
+              where: {
+                id: productId,
+                supplierId: supplierId,
+              },
+            });
+    
+            if (!existingProduct) {
+              throw new Error("NOT_FOUND");
+            }
+    
+            // Get existing images to clean up in MinIO
+            const existingImages = existingProduct.images
+              ? JSON.parse(existingProduct.images as string)
+              : [];
+    
+            // Delete product from database
+            const remainingProducts = await prisma.product.delete({
+              where: { id: productId },
+            });
+            return { existingImages, remainingProducts };
+          });
+    
+          // Delete images after successful database transaction
+          if (result?.existingImages.length > 0) {
+            await deleteImages(result?.existingImages);
+          }
+    
+          // Format the remaining products with images and variations
+          const data =
+            result?.remainingProducts && formatProduct(result?.remainingProducts);
+    
+          res.status(200).json({
+            message: "Product deleted successfully!",
+            data,
+          });
+        } catch (error) {
+          if (error instanceof Error && error.message === "NOT_FOUND") {
+            res.status(404).json({ error: "Product not found!" });
+            return;
+          }
+          next(error);
+        }
+      },
+    
+    
 }
+
+

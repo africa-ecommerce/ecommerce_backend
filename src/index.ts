@@ -26,6 +26,7 @@ import orderRoutes from "./routes/order.routes";
 import linksRoutes from "./routes/links.routes";
 import analyticsRoutes from "./routes/analytics.routes";
 import paymentsRoutes from "./routes/payment.routes";
+import adminRoutes from "./routes/admin.routes";
 import path from "path";
 import dotenv from "dotenv";
 import rateLimit from "express-rate-limit";
@@ -302,6 +303,7 @@ app.use("/links", linksRoutes, routeErrorCatcher);
 app.use("/analytics", analyticsRoutes, routeErrorCatcher);
 app.use("/payments", paymentsRoutes, routeErrorCatcher);
 app.use("/contact-support", contactSupportRoutes, routeErrorCatcher);
+app.use("/admin", adminRoutes, routeErrorCatcher);
 
 // Global error handling middleware
 app.use(async(err: any, req: Request, res: Response, next: NextFunction) => {
