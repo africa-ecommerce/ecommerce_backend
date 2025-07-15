@@ -13,6 +13,7 @@ router.get(
   getAllSuppliers
 )
 
+
 // Get product by ID
 router.post("/product/:supplierId", adminProductController.createProduct);
 // Update product
