@@ -15,7 +15,7 @@
     async (req: Request, res: Response, next: NextFunction) => {
       let imageUrls: string[] = []; // Track keys for rollback
       try {
-        const supplierId = req.query.supplierId as string;
+        const supplierId = req.params.supplierId as string; 
         // Parse the product data from FormData
         let productData;
         try {
@@ -113,7 +113,7 @@
         let imagesToDelete: string[] = [];
         try {
           const productId = req.params.productId;
-          const supplierId = req.query.supplierId as string;
+          const supplierId = req.params.supplierId;
           // Parse the product data from FormData
           let productData;
           try {
@@ -260,7 +260,7 @@
       deleteProduct: async (req: Request, res: Response, next: NextFunction) => {
         try {
           const productId = req.params.productId;
-          const supplierId = req.query.supplierId as string;
+          const supplierId = req.params.supplierId;
           // Use transaction for consistency
           const result = await prisma.$transaction(async (tx) => {
             // Check if product exists and belongs to this supplier

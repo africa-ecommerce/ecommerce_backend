@@ -12,13 +12,17 @@ router.get(
   "/user/suppliers",
   getAllSuppliers
 )
+
 // Get product by ID
-router.post("/product", adminProductController.createProduct);
+router.post("/product/:supplierId", adminProductController.createProduct);
 // Update product
-router.put("/product", adminProductController.updateProduct);
+router.put("/product/:supplierId/:productId", adminProductController.updateProduct);
 
 // Delete product
-router.delete("/product", adminProductController.deleteProduct);
+router.delete(
+  "/product/:supplierId/:productId",
+  adminProductController.deleteProduct
+);
 
 export default router;
 
