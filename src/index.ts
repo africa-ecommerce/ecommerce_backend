@@ -43,6 +43,18 @@ const router = express.Router();
 // Load environment variables
 dotenv.config();
 
+
+const allowedAppUrls = [
+  "https://pluggn.store",
+  "https://pluggn.com.ng",
+  "https://www.pluggn.store",
+  "https://www.pluggn.com.ng",
+  "https://admin.pluggn.com.ng"
+];
+
+
+// Match all subdomains of pluggn.com.ng or pluggn.store
+const wildcardDomainRegex = /^https:\/\/([a-z0-9-]+\.)?pluggn\.(store|com\.ng)$/;
 const app = express();
 
 // Ensure Express trusts reverse proxy like nginx or rewrites
@@ -76,28 +88,44 @@ app.use(express.urlencoded({ limit: "1mb", extended: true })); // For URL-encode
 app.use(globalRateLimiter);
 
 
+// const corsOptions = {
+//   origin: function (origin:any, callback: any) {
+//     if (!origin) return callback(null, true); // Allow non-browser clients
+
+//     const allowedOrigins = [
+//       "https://pluggn.store",
+//       "https://*.pluggn.store",
+//       frontendUrl, // frontend URL
+//       backendUrl
+//     ];
+
+//     const subdomainPattern = /^https:\/\/([a-z0-9-]+)\.pluggn\.store$/;
+
+//     if (allowedOrigins.includes(origin) || subdomainPattern.test(origin)) {
+//       callback(null, true);
+//     } else {
+//       callback(new Error("Not allowed by CORS"));
+//     }
+//   },
+//   credentials: true,
+//   optionsSuccessStatus: 200,
+// };
+
+
 const corsOptions = {
-  origin: function (origin:any, callback: any) {
-    if (!origin) return callback(null, true); // Allow non-browser clients
+  origin: function (origin: any, callback: any) {
+    if (!origin) return callback(null, true); // Allow server-to-server
 
-    const allowedOrigins = [
-      "https://pluggn.store",
-      "https://*.pluggn.store",
-      frontendUrl, // frontend URL
-      backendUrl
-    ];
-
-    const subdomainPattern = /^https:\/\/([a-z0-9-]+)\.pluggn\.store$/;
-
-    if (allowedOrigins.includes(origin) || subdomainPattern.test(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
+    if (allowedAppUrls.includes(origin) || wildcardDomainRegex.test(origin)) {
+      return callback(null, true);
     }
+
+    return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
   optionsSuccessStatus: 200,
 };
+
 
 app.use(cors(corsOptions));
 app.use(
@@ -106,7 +134,7 @@ app.use(
       directives: {
         defaultSrc: [
           "'self'",
-          frontendUrl,
+          ...allowedAppUrls,
           backendUrl,
           "https://pluggn.store",
           "https://*.pluggn.store",
@@ -115,7 +143,7 @@ app.use(
           "'self'",
           "'unsafe-inline'",
           "'unsafe-eval'",
-          frontendUrl,
+          ...allowedAppUrls,
           "https://pluggn.store",
           "https://*.pluggn.store",
           backendUrl,
@@ -123,7 +151,7 @@ app.use(
         styleSrc: [
           "'self'",
           "'unsafe-inline'",
-          frontendUrl,
+          ...allowedAppUrls,
           "https://pluggn.store",
           "https://*.pluggn.store",
           "https://fonts.googleapis.com",
@@ -133,14 +161,14 @@ app.use(
           "'self'",
           "data:",
           minioBaseUrl,
-          frontendUrl,
+          ...allowedAppUrls,
           "https://pluggn.store",
           "https://*.pluggn.store",
           backendUrl,
         ],
         connectSrc: [
           "'self'",
-          frontendUrl,
+          ...allowedAppUrls,
           "https://pluggn.store",
           "https://*.pluggn.store",
           backendUrl,
@@ -170,14 +198,28 @@ app.use(cookieParser());
 
 app.use(express.static(path.join(__dirname, "../public")));
 
+// const corsStaticHeaders = (req: Request, res: Response, next: NextFunction) => {
+//   const origin = req.headers.origin;
+//   if (
+//     origin &&
+//     (origin.endsWith(".pluggn.store") ||
+//       origin === "https://pluggn.store" ||
+//       origin === "https://www.pluggn.store" ||
+//       origin === )
+//   ) {
+//     res.setHeader("Access-Control-Allow-Origin", origin);
+//     res.setHeader("Access-Control-Allow-Credentials", "true");
+//     res.setHeader("Vary", "Origin");
+//   }
+//   next();
+// };
+
+
 const corsStaticHeaders = (req: Request, res: Response, next: NextFunction) => {
   const origin = req.headers.origin;
   if (
     origin &&
-    (origin.endsWith(".pluggn.store") ||
-      origin === "https://pluggn.store" ||
-      origin === "https://www.pluggn.store" ||
-      origin === frontendUrl)
+    (allowedAppUrls.includes(origin) || wildcardDomainRegex.test(origin))
   ) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -185,16 +227,13 @@ const corsStaticHeaders = (req: Request, res: Response, next: NextFunction) => {
   }
   next();
 };
-
 // CORS Preflight for /template/*
 app.options("/template/*", (req, res) => {
   const origin = req.headers.origin;
+
   if (
     origin &&
-    (origin.endsWith(".pluggn.store") ||
-      origin === "https://pluggn.store" ||
-      origin === "https://www.pluggn.store" ||
-      origin === frontendUrl)
+    (allowedAppUrls.includes(origin) || wildcardDomainRegex.test(origin))
   ) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
@@ -204,11 +243,35 @@ app.options("/template/*", (req, res) => {
     );
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Vary", "Origin");
-    res.status(204).send();
-  } else {
-    res.status(403).send("CORS Forbidden");
+     res.status(204).send();
+     return
   }
+
+   res.status(403).send("CORS Forbidden");
+   return;
 });
+
+
+// app.options("/template/*", (req: Request, res) => {
+//   const origin = req.headers.origin;
+
+//   if (
+//     origin &&
+//     (allowedAppUrls.includes(origin) || wildcardDomainRegex.test(origin))
+//   ) {
+//     res.setHeader("Access-Control-Allow-Origin", origin);
+//     res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+//     res.setHeader(
+//       "Access-Control-Allow-Headers",
+//       "Content-Type, Authorization"
+//     );
+//     res.setHeader("Access-Control-Allow-Credentials", "true");
+//     res.setHeader("Vary", "Origin");
+//     return res.status(204).send();
+//   }
+
+//   return res.status(403).send("CORS Forbidden");
+// });
 
 // Image route with CORS
 app.use("/image", corsStaticHeaders);
