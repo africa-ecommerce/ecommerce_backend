@@ -39,6 +39,8 @@ export const formatPlugProduct = (plugProduct: any) => {
     description: originalProduct?.description,
     category: originalProduct?.category,
     originalPrice: originalProduct?.price,
+    minPrice: originalProduct?.minPrice,
+    maxPrice: originalProduct?.maxPrice,
     stocks: originalProduct?.stock,
     sold: originalProduct?.sold,
     plugsCount: originalProduct?.plugsCount,
