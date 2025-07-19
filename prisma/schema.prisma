@@ -237,6 +237,8 @@ model Product {
   name         String
   description  String?
   price        Float
+  minPrice     Float?
+  maxPrice     Float?
   category     String
   images       String // minio storage path or URL
   supplierId   String

@@ -24,11 +24,13 @@
           res.status(400).json({ error: "Invalid field data format!" });
           return;
         }
-        // Validate main product data
+        // Validate main product data -------------> PUT MIN PRICE TO SELL AND MAX PRICE TO SELL
         const validatedData = productSchema.safeParse({
           name: productData.name,
           description: productData.description,
           price: parseFloat(productData.price),
+          minPrice: productData.minPrice,
+          maxPrice: productData.maxPrice,
           category: productData.category,
           size: productData.size,
           color: productData.color,
@@ -76,6 +78,8 @@
               size: validatedData.data.size?.trim(),
               color: validatedData.data.color?.trim(),
               stock: validatedData.data.stock,
+              minPrice: validatedData.data.minPrice,
+              maxPrice: validatedData.data.maxPrice,
               supplierId,
               variations: {
                 create: validatedVariations.map((variation: any) => ({
@@ -114,7 +118,7 @@
         try {
           const productId = req.params.productId;
           const supplierId = req.params.supplierId;
-          // Parse the product data from FormData
+          // Parse the product data from FormData -------------> PUT MIN PRICE TO SELL AND MAX PRICE TO SELL
           let productData;
           try {
             productData = JSON.parse(req.body.productData);
@@ -143,14 +147,14 @@
             color: productData.color,
             stock: productData.stock,
           });
-  
+
           if (!validatedData.success) {
             res.status(400).json({
               error: "Invalid product field data!",
             });
             return;
           }
-  
+
           // Validate product variations if provided
           let validatedVariations: any = [];
           if (productData.variations && Array.isArray(productData.variations)) {
@@ -233,10 +237,10 @@
               //   variations: true,
               // },
             });
-  
+
             return updated;
           });
-  
+
           // Only delete images after successful database transaction
           if (imagesToDelete.length > 0) {
             await deleteImages(imagesToDelete);

@@ -45,7 +45,6 @@ export const refreshToken = async (
       refreshToken: result.newTokens!.refreshToken,
     });
   } catch (error) {
-  // DONT USE NEXT MIDDLEWARE HERE, // as this is a direct response handler for token refresh, AND FRONTEND NEEDS SUCCESS STATUS
     console.error("Refresh token error:", error);
     // More specific error handling
     if (error instanceof jwt.TokenExpiredError) {

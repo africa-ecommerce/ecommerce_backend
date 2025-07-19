@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Product" ADD COLUMN     "maxPrice" DOUBLE PRECISION,
+ADD COLUMN     "minPrice" DOUBLE PRECISION;

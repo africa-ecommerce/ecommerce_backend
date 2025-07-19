@@ -12,7 +12,7 @@ export const plugProductController = {
     next: NextFunction
   ) => {
     try {
-      const products = req.body;
+      const products = req.body; // --------------> ADD COMMISSION AS AT TIME OF ADDING PRODUCTS
       const plug = req.plug!;
       // Basic validation
       if (!Array.isArray(products) || products.length === 0) {
@@ -183,7 +183,7 @@ export const plugProductController = {
       const plug = req.plug!;
       const { price } = req.body;
 
-      // Find the product
+      // Find the product  // --------------> ADD COMMISSION AS AT TIME OF ADDING PRODUCTS
       const existingProduct = await prisma.plugProduct.findFirst({
         where: {
           id: productId,
@@ -220,9 +220,9 @@ export const plugProductController = {
         return;
       }
 
-      // Calculate effective date (3 days from now)
+      // Calculate effective date (1 day from now)
       const priceEffectiveAt = new Date();
-      priceEffectiveAt.setDate(priceEffectiveAt.getDate() + 3);
+      priceEffectiveAt.setDate(priceEffectiveAt.getDate() + 1);
 
       // Update with pending price and effective date
       const updatedProduct = await prisma.plugProduct.update({
@@ -240,7 +240,7 @@ export const plugProductController = {
       // Format response
       const formattedProduct = formatPlugProduct(updatedProduct);
       res.status(200).json({
-        message: "Price update to be effected in 3 days!",
+        message: "Price update to be effected in 24hrs!",
         data: formattedProduct,
       });
     } catch (error) {

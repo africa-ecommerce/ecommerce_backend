@@ -105,21 +105,16 @@ export const updatePlugInfoSchema = z.object({
 
 // Zod validation schema for product
 export const productSchema = z.object({
-  name: z
-    .string()
-    .min(1)
-    .max(100),
+  name: z.string().min(1).max(100),
   description: z.string().optional(),
   price: z.number().positive(),
+  minPrice: z.number().positive(),
+  maxPrice: z.number().positive(),
   category: z.string(),
   //variations
   size: z.string().optional(),
   color: z.string().optional(),
-  stock: z
-    .number()
-    .int()
-    .nonnegative()
-    .optional(),
+  stock: z.number().int().nonnegative().optional(),
 });
 
 export const productVariationSchema = z.object({
