@@ -17,7 +17,6 @@ export async function successOrderMail(
 
   const trackingLink = `<a href="${frontendUrl}/track-order/${orderNumber}" style="color: #0b5ed7; font-weight: 500;">Click here to track your order</a>`;
 
-  const manageLink = `<a href="${frontendUrl}/manage-order/${orderNumber}" style="color: #d63384; font-weight: 500;">Manage Order</a>`;
 
   const html = `
     <div style="font-family: 'Segoe UI', sans-serif; max-width: 640px; margin: auto; padding: 24px; border: 1px solid #ddd; border-radius: 10px; background-color: #f9f9f9;">
@@ -59,16 +58,7 @@ export async function successOrderMail(
           : ""
       }
 
-      ${
-        manageLink
-          ? `
-        <p style="font-size: 15px; color: #6b7280; margin-top: 16px;">
-          ❌ Changed your mind about order? ${manageLink}
-        </p>
-      `
-          : ""
-      }
-
+    
       <hr style="margin: 32px 0; border: none; border-top: 1px solid #e5e7eb;" />
 
       <h3 style="color: #111827; font-size: 18px;">Thank You for Shopping with Us 💚</h3>
