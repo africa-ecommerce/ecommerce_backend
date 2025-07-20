@@ -13,6 +13,7 @@ export const plugProductController = {
   ) => {
     try {
       const products = req.body; // --------------> ADD COMMISSION AS AT TIME OF ADDING PRODUCTS
+      console.log(products)
       const plug = req.plug!;
       // Basic validation
       if (!Array.isArray(products) || products.length === 0) {
@@ -183,6 +184,8 @@ export const plugProductController = {
       const productId = req.params.productId;
       const plug = req.plug!;
       const { price, commissionData } = req.body;
+      console.log(price);
+      console.log(commissionData);
 
       // Find the product  // --------------> ADD COMMISSION AS AT TIME OF ADDING PRODUCTS
       const existingProduct = await prisma.plugProduct.findFirst({
