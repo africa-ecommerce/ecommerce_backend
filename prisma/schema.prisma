@@ -286,6 +286,7 @@ model PlugProduct {
   originalId        String
   plugId            String
   price             Float
+  commission        Float?
   pendingPrice      Float? //  field for scheduled price
   priceEffectiveAt  DateTime? //  field for effective date
   lastPriceUpdateAt DateTime? //  field to track when a price was actually updated

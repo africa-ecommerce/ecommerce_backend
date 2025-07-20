@@ -81,6 +81,7 @@ export const plugProductController = {
           originalId: product.id,
           plugId: plug.id,
           price: parseFloat(product.price), // Ensure price is stored as a number
+          commission: product.commissionData
         }));
 
         // Create all product at once
@@ -181,7 +182,7 @@ export const plugProductController = {
     try {
       const productId = req.params.productId;
       const plug = req.plug!;
-      const { price } = req.body;
+      const { price, commissionData } = req.body;
 
       // Find the product  // --------------> ADD COMMISSION AS AT TIME OF ADDING PRODUCTS
       const existingProduct = await prisma.plugProduct.findFirst({
@@ -229,6 +230,7 @@ export const plugProductController = {
         where: { id: productId, plugId: plug.id },
         data: {
           pendingPrice: parseFloat(price),
+          commission: commissionData,
           priceEffectiveAt,
           updatedAt: new Date(),
         },
