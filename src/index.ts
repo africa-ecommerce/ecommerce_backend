@@ -15,10 +15,10 @@ import { Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import { cookieConfig } from "./helper/token";
 import { initializeBuckets } from "./config/minio";
-import {
-  initializePriceUpdateScheduler,
-  shutdownPriceUpdateScheduler,
-} from "./helper/workers/priceUpdater";
+// import {
+//   initializePriceUpdateScheduler,
+//   shutdownPriceUpdateScheduler,
+// } from "./helper/workers/priceUpdater";
 import marketPlaceRoutes from "./routes/marketplace.routes";
 import templateRoutes from "./routes/template.routes";
 import logisticsRoutes from "./routes/logistics.routes";
@@ -327,17 +327,17 @@ initializeBuckets()
 
 //schedulers
 
-// Initialize the price update scheduler to handle any pending updates from before restart
-// This only processes immediately due updates and sets up schedule for future ones
-initializePriceUpdateScheduler()
-  .then(() => {
-    console.log(
-      "Price update scheduler initialized to handle any pending updates"
-    );
-  })
-  .catch((error) => {
-    console.error("Error initializing price update scheduler:", error);
-  });
+// // Initialize the price update scheduler to handle any pending updates from before restart
+// // This only processes immediately due updates and sets up schedule for future ones
+// initializePriceUpdateScheduler()
+//   .then(() => {
+//     console.log(
+//       "Price update scheduler initialized to handle any pending updates"
+//     );
+//   })
+//   .catch((error) => {
+//     console.error("Error initializing price update scheduler:", error);
+//   });
 
 // Initialize the payment processing scheduler to handle any locked payments from before restart
 // This processes past-due payments and sets up schedule for future ones
@@ -393,7 +393,7 @@ process.on("SIGTERM", () => {
   console.log("SIGTERM signal received: closing HTTP server");
 
   // First shut down both schedulers
-  shutdownPriceUpdateScheduler();
+  // shutdownPriceUpdateScheduler();
   shutdownPaymentProcessingScheduler();
 
   // Then close the server
@@ -407,7 +407,7 @@ process.on("SIGINT", () => {
   console.log("SIGINT signal received: closing HTTP server");
 
   // First shut down both schedulers
-  shutdownPriceUpdateScheduler();
+  // shutdownPriceUpdateScheduler();
   shutdownPaymentProcessingScheduler();
 
   // Then close the server
