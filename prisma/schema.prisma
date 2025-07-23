@@ -287,9 +287,9 @@ model PlugProduct {
   plugId            String
   price             Float
   commission        Float?
-  pendingPrice      Float? //  field for scheduled price
-  priceEffectiveAt  DateTime? //  field for effective date
-  lastPriceUpdateAt DateTime? //  field to track when a price was actually updated
+  // pendingPrice      Float? //  field for scheduled price
+  // priceEffectiveAt  DateTime? //  field for effective date
+  // lastPriceUpdateAt DateTime? //  field to track when a price was actually updated
   plug              Plug      @relation(fields: [plugId], references: [id], onDelete: Cascade)
   originalProduct   Product   @relation(fields: [originalId], references: [id], onDelete: Cascade)
   createdAt         DateTime  @default(now())

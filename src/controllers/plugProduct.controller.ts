@@ -2,7 +2,7 @@ import { NextFunction, Response } from "express";
 import { prisma } from "../config";
 import { AuthRequest } from "../types";
 import { formatPlugProduct } from "../helper/formatData";
-import { scheduleProductUpdate } from "../helper/workers/priceUpdater";
+// import { scheduleProductUpdate } from "../helper/workers/priceUpdater";
 
 export const plugProductController = {
   // Add products to plug's inventory
@@ -224,28 +224,27 @@ export const plugProductController = {
         return;
       }
 
-      // Calculate effective date (1 day from now)
-      const priceEffectiveAt = new Date();
-      priceEffectiveAt.setDate(priceEffectiveAt.getDate() + 1);
+      // // Calculate effective date (1 day from now)
+      // const priceEffectiveAt = new Date();
+      // priceEffectiveAt.setDate(priceEffectiveAt.getDate() + 1);
 
       // Update with pending price and effective date
       const updatedProduct = await prisma.plugProduct.update({
         where: { id: productId, plugId: plug.id },
         data: {
-          pendingPrice: parseFloat(price),
           commission: commissionRate,
-          priceEffectiveAt,
+          price,
           updatedAt: new Date(),
         },
       });
 
       // Schedule this specific product's update - this will start the scheduler
       // or adjust it based on if the user updates price again during this time
-      await scheduleProductUpdate(productId, priceEffectiveAt);
+      // await scheduleProductUpdate(productId, priceEffectiveAt);
       // Format response
       const formattedProduct = formatPlugProduct(updatedProduct);
       res.status(200).json({
-        message: "Price update to be effected in 24hrs!",
+        message: "Price updated successfully!",
         data: formattedProduct,
       });
     } catch (error) {
