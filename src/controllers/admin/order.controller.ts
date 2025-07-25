@@ -40,14 +40,124 @@ export const shippedOrder = async (req: Request, res: Response) => {
   }
 };
 
-// CALLED WHEN ORDER IS DELIVERED I.E LOGISTICS PARTNER HAS DELIVERED THE ORDER TO THE BUYER
+// CALLED WHEN ORDER IS DELIVERED I.E LOGISTICS PARTNER HAS DELIVERED THE ORDER TO THE BUYER, REMOVE OUR PERCENT AND SHOULD WE LET PLUG WAIT FOR 3 DAYS
+// export const deliveredOrder = async (req: Request, res: Response) => {
+//   try {
+//     const { orderId } = req.body;
+
+//     if (!orderId) {
+//       res.status(400).json({ error: "Order ID is required!" });
+//       return;
+//     }
+
+//     const order = await prisma.order.findUnique({
+//       where: { id: orderId, status: "SHIPPED" },
+//       include: { orderItems: true },
+//     });
+
+//     if (!order) {
+//       res.status(404).json({ error: "Order not found!" });
+//       return;
+//     }
+
+//     const result = await prisma.$transaction(async (tx) => {
+
+
+
+      
+//       // Calculate plug profit
+//       const plugProfit = order.orderItems.reduce((sum, item) => {
+//         return sum + (item.plugPrice! - item.supplierPrice!) * item.quantity;
+//       }, 0);
+    
+//       // // Each supplier mapped to their total amount
+//       // const supplier: Record<string, number> = {};
+    
+//       // for (const item of order.orderItems) {
+//       //   const amount = item.supplierPrice! * item.quantity;
+//       //   const supplierId = item.supplierId!;
+//       //   supplier[supplierId] = (supplier[supplierId] || 0) + amount;
+//       // }
+    
+//       // Mark order as delivered
+//       await tx.order.update({
+//         where: { id: orderId },
+//         data: { status: "DELIVERED", updatedAt: new Date() },
+//       });
+    
+//       // Update sold count for products and variants
+//       for (const item of order.orderItems) {
+//         await tx.product.update({
+//           where: { id: item.productId },
+//           data: {
+//             sold: {
+//               increment: item.quantity,
+//             },
+//           },
+//         });
+//       }
+    
+//       // Create plug payment
+//       await tx.plugPayment.create({
+//         data: {
+//           orderId,
+//           plugId: order.plugId,
+//           amount: plugProfit,
+//           status: "LOCKED",
+//         },
+//       });
+    
+//       // // Create supplier payments
+//       // for (const [supplierId, amount] of Object.entries(supplier)) {
+//       //   await tx.supplierPayment.create({
+//       //     data: {
+//       //       orderId,
+//       //       supplierId,
+//       //       amount,
+//       //       status: "LOCKED",
+//       //     },
+//       //   });
+//       // }
+    
+//       return order;
+//     });
+    
+//     // Schedule payment processing for 3 days later
+//     const deliveryDate = new Date(result.updatedAt);
+//     await scheduleOrderPaymentProcessing(orderId, deliveryDate);
+
+//     res.status(200).json({
+//       message: "Order marked as delivered and payments locked for 3 days.",
+//       data: {
+//         status: "DELIVERED",
+//         paymentDate: new Date(
+//           deliveryDate.getTime() + 3 * 24 * 60 * 60 * 1000
+//         ).toISOString(),
+//       },
+//     });
+
+//     if (req.body.buyerEmail && req.body.buyerName) {
+//       setImmediate(() =>
+//         deliveredOrderMail(
+//           req.body.buyerEmail,
+//           req.body.buyerName,
+//           orderId
+//         ).catch((err) => console.error("Delivered order mail error:", err))
+//       );
+//     }
+//   } catch (err) {
+//     console.error("Error updating order status:", err);
+//     res.status(500).json({ error: "Internal server error!" });
+//   }
+// };
+
+
 export const deliveredOrder = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.body;
 
     if (!orderId) {
-      res.status(400).json({ error: "Order ID is required!" });
-      return;
+      return res.status(400).json({ error: "Order ID is required!" });
     }
 
     const order = await prisma.order.findUnique({
@@ -56,74 +166,89 @@ export const deliveredOrder = async (req: Request, res: Response) => {
     });
 
     if (!order) {
-      res.status(404).json({ error: "Order not found!" });
-      return;
+      return res.status(404).json({ error: "Order not found!" });
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      // Calculate plug profit
-      const plugProfit = order.orderItems.reduce((sum, item) => {
-        return sum + (item.plugPrice! - item.supplierPrice!) * item.quantity;
-      }, 0);
-    
-      // Each supplier mapped to their total amount
-      const supplier: Record<string, number> = {};
-    
+      let plugNetAmount = 0;
+      // let supplierTotalAmount = 0;
+
       for (const item of order.orderItems) {
-        const amount = item.supplierPrice! * item.quantity;
-        const supplierId = item.supplierId!;
-        supplier[supplierId] = (supplier[supplierId] || 0) + amount;
+        const plugProduct = await tx.plugProduct.findUnique({
+          where: {
+            plugId_originalId: {
+              plugId: order.plugId,
+              originalId: item.productId,
+            },
+          },
+        });
+
+        if (!plugProduct) {
+          throw new Error(
+            `PlugProduct not found for productId: ${item.productId}`
+          );
+        }
+
+        const itemTotal = (item.plugPrice ?? 0) * item.quantity;
+        const supplierAmount = (item.supplierPrice ?? 0) * item.quantity;
+
+        // supplierTotalAmount += supplierAmount;
+
+        // Calculate plug margin (profit before commission)
+        const plugMargin = itemTotal - supplierAmount;
+
+        // Apply commission 
+        const commissionAmount =
+          (plugMargin * (plugProduct.commission ?? 0)) / 100;
+
+        // Net amount for the plug
+        plugNetAmount += plugMargin - commissionAmount;
       }
-    
-      // Mark order as delivered
+
+      // Update order as delivered
       await tx.order.update({
         where: { id: orderId },
         data: { status: "DELIVERED", updatedAt: new Date() },
       });
-    
-      // Update sold count for products and variants
+
+      // Update sold count
       for (const item of order.orderItems) {
         await tx.product.update({
           where: { id: item.productId },
-          data: {
-            sold: {
-              increment: item.quantity,
-            },
-          },
+          data: { sold: { increment: item.quantity } },
         });
       }
-    
+
       // Create plug payment
       await tx.plugPayment.create({
         data: {
           orderId,
           plugId: order.plugId,
-          amount: plugProfit,
+          amount: plugNetAmount,
           status: "LOCKED",
         },
       });
-    
-      // Create supplier payments
-      for (const [supplierId, amount] of Object.entries(supplier)) {
-        await tx.supplierPayment.create({
-          data: {
-            orderId,
-            supplierId,
-            amount,
-            status: "LOCKED",
-          },
-        });
-      }
-    
+
+      // Create supplier payment
+      // await tx.supplierPayment.createMany({
+      //   data: order.orderItems.map((item) => ({
+      //     orderId,
+      //     supplierId: item.supplierId!,
+      //     amount: (item.supplierPrice ?? 0) * item.quantity,
+      //     status: "LOCKED",
+      //   })),
+      // });
+
       return order;
     });
-    
-    // Schedule payment processing for 3 days later
+
+    // Schedule payment release after 3 days
     const deliveryDate = new Date(result.updatedAt);
     await scheduleOrderPaymentProcessing(orderId, deliveryDate);
 
     res.status(200).json({
-      message: "Order marked as delivered and payments locked for 3 days.",
+      message:
+        "Order marked as delivered. Plug and supplier payments locked for 3 days.",
       data: {
         status: "DELIVERED",
         paymentDate: new Date(

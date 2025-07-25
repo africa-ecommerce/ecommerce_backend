@@ -10,7 +10,6 @@ export async function deliveredOrderMail(
 ) {
   const subject = "📦 Your Order Has Been Delivered – Pluggn";
 
-  const returnUrl = `${frontendUrl}/returns`;
 
   const html = `
     <div style="font-family: 'Segoe UI', sans-serif; max-width: 640px; margin: auto; padding: 24px; border-radius: 12px; background-color: #ffffff; border: 1px solid #e5e7eb;">

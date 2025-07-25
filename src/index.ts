@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import { frontendUrl, backendUrl, minioBaseUrl, port, sessionSecret } from "./config";
+import { backendUrl, minioBaseUrl, port, sessionSecret } from "./config";
 import authRoutes from "./routes/auth.routes";
 import onboardingRoutes from "./routes/onboarding.routes";
 import productRoutes from "./routes/product.routes";
@@ -15,10 +15,6 @@ import { Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import { cookieConfig } from "./helper/token";
 import { initializeBuckets } from "./config/minio";
-// import {
-//   initializePriceUpdateScheduler,
-//   shutdownPriceUpdateScheduler,
-// } from "./helper/workers/priceUpdater";
 import marketPlaceRoutes from "./routes/marketplace.routes";
 import templateRoutes from "./routes/template.routes";
 import logisticsRoutes from "./routes/logistics.routes";
@@ -37,7 +33,6 @@ import {
 import { routeErrorCatcher } from "./middleware/error.middleware";
 import { errorMail } from "./helper/mail/dev/errorMail";
 import contactSupportRoutes from "./routes/contactSupport.routes";
-const router = express.Router();
 
 
 // Load environment variables
@@ -49,7 +44,7 @@ const allowedAppUrls = [
   "https://pluggn.com.ng",
   "https://www.pluggn.store",
   "https://www.pluggn.com.ng",
-  "https://admin.pluggn.com.ng"
+  backendUrl,
 ];
 
 
@@ -88,30 +83,6 @@ app.use(express.urlencoded({ limit: "1mb", extended: true })); // For URL-encode
 app.use(globalRateLimiter);
 
 
-// const corsOptions = {
-//   origin: function (origin:any, callback: any) {
-//     if (!origin) return callback(null, true); // Allow non-browser clients
-
-//     const allowedOrigins = [
-//       "https://pluggn.store",
-//       "https://*.pluggn.store",
-//       frontendUrl, // frontend URL
-//       backendUrl
-//     ];
-
-//     const subdomainPattern = /^https:\/\/([a-z0-9-]+)\.pluggn\.store$/;
-
-//     if (allowedOrigins.includes(origin) || subdomainPattern.test(origin)) {
-//       callback(null, true);
-//     } else {
-//       callback(new Error("Not allowed by CORS"));
-//     }
-//   },
-//   credentials: true,
-//   optionsSuccessStatus: 200,
-// };
-
-
 const corsOptions = {
   origin: function (origin: any, callback: any) {
     if (!origin) return callback(null, true); // Allow server-to-server
@@ -135,43 +106,42 @@ app.use(
         defaultSrc: [
           "'self'",
           ...allowedAppUrls,
-          backendUrl,
-          "https://pluggn.store",
-          "https://*.pluggn.store",
+          "*.pluggn.store",
+          "*.pluggn.com.ng",
         ],
         scriptSrc: [
           "'self'",
           "'unsafe-inline'",
           "'unsafe-eval'",
           ...allowedAppUrls,
-          "https://pluggn.store",
-          "https://*.pluggn.store",
-          backendUrl,
+          "*.pluggn.store",
+          "*.pluggn.com.ng",
+         
         ],
         styleSrc: [
           "'self'",
           "'unsafe-inline'",
           ...allowedAppUrls,
-          "https://pluggn.store",
-          "https://*.pluggn.store",
+          "*.pluggn.store",
+          "*.pluggn.com.ng",
           "https://fonts.googleapis.com",
-          backendUrl,
+         
         ],
         imgSrc: [
           "'self'",
           "data:",
           minioBaseUrl,
           ...allowedAppUrls,
-          "https://pluggn.store",
-          "https://*.pluggn.store",
-          backendUrl,
+          "*.pluggn.store",
+          "*.pluggn.com.ng",
+         
         ],
         connectSrc: [
           "'self'",
           ...allowedAppUrls,
-          "https://pluggn.store",
-          "https://*.pluggn.store",
-          backendUrl,
+          "*.pluggn.store",
+          "*.pluggn.com.ng",
+         
         ],
         fontSrc: [
           "'self'",
@@ -197,22 +167,6 @@ app.use(cookieParser());
 // This makes files in the public folder directly accessible via their path
 
 app.use(express.static(path.join(__dirname, "../public")));
-
-// const corsStaticHeaders = (req: Request, res: Response, next: NextFunction) => {
-//   const origin = req.headers.origin;
-//   if (
-//     origin &&
-//     (origin.endsWith(".pluggn.store") ||
-//       origin === "https://pluggn.store" ||
-//       origin === "https://www.pluggn.store" ||
-//       origin === )
-//   ) {
-//     res.setHeader("Access-Control-Allow-Origin", origin);
-//     res.setHeader("Access-Control-Allow-Credentials", "true");
-//     res.setHeader("Vary", "Origin");
-//   }
-//   next();
-// };
 
 
 const corsStaticHeaders = (req: Request, res: Response, next: NextFunction) => {
@@ -251,27 +205,6 @@ app.options("/template/*", (req, res) => {
    return;
 });
 
-
-// app.options("/template/*", (req: Request, res) => {
-//   const origin = req.headers.origin;
-
-//   if (
-//     origin &&
-//     (allowedAppUrls.includes(origin) || wildcardDomainRegex.test(origin))
-//   ) {
-//     res.setHeader("Access-Control-Allow-Origin", origin);
-//     res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-//     res.setHeader(
-//       "Access-Control-Allow-Headers",
-//       "Content-Type, Authorization"
-//     );
-//     res.setHeader("Access-Control-Allow-Credentials", "true");
-//     res.setHeader("Vary", "Origin");
-//     return res.status(204).send();
-//   }
-
-//   return res.status(403).send("CORS Forbidden");
-// });
 
 // Image route with CORS
 app.use("/image", corsStaticHeaders);
@@ -326,19 +259,6 @@ initializeBuckets()
   });
 
 //schedulers
-
-// // Initialize the price update scheduler to handle any pending updates from before restart
-// // This only processes immediately due updates and sets up schedule for future ones
-// initializePriceUpdateScheduler()
-//   .then(() => {
-//     console.log(
-//       "Price update scheduler initialized to handle any pending updates"
-//     );
-//   })
-//   .catch((error) => {
-//     console.error("Error initializing price update scheduler:", error);
-//   });
-
 // Initialize the payment processing scheduler to handle any locked payments from before restart
 // This processes past-due payments and sets up schedule for future ones
 initializePaymentProcessingScheduler()
@@ -392,8 +312,7 @@ const server = app.listen(port, "0.0.0.0", () => {
 process.on("SIGTERM", () => {
   console.log("SIGTERM signal received: closing HTTP server");
 
-  // First shut down both schedulers
-  // shutdownPriceUpdateScheduler();
+  // First shut down the scheduler
   shutdownPaymentProcessingScheduler();
 
   // Then close the server
@@ -406,8 +325,7 @@ process.on("SIGTERM", () => {
 process.on("SIGINT", () => {
   console.log("SIGINT signal received: closing HTTP server");
 
-  // First shut down both schedulers
-  // shutdownPriceUpdateScheduler();
+  // First shut down the scheduler
   shutdownPaymentProcessingScheduler();
 
   // Then close the server

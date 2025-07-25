@@ -7,6 +7,7 @@ import { OrderStatus } from "@prisma/client";
 import { customAlphabet } from "nanoid";
 import { successOrderMail } from "../helper/mail/order/successOrderMail";
 import { failedOrderMail } from "../helper/mail/order/failedOrderMail";
+import { notifyOrderMail } from "../helper/mail/notify-us/orderMail";
 
 export async function placeOrder(req: Request, res: Response, next: NextFunction) {
   const {
@@ -209,6 +210,7 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
           : null,
         buyerName: formattedInput.buyerName,
         paymentMethod: formattedInput.paymentMethod,
+        
       };
     });
 
@@ -217,18 +219,22 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
       data: response,
     });
 
-    // Send success email to buyer, SEND AFTER RESPONSE TO AVOID SMTP BLOCKING ISSUES 
-    setImmediate(() => {
-      successOrderMail(
-        formattedInput.buyerEmail,
-        response.buyerName,
-        response.paymentMethod,
-        response.plugBusinessName!,
-        response.plugStore,
-        orderNumber
-      ).catch((mailErr) => {
-        console.error("Failed to send success order mail", mailErr);
-      });
+    // Send success email to buyer, AND ADMIN SEND AFTER RESPONSE TO AVOID SMTP BLOCKING ISSUES 
+    setImmediate(async () => {
+      try {
+        await successOrderMail(
+          formattedInput.buyerEmail,
+          response.buyerName,
+          response.paymentMethod,
+          response.plugBusinessName!,
+          response.plugStore,
+          orderNumber
+        );
+
+        await notifyOrderMail();
+      } catch (mailErr) {
+        console.error("Email sending failed", mailErr);
+      }
     });
   } catch (error) {
     // Delegate error handling to middleware immediately TO PREVENT SMTP BLOCKING ISSUES
