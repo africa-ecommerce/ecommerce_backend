@@ -1,9 +1,42 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { prisma } from "../../config";
 // import { sendOrderMail } from "../../helper/mail/sendOrderMail";
 import { scheduleOrderPaymentProcessing } from "../../helper/workers/paymentProcessor";
 import { shippedOrderMail } from "../../helper/mail/order/shippedOrderMail";
 import { deliveredOrderMail } from "../../helper/mail/order/deliveredOrderMail";
+import { OrderStatus } from "@prisma/client";
+import { formatPlugOrders } from "../../helper/formatData";
+
+
+
+
+
+export async function getOrders(req: Request, res: Response, next: NextFunction) {
+  try {
+    const status = (req.query.orderStatus as string | undefined)?.toUpperCase();
+    const where: any = { };
+    if (status && Object.values(OrderStatus).includes(status as OrderStatus)) {
+      where.status = status as OrderStatus;
+    }
+    const orders = await prisma.order.findMany({
+      where,
+      include: {
+        orderItems: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const data = orders ? formatPlugOrders(orders) : [];
+    res.status(200).json({
+      message: "Orders fetched successfully!",
+      data,
+    });
+    return;
+  } catch (error) {
+    next(error)
+  }
+}
+
 
 
 export const shippedOrder = async (req: Request, res: Response) => {
@@ -157,7 +190,8 @@ export const deliveredOrder = async (req: Request, res: Response) => {
     const { orderId } = req.body;
 
     if (!orderId) {
-      return res.status(400).json({ error: "Order ID is required!" });
+       res.status(400).json({ error: "Order ID is required!" });
+       return;
     }
 
     const order = await prisma.order.findUnique({
@@ -166,7 +200,8 @@ export const deliveredOrder = async (req: Request, res: Response) => {
     });
 
     if (!order) {
-      return res.status(404).json({ error: "Order not found!" });
+       res.status(404).json({ error: "Order not found!" });
+       return;
     }
 
     const result = await prisma.$transaction(async (tx) => {

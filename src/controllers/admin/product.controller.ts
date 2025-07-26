@@ -312,6 +312,41 @@
           next(error);
         }
       },
+
+        getSupplierProducts: async (req: Request, res: Response, next: NextFunction) => {
+          try {
+            const supplierId = req.params.supplierId;
+            // Get all products
+            const products = await prisma.product.findMany({
+              where: { supplierId},
+              orderBy: { createdAt: "desc" },
+              include: {
+                variations: true,
+                supplier: {
+                  select: {
+                    businessName: true,
+                    pickupLocation: {
+                      select: {
+                        lga: true,
+                        state: true,
+                      },
+                    },
+                    avatar: true,
+                  },
+                },
+              },
+            });
+      
+            // Format products with parsed images
+            const formattedProducts = products.map(formatProduct);
+            res.status(200).json({
+              message: "Products fetched successfully!",
+              data: formattedProducts,
+            });
+          } catch (error) {
+            next(error);
+          }
+        },
     
     
 }

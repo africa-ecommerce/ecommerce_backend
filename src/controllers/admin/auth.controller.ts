@@ -63,7 +63,7 @@ export const verifyAdminOTP = async (
       { expiresIn: "1h" }
     );
 
-    // (Recommended) set it as an HttpOnly cookie
+    // set it as an HttpOnly cookie, DO NOT INCLUDE MAX AGE, NOT PERSISTENT TOKEN
     res.cookie("session", token, {
     ...cookieConfig
     });
@@ -72,4 +72,16 @@ export const verifyAdminOTP = async (
   } catch (err) {
     next(err);
   }
+};
+
+export const adminLogout = async (
+  req: Request,
+  res: Response,
+  _next: NextFunction
+) => {
+ 
+  res.clearCookie("session", {
+    ...cookieConfig,
+  });
+   res.status(200).json({ message: "Logged out." });
 };
