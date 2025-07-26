@@ -4,6 +4,7 @@ import authenticateJWT from "../middleware/auth.middleware";
 import { isSupplier } from "../middleware/role.middleware";
 import { getAllSuppliers } from "../controllers/admin/user.controller";
 import { adminProductController } from "../controllers/admin/product.controller";
+import { sendAdminOTP, verifyAdminOTP } from "../controllers/admin/auth.controller";
 
 const router = Router();
 
@@ -12,9 +13,6 @@ router.get(
   "/user/suppliers",
   getAllSuppliers
 )
-
-
-
 // Get product by ID
 router.post("/product/:supplierId", adminProductController.createProduct);
 // Update product
@@ -25,6 +23,11 @@ router.delete(
   "/product/:supplierId/:productId",
   adminProductController.deleteProduct
 );
+
+
+router.post("/auth/send-otp", sendAdminOTP);
+router.post("/auth/verify-otp", verifyAdminOTP);
+
 
 export default router;
 

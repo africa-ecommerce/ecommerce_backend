@@ -452,3 +452,12 @@ model StoreAnalytics {
   subdomain String @unique
   count     Int    @default(0)
 }
+
+
+
+model AdminOTP {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+}

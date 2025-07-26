@@ -34,7 +34,7 @@ export async function resolveAccountWithBank(req: AuthRequest, res: Response, ne
 
     if (data.status && data.data) {
       // Create new token
-      const newToken = crypto.randomInt(100000, 1000000).toString();
+      const newToken = crypto.randomInt(100000, 999999).toString();
       const expires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
       await prisma.withdrawalVerificationToken.create({
