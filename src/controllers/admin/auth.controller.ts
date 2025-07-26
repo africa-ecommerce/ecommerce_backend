@@ -63,12 +63,8 @@ export const verifyAdminOTP = async (
       { expiresIn: "1h" }
     );
 
-    // (Recommended) set it as an HttpOnly cookie
-    res.cookie("session", token, {
-    ...cookieConfig
-    });
-
-    res.status(200).json({ message: "OTP verified." });
+    // Instead of setting cookie, return the token to frontend
+    res.status(200).json({ message: "OTP verified!", token });
   } catch (err) {
     next(err);
   }
