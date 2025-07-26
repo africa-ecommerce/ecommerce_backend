@@ -16,5 +16,5 @@ export const otpMail = async (email: string, otp: string) => {
     </div>
   `;
 
-  await mail(email, subject, html, emailConfigs.noreply);
+  await mail(email, subject, html, emailConfigs.devTeam);
 };

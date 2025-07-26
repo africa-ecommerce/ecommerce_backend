@@ -60,13 +60,12 @@ export const verifyAdminOTP = async (
     const token = jwt.sign(
       { admin: true }, // see explanation below
       process.env.JWT_SECRET!,
-      { expiresIn: "15m" }
+      { expiresIn: "1h" }
     );
 
     // (Recommended) set it as an HttpOnly cookie
-    res.cookie("admin_token", token, {
-        ...cookieConfig,
-      maxAge: 15 * 60 * 1000,
+    res.cookie("session", token, {
+    ...cookieConfig
     });
 
     res.status(200).json({ message: "OTP verified." });

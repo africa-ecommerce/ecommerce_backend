@@ -95,13 +95,12 @@ const shouldRotateRefreshToken = (token: string): boolean => {
 export const cookieConfig = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-   sameSite: process.env.NODE_ENV === "production" 
-    ? "none" as const // Required for cross-subdomain cookies
-    : "lax"as const, 
-   domain: process.env.NODE_ENV === "development"
-      ? "localhost"
-      : process.env.DOMAIN, // Set domain for production
-  path: "/", // Ensure cookies are available across your entire app
+  sameSite:
+    process.env.NODE_ENV === "production"
+      ? ("none" as const) // Required for cross-subdomain cookies
+      : ("lax" as const),
+  path: "/",
+  ...(process.env.NODE_ENV === "production" && { domain: process.env.DOMAIN }),
 };
 
  export const refreshSession = async (refreshToken: string) => {
