@@ -29,7 +29,7 @@ router.post("/order/delivered", deliveredOrder);
 
 router.post("/auth/send-otp", sendAdminOTP);
 router.post("/auth/verify-otp", verifyAdminOTP);
-router.post("/admin/logout", adminLogout);
+router.post("/auth/logout", adminLogout);
 
 
 
