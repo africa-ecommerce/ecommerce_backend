@@ -1,7 +1,7 @@
 import { mail } from "../../../lib/mail";
 import { emailConfigs } from "../../../config";
 
-const { noreply } = emailConfigs;
+const { orders } = emailConfigs;
 
 export async function failedOrderMail(to: string, buyerName: string) {
   const subject = "⚠️Order Recieved – Manual Processing In Progress";
@@ -51,5 +51,5 @@ export async function failedOrderMail(to: string, buyerName: string) {
     </div>
   `;
 
-  await mail(to, subject, html, noreply);
+  await mail(to, subject, html, orders);
 }

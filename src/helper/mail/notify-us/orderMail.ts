@@ -3,7 +3,7 @@ import { emailConfigs } from "../../../config";
 
 
 export async function notifyOrderMail() {
-    const { devTeam } = emailConfigs;
+    const { admin } = emailConfigs;
 
     const html = `
   <div style="font-family: Arial, sans-serif; background: #fefefe; padding: 20px; border: 1px solid #ccc; border-radius: 6px;">
@@ -18,5 +18,5 @@ export async function notifyOrderMail() {
   </div>
 `;
 
-    await mail("devTeam@pluggn.com.ng", "New Order Placed", html, devTeam);
+    await mail("admin@pluggn.com.ng", "New Order Placed", html, admin);
 }
