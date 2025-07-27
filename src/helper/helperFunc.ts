@@ -88,7 +88,7 @@ export const getGeocode = async (address: string) => {
 
 
 export function getReturnDaysLeft(createdAt: Date): number {
-  const unlockAt = new Date(createdAt.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const unlockAt = new Date(createdAt.getTime() + 3 * 24 * 60 * 60 * 1000);
   const now = new Date();
   return Math.max(
     0,
