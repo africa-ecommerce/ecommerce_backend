@@ -194,7 +194,7 @@ export const deliveredOrder = async (req: Request, res: Response) => {
        return;
     }
 
-    const order = await prisma.order.findUnique({
+    const order = await prisma.order.findFirst({
       where: { id: orderId, status: "SHIPPED" },
       include: { orderItems: true },
     });
