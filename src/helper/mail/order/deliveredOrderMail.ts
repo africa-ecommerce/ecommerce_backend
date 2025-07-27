@@ -16,7 +16,7 @@ export async function deliveredOrderMail(
       <h2 style="color: #111827;">Hi ${buyerName},</h2>
 
       <p style="font-size: 16px; color: #374151;">
-        Thank you for shopping with us on Pluggn. We're pleased to inform you that your order <strong>#${orderId}</strong> has been <strong style="color: #10b981;">successfully delivered</strong>.
+        Thank you for shopping with us on Pluggn. We're pleased to inform you that your order with ID <strong>#${orderId}</strong> has been <strong style="color: #10b981;">successfully delivered</strong>.
       </p>
 
       <p style="font-size: 16px; color: #374151;">

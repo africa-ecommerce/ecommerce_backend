@@ -68,6 +68,11 @@ export const emailConfigs = {
     from: "Pluggn <devTeam@pluggn.com.ng>",
     user: "devTeam@pluggn.com.ng",
     pass: process.env.DEVTEAM_EMAIL_PASSWORD!,
-}
-}
+  },
+  admin: {
+    from: "Pluggn <admin@pluggn.com.ng>",
+    user: "admin@pluggn.com.ng",
+    pass: process.env.ADMIN_EMAIL_PASSWORD!,
+  },
+};
 

@@ -292,15 +292,15 @@ export const deliveredOrder = async (req: Request, res: Response) => {
       },
     });
 
-    if (req.body.buyerEmail && req.body.buyerName) {
-      setImmediate(() =>
-        deliveredOrderMail(
-          req.body.buyerEmail,
-          req.body.buyerName,
-          orderId
-        ).catch((err) => console.error("Delivered order mail error:", err))
-      );
-    }
+    setImmediate(() => {
+      deliveredOrderMail(
+        order.buyerEmail,
+        order.buyerName,
+        order.orderNumber
+      ).catch((error) => {
+        console.error("Failed to send delivered order email:", error);
+      });
+    });  
   } catch (err) {
     console.error("Error updating order status:", err);
     res.status(500).json({ error: "Internal server error!" });
