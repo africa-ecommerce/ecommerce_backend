@@ -17,6 +17,9 @@ export const mail = async (
     host: "smtp.zoho.com",
     port: 465,
     secure: true,
+    pool: true, 
+    maxConnections: 3,
+    maxMessages: 50,
     auth: {
       user: sender.user,
       pass: sender.pass,
