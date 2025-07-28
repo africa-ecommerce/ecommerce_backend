@@ -50,27 +50,27 @@ export const adminAccount = process.env.ADMIN_ACCOUNT || "*************";
 
 export const emailConfigs = {
   support: {
-    from: "Pluggn <support@pluggn.com.ng>",
+    from: "support@pluggn.com.ng",
     user: "support@pluggn.com.ng",
     pass: process.env.SUPPORT_EMAIL_PASSWORD!,
   },
   orders: {
-    from: "Pluggn <orders@pluggn.com.ng>",
+    from: "orders@pluggn.com.ng",
     user: "orders@pluggn.com.ng",
     pass: process.env.ORDERS_EMAIL_PASSWORD!,
   },
   noreply: {
-    from: "Pluggn <noreply@pluggn.com.ng>",
+    from: "noreply@pluggn.com.ng",
     user: "noreply@pluggn.com.ng",
     pass: process.env.NOREPLY_EMAIL_PASSWORD!,
   },
   devTeam: {
-    from: "Pluggn <devTeam@pluggn.com.ng>",
+    from: "devTeam@pluggn.com.ng",
     user: "devTeam@pluggn.com.ng",
     pass: process.env.DEVTEAM_EMAIL_PASSWORD!,
   },
   admin: {
-    from: "Pluggn <admin@pluggn.com.ng>",
+    from: "admin@pluggn.com.ng",
     user: "admin@pluggn.com.ng",
     pass: process.env.ADMIN_EMAIL_PASSWORD!,
   },
