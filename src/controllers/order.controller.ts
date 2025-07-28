@@ -210,17 +210,10 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
           : null,
         buyerName: formattedInput.buyerName,
         paymentMethod: formattedInput.paymentMethod,
-        
       };
     });
 
-    res.status(201).json({
-      message: "Order placed successfully!",
-      data: response,
-    });
-
-    // Send success email to buyer, AND ADMIN SEND AFTER RESPONSE TO AVOID SMTP BLOCKING ISSUES 
-    setImmediate(async () => {
+    
       try {
         await successOrderMail(
           formattedInput.buyerEmail,
@@ -235,7 +228,30 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
       } catch (mailErr) {
         console.error("Email sending failed", mailErr);
       }
+  
+
+    res.status(201).json({
+      message: "Order placed successfully!",
+      data: response,
     });
+
+    // // Send success email to buyer, AND ADMIN SEND AFTER RESPONSE TO AVOID SMTP BLOCKING ISSUES
+    // setImmediate(async () => {
+    //   try {
+    //     await successOrderMail(
+    //       formattedInput.buyerEmail,
+    //       response.buyerName,
+    //       response.paymentMethod,
+    //       response.plugBusinessName!,
+    //       response.plugStore,
+    //       orderNumber
+    //     );
+
+    //     await notifyOrderMail();
+    //   } catch (mailErr) {
+    //     console.error("Email sending failed", mailErr);
+    //   }
+    // });
   } catch (error) {
     // Delegate error handling to middleware immediately TO PREVENT SMTP BLOCKING ISSUES
     next(error);
