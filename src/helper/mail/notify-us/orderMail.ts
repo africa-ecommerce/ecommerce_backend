@@ -1,9 +1,12 @@
 import { mail } from "../../../lib/mail";
 import { emailConfigs } from "../../../config";
+import { queueMail } from "../../workers/mailQueue";
 
 
 export async function notifyOrderMail() {
-    const { noreply } = emailConfigs;
+    const { admin } = emailConfigs;
+    const subject = "New Order Placed"
+    const to = "admin@pluggn.com.ng"
 
     const html = `
   <div style="font-family: Arial, sans-serif; background: #fefefe; padding: 20px; border: 1px solid #ccc; border-radius: 6px;">
@@ -18,5 +21,13 @@ export async function notifyOrderMail() {
   </div>
 `;
 
-    await mail("admin@pluggn.com.ng", "New Order Placed", html, noreply);
+
+  await queueMail({
+    to,
+    subject,
+    html,
+    senderKey: "orders", // key from emailConfigs
+  });
+
+   
 }

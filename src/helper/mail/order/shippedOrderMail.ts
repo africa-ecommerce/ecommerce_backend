@@ -1,8 +1,7 @@
 // helper/mail/orders/shippedOrderMail.ts
-import { mail } from "../../../lib/mail";
-import { emailConfigs, frontendUrl } from "../../../config";
+import { queueMail } from "../../workers/mailQueue";
+import { frontendUrl } from "../../../config";
 
-const { noreply } = emailConfigs;
 
 export async function shippedOrderMail(
   to: string,
@@ -35,5 +34,10 @@ export async function shippedOrderMail(
     </div>
   `;
 
-  await mail(to, subject, html, noreply);
+  await queueMail({
+    to,
+    subject,
+    html,
+    senderKey: "orders", // key from emailConfigs
+  });
 }

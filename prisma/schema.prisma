@@ -454,10 +454,22 @@ model StoreAnalytics {
 }
 
 
-
+//QUEUE MAILS FOR VERCEL SEVERLESS
+model MailQueue {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  html      String
+  senderKey String   // "orders", "admin", etc.
+  replyTo   String?
+  status    String   @default("PENDING") // SENT, FAILED
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+}
 model AdminOTP {
   id        String   @id @default(cuid())
   token     String   @unique
   expires   DateTime
   createdAt DateTime @default(now())
 }
+

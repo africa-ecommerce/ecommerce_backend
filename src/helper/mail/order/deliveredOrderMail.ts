@@ -1,7 +1,8 @@
 import { mail } from "../../../lib/mail";
 import { emailConfigs, frontendUrl } from "../../../config";
+import { queueMail } from "../../workers/mailQueue";
 
-const { noreply } = emailConfigs;
+const { orders } = emailConfigs;
 
 export async function deliveredOrderMail(
   to: string,
@@ -42,5 +43,11 @@ export async function deliveredOrderMail(
     </div>
   `;
 
-  await mail(to, subject, html, noreply);
+ 
+   await queueMail({
+     to,
+     subject,
+     html,
+     senderKey: "orders", // key from emailConfigs
+   });
 }

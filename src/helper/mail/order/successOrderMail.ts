@@ -1,7 +1,5 @@
-import { mail } from "../../../lib/mail";
-import { emailConfigs, frontendUrl } from "../../../config";
-
-const { noreply } = emailConfigs;
+import {  frontendUrl } from "../../../config";
+import { queueMail } from "../../workers/mailQueue";
 
 export async function successOrderMail(
   to: string,
@@ -9,14 +7,13 @@ export async function successOrderMail(
   paymentMethod: string,
   plugBusinessName: string,
   plugStoreUrl: string | null,
-  orderNumber: string,
+  orderNumber: string
 ) {
   const subject = "✅ Your Order Has Been Placed – Pluggn";
 
   const isCash = paymentMethod === "cash";
 
   const trackingLink = `<a href="${frontendUrl}/track-order/${orderNumber}" style="color: #0b5ed7; font-weight: 500;">Click here to track your order</a>`;
-
 
   const html = `
     <div style="font-family: 'Segoe UI', sans-serif; max-width: 640px; margin: auto; padding: 24px; border: 1px solid #ddd; border-radius: 10px; background-color: #f9f9f9;">
@@ -88,5 +85,10 @@ export async function successOrderMail(
     </div>
   `;
 
-  await mail(to, subject, html, noreply);
+  await queueMail({
+    to,
+    subject,
+    html,
+    senderKey: "orders", // key from emailConfigs
+  });
 }

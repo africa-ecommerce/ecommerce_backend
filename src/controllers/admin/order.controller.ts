@@ -53,20 +53,30 @@ export const shippedOrder = async (req: Request, res: Response) => {
       data: { status: "SHIPPED" },
     });
 
+    try {
+      await shippedOrderMail(
+        order.buyerEmail,
+        order.buyerName,
+        order.orderNumber
+      );
+    } catch (error) {
+      console.error("Failed to send shipped order email:", error);
+    }
+
     // Respond immediately
     res.status(200).json({
       message: "Order status updated successfully!",
       data: { status: "SHIPPED" },
     });
 
-    // Background mail process
-    setImmediate(() => {
-      shippedOrderMail(order.buyerEmail, order.buyerName, order.orderNumber).catch(
-        (error) => {
-          console.error("Failed to send shipped order email:", error);
-        }
-      );
-    });
+    // // Background mail process
+    // setImmediate(() => {
+    //   shippedOrderMail(order.buyerEmail, order.buyerName, order.orderNumber).catch(
+    //     (error) => {
+    //       console.error("Failed to send shipped order email:", error);
+    //     }
+    //   );
+    // });
   } catch (err) {
     console.error("Error updating order status:", err);
     res.status(500).json({ error: "Internal server error!" });
@@ -281,6 +291,16 @@ export const deliveredOrder = async (req: Request, res: Response) => {
     const deliveryDate = new Date(result.updatedAt);
     await scheduleOrderPaymentProcessing(orderId, deliveryDate);
 
+    try {
+      await deliveredOrderMail(
+        order.buyerEmail,
+        order.buyerName,
+        order.orderNumber
+      );
+    } catch (error) {
+      console.error("Failed to send delivered order email:", error);
+    }
+
     res.status(200).json({
       message:
         "Order marked as delivered. Plug and supplier payments locked for 3 days.",
@@ -292,15 +312,15 @@ export const deliveredOrder = async (req: Request, res: Response) => {
       },
     });
 
-    setImmediate(() => {
-      deliveredOrderMail(
-        order.buyerEmail,
-        order.buyerName,
-        order.orderNumber
-      ).catch((error) => {
-        console.error("Failed to send delivered order email:", error);
-      });
-    });  
+    // setImmediate(() => {
+    //   deliveredOrderMail(
+    //     order.buyerEmail,
+    //     order.buyerName,
+    //     order.orderNumber
+    //   ).catch((error) => {
+    //     console.error("Failed to send delivered order email:", error);
+    //   });
+    // });  
   } catch (err) {
     console.error("Error updating order status:", err);
     res.status(500).json({ error: "Internal server error!" });

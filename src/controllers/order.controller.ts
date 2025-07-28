@@ -228,7 +228,6 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
       } catch (mailErr) {
         console.error("Email sending failed", mailErr);
       }
-  
 
     res.status(201).json({
       message: "Order placed successfully!",
@@ -254,17 +253,27 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
     // });
   } catch (error) {
     // Delegate error handling to middleware immediately TO PREVENT SMTP BLOCKING ISSUES
-    next(error);
-  
-    // Send fallback email *after* response begins processing
-    setImmediate(() => {
-      failedOrderMail(
+
+    try {
+      await failedOrderMail(
         formattedInput.buyerEmail,
         formattedInput.buyerName
-      ).catch((err) => {
-        console.error("Error sending fallback email to buyer:", err);
-      });
-    });
+      ); 
+    } catch (error) {
+      console.error("Error sending fallback email to buyer:", error);
+    }
+    
+    next(error);
+  
+    // // Send fallback email *after* response begins processing
+    // setImmediate(() => {
+    //   failedOrderMail(
+    //     formattedInput.buyerEmail,
+    //     formattedInput.buyerName
+    //   ).catch((err) => {
+    //     console.error("Error sending fallback email to buyer:", err);
+    //   });
+    // });
 }
 }
 export async function getBuyerInfo(req: Request, res: Response, next: NextFunction) {

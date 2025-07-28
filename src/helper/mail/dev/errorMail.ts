@@ -25,6 +25,7 @@
 // helper/mail/errorMail.ts
 import { emailConfigs } from "../../../config";
 import { mail } from "../../../lib/mail";
+import { queueMail } from "../../workers/mailQueue";
 
 const { devTeam } = emailConfigs;
 
@@ -43,6 +44,7 @@ function sanitize(obj: any) {
 
 export async function errorMail(req: any, error: any) {
   const subject = `🚨 Error in ${req.method} ${req.originalUrl}`;
+  const to = "devTeam@pluggn.com.ng";
 
   const requestDetails = {
     method: req.method,
@@ -70,6 +72,11 @@ ${error?.stack || ""}
       </pre>
     </div>
   `;
-
-  await mail("devTeam@pluggn.com.ng", subject, html, devTeam);
+  await queueMail({
+    to,
+    subject,
+    html,
+    senderKey: "devTeam", // key from emailConfigs
+  });
+ 
 }

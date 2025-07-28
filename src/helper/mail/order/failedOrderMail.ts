@@ -1,5 +1,6 @@
 import { mail } from "../../../lib/mail";
 import { emailConfigs } from "../../../config";
+import { queueMail } from "../../workers/mailQueue";
 
 const { orders } = emailConfigs;
 
@@ -51,5 +52,11 @@ export async function failedOrderMail(to: string, buyerName: string) {
     </div>
   `;
 
-  await mail(to, subject, html, orders);
+  
+    await queueMail({
+      to,
+      subject,
+      html,
+      senderKey: "orders", // key from emailConfigs
+    });
 }

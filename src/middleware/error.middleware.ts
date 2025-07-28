@@ -10,14 +10,19 @@ export async function routeErrorCatcher(
 ) {
   console.error("Route Error:", err);
 
+  try {
+    await errorMail(req, err);
+  } catch (error) {
+    console.error("Failed to send route error email:", error);
+  }
   // Respond first to avoid smtp blocking issues
   res.status(500).json({ success: false, error: "Internal server error!" });
 
-  setImmediate(() => {
-    errorMail(req, err).catch((mailErr) => {
-      console.error("Failed to send route error email:", mailErr);
-    });
-  });
+  // setImmediate(() => {
+  //   errorMail(req, err).catch((mailErr) => {
+  //     console.error("Failed to send route error email:", mailErr);
+  //   });
+  // });
 }
 
 
