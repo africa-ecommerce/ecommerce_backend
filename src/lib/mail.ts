@@ -52,11 +52,11 @@ type MailSender = {
   pass: string;
 };
 
-let transporter: Transporter | null = null;
+const transporterPool: Record<string, Transporter> = {};
 
-function getTransporter(sender: MailSender) {
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
+function getTransporter(sender: MailSender): Transporter {
+  if (!transporterPool[sender.user]) {
+    transporterPool[sender.user] = nodemailer.createTransport({
       host: "smtp.zoho.com",
       port: 465,
       secure: true,
@@ -70,9 +70,9 @@ function getTransporter(sender: MailSender) {
       connectionTimeout: 10_000,
       socketTimeout: 20_000,
     });
-    console.log("SMTP transporter created with pooling.");
+    console.log(`SMTP transporter created for: ${sender.user}`);
   }
-  return transporter;
+  return transporterPool[sender.user];
 }
 
 export const mail = async (
