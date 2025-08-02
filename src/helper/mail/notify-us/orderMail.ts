@@ -1,6 +1,6 @@
 import { mail } from "../../../lib/mail";
 import { emailConfigs } from "../../../config";
-import { queueMail } from "../../workers/mailQueue";
+import { sendQueuedMail } from "../../workers/mailQueue";
 
 
 export async function notifyOrderMail() {
@@ -22,7 +22,7 @@ export async function notifyOrderMail() {
 `;
 
 
-  await queueMail({
+  await sendQueuedMail({
     to,
     subject,
     html,
