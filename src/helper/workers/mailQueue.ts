@@ -15,6 +15,8 @@ import { mail } from "../../lib/mail";
   senderKey: keyof typeof emailConfigs;
   replyTo?: string;
 }) {
+
+  console.log("mail queued")
   await prisma.mailQueue.create({
     data: {
       to,
@@ -26,7 +28,7 @@ import { mail } from "../../lib/mail";
   });
 
   // Trigger the processor (runs for ~5s max)
-  void processMailQueueFor(5000);
+  await processMailQueueFor(5000);
 }
 
 // Background processor: sends queued mail in batches
