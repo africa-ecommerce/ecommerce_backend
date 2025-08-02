@@ -218,22 +218,19 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
       data: response,
     });
 
-    // Then send mail (non-blocking)
-    setImmediate(() => {
-      successOrderMail(
-        formattedInput.buyerEmail,
-        response.buyerName,
-        response.paymentMethod,
-        response.plugBusinessName!,
-        response.plugStore,
-        orderNumber
-      ).catch((err) => console.error("Failed to queue successOrderMail", err));
+    // ✅ Fire both off right after the DB/save logic in the background
+    void successOrderMail(
+      formattedInput.buyerEmail,
+      response.buyerName,
+      response.paymentMethod,
+      response.plugBusinessName!,
+      response.plugStore,
+      orderNumber
+    ).catch((err) => console.error("Failed to queue successOrderMail", err));
 
-      notifyOrderMail().catch((err) =>
-        console.error("Failed to queue notifyOrderMail", err)
-      );
-    });
-
+    void notifyOrderMail().catch((err) =>
+      console.error("Failed to queue notifyOrderMail", err)
+    );
   } catch (error) {
     // Delegate error handling to middleware immediately TO PREVENT SMTP BLOCKING ISSUES
     try {
