@@ -1,5 +1,5 @@
 import {  frontendUrl } from "../../../config";
-import { queueMail } from "../../workers/mailQueue";
+import { sendQueuedMail } from "../../workers/mailQueue";
 
 export async function successOrderMail(
   to: string,
@@ -85,7 +85,7 @@ export async function successOrderMail(
     </div>
   `;
 
-  await queueMail({
+  await sendQueuedMail({
     to,
     subject,
     html,

@@ -2,7 +2,7 @@ import { emailConfigs, prisma } from "../../config";
 import { mail } from "../../lib/mail";
 
 // Queue a mail to be sent later
-export async function queueMail({
+ async function queueMail({
   to,
   subject,
   html,
@@ -72,5 +72,27 @@ export async function processMailQueueFor(durationMs = 5000) {
         },
       });
     }
+  }
+}
+
+
+// Simple helper to enqueue a mail and trigger the processor
+export async function sendQueuedMail({
+  to,
+  subject,
+  html,
+  senderKey,
+  replyTo,
+}: {
+  to: string;
+  subject: string;
+  html: string;
+  senderKey: "orders" | "admin" | "noreply"; // Add other keys if needed
+  replyTo?: string;
+}) {
+  try {
+    await queueMail({ to, subject, html, senderKey, replyTo });
+  } catch (err) {
+    console.error("Failed to queue mail:", err);
   }
 }

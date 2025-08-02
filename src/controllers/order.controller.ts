@@ -213,47 +213,29 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
       };
     });
 
-    
-      try {
-        await successOrderMail(
-          formattedInput.buyerEmail,
-          response.buyerName,
-          response.paymentMethod,
-          response.plugBusinessName!,
-          response.plugStore,
-          orderNumber
-        );
-
-        await notifyOrderMail();
-      } catch (mailErr) {
-        console.error("Email sending failed", mailErr);
-      }
-
     res.status(201).json({
       message: "Order placed successfully!",
       data: response,
     });
 
-    // // Send success email to buyer, AND ADMIN SEND AFTER RESPONSE TO AVOID SMTP BLOCKING ISSUES
-    // setImmediate(async () => {
-    //   try {
-    //     await successOrderMail(
-    //       formattedInput.buyerEmail,
-    //       response.buyerName,
-    //       response.paymentMethod,
-    //       response.plugBusinessName!,
-    //       response.plugStore,
-    //       orderNumber
-    //     );
+    // Then send mail (non-blocking)
+    setImmediate(() => {
+      successOrderMail(
+        formattedInput.buyerEmail,
+        response.buyerName,
+        response.paymentMethod,
+        response.plugBusinessName!,
+        response.plugStore,
+        orderNumber
+      ).catch((err) => console.error("Failed to queue successOrderMail", err));
 
-    //     await notifyOrderMail();
-    //   } catch (mailErr) {
-    //     console.error("Email sending failed", mailErr);
-    //   }
-    // });
+      notifyOrderMail().catch((err) =>
+        console.error("Failed to queue notifyOrderMail", err)
+      );
+    });
+
   } catch (error) {
     // Delegate error handling to middleware immediately TO PREVENT SMTP BLOCKING ISSUES
-
     try {
       await failedOrderMail(
         formattedInput.buyerEmail,
