@@ -15,7 +15,7 @@ import { mail } from "../../lib/mail";
   senderKey: keyof typeof emailConfigs;
   replyTo?: string;
 }) {
-  
+
 
   console.log("mail queued")
   await prisma.mailQueue.create({
@@ -25,6 +25,7 @@ import { mail } from "../../lib/mail";
       html,
       senderKey,
       replyTo,
+      status: "PENDING",
     },
   });
 
