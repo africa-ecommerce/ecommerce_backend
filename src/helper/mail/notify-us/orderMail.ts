@@ -4,7 +4,6 @@ import { sendQueuedMail } from "../../workers/mailQueue";
 
 
 export async function notifyOrderMail() {
-    const { admin } = emailConfigs;
     const subject = "New Order Placed"
     const to = "admin@pluggn.com.ng"
 
@@ -26,7 +25,7 @@ export async function notifyOrderMail() {
     to,
     subject,
     html,
-    senderKey: "orders", // key from emailConfigs
+    senderKey: "admin", // key from emailConfigs
   });
 
    

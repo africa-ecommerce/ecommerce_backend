@@ -25,7 +25,6 @@ import { mail } from "../../lib/mail";
       html,
       senderKey,
       replyTo,
-      status: "PENDING",
     },
   });
 
