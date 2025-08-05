@@ -110,90 +110,44 @@ import { mail } from "../../lib/mail";
 // In-memory lock to prevent overlapping processors
 let isProcessing = false;
 
-// Queue a mail to be sent later
-async function queueMail({
-  to,
-  subject,
-  html,
-  senderKey,
-  replyTo,
-}: {
-  to: string;
-  subject: string;
-  html: string;
-  senderKey: keyof typeof emailConfigs;
-  replyTo?: string;
-}) {
-  if (!emailConfigs[senderKey]) {
-    console.error("❌ Invalid senderKey provided:", senderKey);
-    return;
-  }
-
-  try {
-    const queued = await prisma.mailQueue.create({
-      data: {
-        to,
-        subject,
-        html,
-        senderKey,
-        replyTo,
-      },
-    });
-
-    console.log("✅ Mail queued:", queued.id);
-
-    // Trigger processor, non-blocking and limited to 5s
-    void processMailQueueFor(5000);
-  } catch (err) {
-    console.error("❌ Failed to queue mail:", err);
-  }
-}
-
-// Process queued mails for a duration
 export async function processMailQueueFor(durationMs = 5000) {
-  if (isProcessing) return; // avoid duplicate runs
+  if (isProcessing) return;
   isProcessing = true;
 
   const stopAt = Date.now() + durationMs;
 
   try {
     while (Date.now() < stopAt) {
-      const next = await prisma.mailQueue.findFirst({
-        where: { status: "PENDING" },
+      const queuedMail = await prisma.mailQueue.findFirst({
+        where: { status: "PENDING", attempts: { lt: 3 } },
         orderBy: { createdAt: "asc" },
       });
 
-      if (!next) break;
+      if (!queuedMail) break;
 
-      const sender = emailConfigs[next.senderKey as keyof typeof emailConfigs];
+      const sender =
+        emailConfigs[queuedMail.senderKey as keyof typeof emailConfigs];
       if (!sender) {
-        console.error("❌ Invalid senderKey in mailQueue:", next.senderKey);
-        await prisma.mailQueue.update({
-          where: { id: next.id },
-          data: {
-            status: "FAILED",
-            attempts: { increment: 1 },
-          },
-        });
+        console.error("Invalid senderKey:", queuedMail.senderKey);
+        await failMail(queuedMail.id);
         continue;
       }
 
       try {
         const info = await mail(
-          next.to,
-          next.subject,
-          next.html,
+          queuedMail.to,
+          queuedMail.subject,
+          queuedMail.html,
           sender,
-          next.replyTo || undefined
+          queuedMail.replyTo || undefined
         );
 
-        console.log(`📨 Sent mail ${next.id} from ${sender.user} → ${next.to}`, info.messageId);
-
-        await prisma.mailQueue.delete({ where: { id: next.id } });
+        console.log(`✅ Mail sent: ${info.messageId}`);
+        await prisma.mailQueue.delete({ where: { id: queuedMail.id } });
       } catch (err) {
-        console.error("❌ Failed to send mail:", err);
+        console.error("❌ Failed to send:", err);
         await prisma.mailQueue.update({
-          where: { id: next.id },
+          where: { id: queuedMail.id },
           data: {
             attempts: { increment: 1 },
             status: "FAILED",
@@ -202,13 +156,22 @@ export async function processMailQueueFor(durationMs = 5000) {
       }
     }
   } catch (err) {
-    console.error("❌ Mail processor error:", err);
+    console.error("Mail processor error:", err);
   } finally {
     isProcessing = false;
   }
 }
 
-// Public function to queue and send mail
+async function failMail(id: string) {
+  await prisma.mailQueue.update({
+    where: { id },
+    data: {
+      attempts: { increment: 1 },
+      status: "FAILED",
+    },
+  });
+}
+
 export async function sendQueuedMail({
   to,
   subject,
@@ -222,5 +185,9 @@ export async function sendQueuedMail({
   senderKey: keyof typeof emailConfigs;
   replyTo?: string;
 }) {
-  await queueMail({ to, subject, html, senderKey, replyTo });
+  await prisma.mailQueue.create({
+    data: { to, subject, html, senderKey, replyTo },
+  });
+
+  void processMailQueueFor(5000); // run behind-the-scenes
 }
