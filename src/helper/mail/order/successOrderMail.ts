@@ -94,12 +94,13 @@ export async function successOrderMail(
 
 
   await queueMail(
-    "general",
     {
       to,
       subject,
       html,
       senderKey: "orders",
+      mailType: "general",
+      priority: "normal",
     }
   );
 }

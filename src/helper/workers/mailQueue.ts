@@ -1769,89 +1769,433 @@ type MailSender = {
 // import nodemailer from 'nodemailer';
 
 // Smart transporter pool - reuse existing, create when needed
-const transporterPool = new Map<string, any>();
-const activeProcessors = new Map<string, Promise<void>>();
+// const transporterPool = new Map<string, any>();
+// const activeProcessors = new Map<string, Promise<void>>();
 
-// Get or create transporter (smart reuse)
-function getTransporter(senderConfig: any) {
-  const key = senderConfig.user;
+// // Get or create transporter (smart reuse)
+// function getTransporter(senderConfig: any) {
+//   const key = senderConfig.user;
   
-  if (!transporterPool.has(key)) {
-    const transporter = nodemailer.createTransport({
-      host: "smtp.zoho.com",
-      port: 465,
-      secure: true,
-      pool: true,
-      maxConnections: 3,
-      maxMessages: 50,
-      auth: {
-        user: senderConfig.user,
-        pass: senderConfig.pass,
-      },
-      connectionTimeout: 15000,
-      socketTimeout: 20000,
-      logger: false,
-      debug: false,
-    });
+//   if (!transporterPool.has(key)) {
+//     const transporter = nodemailer.createTransport({
+//       host: "smtp.zoho.com",
+//       port: 465,
+//       secure: true,
+//       pool: true,
+//       maxConnections: 3,
+//       maxMessages: 50,
+//       auth: {
+//         user: senderConfig.user,
+//         pass: senderConfig.pass,
+//       },
+//       connectionTimeout: 15000,
+//       socketTimeout: 20000,
+//       logger: false,
+//       debug: false,
+//     });
 
-    transporterPool.set(key, transporter);
-    console.log(`🚀 Created transporter for: ${key}`);
-  }
+//     transporterPool.set(key, transporter);
+//     console.log(`🚀 Created transporter for: ${key}`);
+//   }
 
-  return transporterPool.get(key);
-}
+//   return transporterPool.get(key);
+// }
 
-// Clean up failed transporter
-function resetTransporter(senderKey: string) {
-  const senderConfig = emailConfigs[senderKey as keyof typeof emailConfigs];
-  if (senderConfig) {
-    const key = senderConfig.user;
-    const transporter = transporterPool.get(key);
-    if (transporter) {
-      transporter.close();
-      transporterPool.delete(key);
-      console.log(`🔄 Reset transporter for: ${key}`);
-    }
-  }
-}
+// // Clean up failed transporter
+// function resetTransporter(senderKey: string) {
+//   const senderConfig = emailConfigs[senderKey as keyof typeof emailConfigs];
+//   if (senderConfig) {
+//     const key = senderConfig.user;
+//     const transporter = transporterPool.get(key);
+//     if (transporter) {
+//       transporter.close();
+//       transporterPool.delete(key);
+//       console.log(`🔄 Reset transporter for: ${key}`);
+//     }
+//   }
+// }
 
-/**
- * STEP 1: Save mail to database
- */
-export async function queueMail(
-  mailType: string,
-  params: {
-    to: string;
-    subject: string;
-    html: string;
-    senderKey: keyof typeof emailConfigs;
-    replyTo?: string | null;
-  },
-  priority: "high" | "normal" | "low" = "normal"
-): Promise<string> {
+// /**
+//  * STEP 1: Save mail to database
+//  */
+// export async function queueMail(
+//   mailType: string,
+//   params: {
+//     to: string;
+//     subject: string;
+//     html: string;
+//     senderKey: keyof typeof emailConfigs;
+//     replyTo?: string | null;
+//   },
+//   priority: "high" | "normal" | "low" = "normal"
+// ): Promise<string> {
+//   try {
+//     console.log(`📥 Queueing ${mailType} mail for: ${params.to}`);
+
+//     // Save to database
+//     const queuedMail = await prisma.mailQueue.create({
+//       data: {
+//         to: params.to,
+//         subject: params.subject,
+//         html: params.html,
+//         senderKey: params.senderKey,
+//         replyTo: params.replyTo,
+//         status: "PENDING",
+//         attempts: 0,
+//         mailType,
+//         priority
+//       },
+//     });
+
+//     console.log(`✅ Mail saved to queue: ${queuedMail.id}`);
+
+//     // STEP 2: Trigger background processor immediately
+//     setImmediate(() => {
+//       startBackgroundProcessor(mailType, priority);
+//     });
+
+//     return queuedMail.id;
+//   } catch (error: any) {
+//     console.error(`❌ Failed to queue ${mailType} mail:`, error);
+//     throw new Error(`Failed to queue mail: ${error.message}`);
+//   }
+// }
+
+// /**
+//  * STEP 2: Start 5-second background processor
+//  */
+// async function startBackgroundProcessor(mailType: string, priority: string): Promise<void> {
+//   const processorKey = `${mailType}_${priority}`;
+  
+//   // Prevent duplicate processors for same type/priority
+//   if (activeProcessors.has(processorKey)) {
+//     console.log(`📤 Processor ${processorKey} already running`);
+//     return;
+//   }
+
+//   console.log(`🔄 Starting 5-second processor for: ${processorKey}`);
+
+//   // Create and track processor
+//   const processorPromise = runMailProcessor(mailType, priority);
+//   activeProcessors.set(processorKey, processorPromise);
+
+//   try {
+//     await processorPromise;
+//   } catch (error) {
+//     console.error(`❌ Processor ${processorKey} failed:`, error);
+//   } finally {
+//     activeProcessors.delete(processorKey);
+//     console.log(`✅ Processor ${processorKey} completed`);
+//   }
+// }
+
+// /**
+//  * STEP 3: 5-second mail processor with retry logic
+//  */
+// async function runMailProcessor(mailType: string, priority: string): Promise<void> {
+//   const startTime = Date.now();
+//   const PROCESSING_TIME = 5000; // Exactly 5 seconds
+//   let processedCount = 0;
+
+//   while (Date.now() - startTime < PROCESSING_TIME) {
+//     try {
+//       // Get pending mails for this type/priority
+//       const pendingMails = await prisma.mailQueue.findMany({
+//         where: {
+//           status: "PENDING",
+//           attempts: { lt: 3 }, // Max 3 attempts
+//           mailType,
+//           priority,
+//         },
+//         orderBy: { createdAt: "asc" },
+//         take: 5, // Process 5 at a time
+//       });
+
+//       if (pendingMails.length === 0) {
+//         console.log(`📭 No pending mails for ${mailType}(${priority})`);
+//         break;
+//       }
+
+//       // Process each mail
+//       for (const mail of pendingMails) {
+//         try {
+//           const success = await processSingleMail(mail.id);
+//           if (success) {
+//             processedCount++;
+//             console.log(`📨 Sent: ${mail.id}`);
+//           }
+//         } catch (error) {
+//           console.error(`❌ Failed to process ${mail.id}:`, error);
+//         }
+
+//         // Small delay between mails
+//         await sleep(100);
+//       }
+
+//       // Delay between batches
+//       await sleep(200);
+//     } catch (error) {
+//       console.error(`❌ Processor error:`, error);
+//       await sleep(500);
+//     }
+//   }
+
+//   console.log(`✅ Processed ${processedCount} mails in ${Date.now() - startTime}ms`);
+// }
+
+// /**
+//  * STEP 4: Process individual mail with retry logic
+//  */
+// async function processSingleMail(mailId: string): Promise<boolean> {
+//   try {
+//     // Get mail and increment attempts
+//     const mail = await prisma.mailQueue.findUnique({
+//       where: { id: mailId, status: "PENDING" },
+//     });
+
+//     if (!mail) {
+//       console.log(`📭 Mail ${mailId} not found or processed`);
+//       return true;
+//     }
+
+//     if (mail.attempts >= 3) {
+//       await deleteMail(mailId, "FAILED", "Max attempts reached");
+//       return false;
+//     }
+
+//     // Increment attempts
+//     await prisma.mailQueue.update({
+//       where: { id: mailId },
+//       data: { attempts: { increment: 1 }, lastAttemptAt: new Date() },
+//     });
+
+//     // Get sender config
+//     const senderConfig = emailConfigs[mail.senderKey as keyof typeof emailConfigs];
+//     if (!senderConfig) {
+//       await deleteMail(mailId, "FAILED", "Invalid sender config");
+//       return false;
+//     }
+
+//     // Send email with retry
+//     const sendSuccess = await sendEmailWithRetry(mail, senderConfig);
+
+//     if (sendSuccess) {
+//       // Success - delete from queue
+//       await deleteMail(mailId, "SENT", null);
+//       return true;
+//     } else {
+//       // Failed - check if should delete or retry
+//       const updatedMail = await prisma.mailQueue.findUnique({
+//         where: { id: mailId },
+//       });
+
+//       if (updatedMail && updatedMail.attempts >= 3) {
+//         await deleteMail(mailId, "FAILED", "Send failed after 3 attempts");
+//       }
+//       return false;
+//     }
+//   } catch (error) {
+//     console.error(`❌ Error processing mail ${mailId}:`, error);
+//     return false;
+//   }
+// }
+
+// /**
+//  * STEP 5: Send email with smart retry
+//  */
+// async function sendEmailWithRetry(mail: any, senderConfig: any): Promise<boolean> {
+//   for (let attempt = 1; attempt <= 2; attempt++) {
+//     try {
+//       const transporter = getTransporter(senderConfig);
+//       const formattedFrom = `"Pluggn" <${senderConfig.user}>`;
+
+//       // Send with timeout
+//       await Promise.race([
+//         transporter.sendMail({
+//           from: formattedFrom,
+//           to: mail.to,
+//           subject: mail.subject,
+//           html: mail.html,
+//         }),
+//         timeoutPromise(20000), // 20 second timeout
+//       ]);
+
+//       console.log(`✅ Email sent successfully: ${mail.id}`);
+//       return true;
+//     } catch (error) {
+//       console.error(`❌ Send attempt ${attempt} failed for ${mail.id}:`, error);
+
+//       // Reset transporter on connection issues
+//       if (attempt === 1 && isConnectionError(error)) {
+//         console.log(`🔄 Resetting transporter for retry`);
+//         resetTransporter(mail.senderKey);
+//         await sleep(1000);
+//       }
+//     }
+//   }
+
+//   return false;
+// }
+
+// /**
+//  * STEP 6: Clean deletion after success/failure
+//  */
+// async function deleteMail(mailId: string, finalStatus: string, error: string | null): Promise<void> {
+//   try {
+//     if (finalStatus === "SENT") {
+//       // Update status first, then delete
+//       await prisma.mailQueue.update({
+//         where: { id: mailId },
+//         data: { status: "SENT", sentAt: new Date(), error: null },
+//       });
+      
+//       // Delete after short delay to avoid race conditions
+//       setTimeout(async () => {
+//         try {
+//           await prisma.mailQueue.delete({ where: { id: mailId } });
+//           console.log(`🗑️ Deleted sent mail: ${mailId}`);
+//         } catch (err) {
+//           console.error(`Failed to delete sent mail ${mailId}:`, err);
+//         }
+//       }, 1000);
+//     } else {
+//       // Update to failed status first, then delete
+//       await prisma.mailQueue.update({
+//         where: { id: mailId },
+//         data: { status: "FAILED", error },
+//       });
+      
+//       // Delete failed mail after delay
+//       setTimeout(async () => {
+//         try {
+//           await prisma.mailQueue.delete({ where: { id: mailId } });
+//           console.log(`🗑️ Deleted failed mail: ${mailId}`);
+//         } catch (err) {
+//           console.error(`Failed to delete failed mail ${mailId}:`, err);
+//         }
+//       }, 2000);
+//     }
+//   } catch (error) {
+//     console.error(`❌ Error updating/deleting mail ${mailId}:`, error);
+//   }
+// }
+
+// // Helper functions
+// function sleep(ms: number): Promise<void> {
+//   return new Promise(resolve => setTimeout(resolve, ms));
+// }
+
+// function timeoutPromise(ms: number): Promise<never> {
+//   return new Promise((_, reject) => 
+//     setTimeout(() => reject(new Error('Timeout')), ms)
+//   );
+// }
+
+// function isConnectionError(error: any): boolean {
+//   const message = error?.message?.toLowerCase() || '';
+//   return message.includes('timeout') || 
+//          message.includes('connection') || 
+//          message.includes('enotfound') ||
+//          message.includes('socket');
+// }
+
+// // Cleanup old records (run this periodically)
+// export async function cleanupOldMails(): Promise<void> {
+//   try {
+//     const oneDayAgo = new Date();
+//     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+//     const deleted = await prisma.mailQueue.deleteMany({
+//       where: {
+//         OR: [
+//           { status: "SENT", sentAt: { lt: oneDayAgo } },
+//           { status: "FAILED", lastAttemptAt: { lt: oneDayAgo } },
+//         ],
+//       },
+//     });
+
+//     if (deleted.count > 0) {
+//       console.log(`🧹 Cleaned up ${deleted.count} old mail records`);
+//     }
+//   } catch (error) {
+//     console.error('❌ Cleanup error:', error);
+//   }
+// }
+
+// // Convenience functions for different mail types
+// export const queueSuccessOrderMail = (params: Omit<Parameters<typeof queueMail>[1], 'mailType'>) =>
+//   queueMail("success_order", params, "high");
+
+// export const queueFailedOrderMail = (params: Omit<Parameters<typeof queueMail>[1], 'mailType'>) =>
+//   queueMail("failed_order", params, "high");
+
+// export const queueNotifyAdminMail = (params: Omit<Parameters<typeof queueMail>[1], 'mailType'>) =>
+//   queueMail("notify_admin", params, "normal");
+
+// export const queueWelcomeMail = (params: Omit<Parameters<typeof queueMail>[1], 'mailType'>) =>
+//   queueMail("welcome_user", params, "normal");
+
+// export const queuePasswordResetMail = (params: Omit<Parameters<typeof queueMail>[1], 'mailType'>) =>
+//   queueMail("password_reset", params, "high");
+
+// // Start periodic cleanup
+// setInterval(() => {
+//   cleanupOldMails().catch(console.error);
+// }, 30 * 60 * 1000); // Every 30 minutes
+
+
+
+
+
+
+
+// lib/email/queue/queueMail.ts
+// import { prisma } from "@/lib/prisma";
+// import fetch from "node-fetch"; // Required in Node.js (Express) environment
+
+export async function queueMail({
+  to,
+  subject,
+  html,
+  senderKey,
+  replyTo,
+  mailType,
+  priority,
+}: {
+  to: string;
+  subject: string;
+  html: string;
+  senderKey: string;
+  replyTo?: string;
+  mailType: string;
+  priority: "low" | "normal" | "high";
+}) {
   try {
-    console.log(`📥 Queueing ${mailType} mail for: ${params.to}`);
+    console.log(`📥 Queueing ${mailType} mail for: ${to}`);
 
-    // Save to database
     const queuedMail = await prisma.mailQueue.create({
       data: {
-        to: params.to,
-        subject: params.subject,
-        html: params.html,
-        senderKey: params.senderKey,
-        replyTo: params.replyTo,
+        to,
+        subject,
+        html,
+        senderKey,
+        replyTo,
         status: "PENDING",
         attempts: 0,
         mailType,
-        priority
+        priority,
+        createdAt: new Date(),
       },
     });
 
     console.log(`✅ Mail saved to queue: ${queuedMail.id}`);
 
-    // STEP 2: Trigger background processor immediately
-    setImmediate(() => {
-      startBackgroundProcessor(mailType, priority);
+    // Trigger mail processor
+    const baseUrl = process.env.BACKEND_URL || "http://localhost:3000";
+    fetch(`${baseUrl}/api/mail/processQueuedMail`, {
+      method: "POST",
+    }).catch((err) => {
+      console.error("❌ Could not trigger mail processor:", err);
     });
 
     return queuedMail.id;
@@ -1861,284 +2205,60 @@ export async function queueMail(
   }
 }
 
-/**
- * STEP 2: Start 5-second background processor
- */
-async function startBackgroundProcessor(mailType: string, priority: string): Promise<void> {
-  const processorKey = `${mailType}_${priority}`;
-  
-  // Prevent duplicate processors for same type/priority
-  if (activeProcessors.has(processorKey)) {
-    console.log(`📤 Processor ${processorKey} already running`);
-    return;
-  }
 
-  console.log(`🔄 Starting 5-second processor for: ${processorKey}`);
+export async function startBackgroundProcessor(
+  scope: string,
+  priority: "low" | "normal" | "high"
+) {
+  console.log(`🔄 Processing mail queue: scope=${scope}, priority=${priority}`);
 
-  // Create and track processor
-  const processorPromise = runMailProcessor(mailType, priority);
-  activeProcessors.set(processorKey, processorPromise);
+  const mails = await prisma.mailQueue.findMany({
+    where: {
+      status: "PENDING",
+      priority,
+    },
+    take: 5, // optional throttle
+  });
 
-  try {
-    await processorPromise;
-  } catch (error) {
-    console.error(`❌ Processor ${processorKey} failed:`, error);
-  } finally {
-    activeProcessors.delete(processorKey);
-    console.log(`✅ Processor ${processorKey} completed`);
-  }
-}
-
-/**
- * STEP 3: 5-second mail processor with retry logic
- */
-async function runMailProcessor(mailType: string, priority: string): Promise<void> {
-  const startTime = Date.now();
-  const PROCESSING_TIME = 5000; // Exactly 5 seconds
-  let processedCount = 0;
-
-  while (Date.now() - startTime < PROCESSING_TIME) {
+  for (const mailn of mails) {
+    const sender = senderKeyToMailSender(
+      mailn.senderKey as keyof typeof emailConfigs
+    );
     try {
-      // Get pending mails for this type/priority
-      const pendingMails = await prisma.mailQueue.findMany({
-        where: {
-          status: "PENDING",
-          attempts: { lt: 3 }, // Max 3 attempts
-          mailType,
-          priority,
+      await mail(
+        mailn.to,
+        mailn.subject,
+        mailn.html,
+        sender,
+        mailn.replyTo || undefined
+      );
+
+      await prisma.mailQueue.update({
+        where: { id: mailn.id },
+        data: {
+          status: "SENT",
+          sentAt: new Date(),
         },
-        orderBy: { createdAt: "asc" },
-        take: 5, // Process 5 at a time
       });
 
-      if (pendingMails.length === 0) {
-        console.log(`📭 No pending mails for ${mailType}(${priority})`);
-        break;
-      }
+      console.log(`✅ Sent mail: ${mailn.id}`);
+    } catch (err: any) {
+      console.error(`❌ Failed to send mail: ${mailn.id}`, err);
 
-      // Process each mail
-      for (const mail of pendingMails) {
-        try {
-          const success = await processSingleMail(mail.id);
-          if (success) {
-            processedCount++;
-            console.log(`📨 Sent: ${mail.id}`);
-          }
-        } catch (error) {
-          console.error(`❌ Failed to process ${mail.id}:`, error);
-        }
-
-        // Small delay between mails
-        await sleep(100);
-      }
-
-      // Delay between batches
-      await sleep(200);
-    } catch (error) {
-      console.error(`❌ Processor error:`, error);
-      await sleep(500);
-    }
-  }
-
-  console.log(`✅ Processed ${processedCount} mails in ${Date.now() - startTime}ms`);
-}
-
-/**
- * STEP 4: Process individual mail with retry logic
- */
-async function processSingleMail(mailId: string): Promise<boolean> {
-  try {
-    // Get mail and increment attempts
-    const mail = await prisma.mailQueue.findUnique({
-      where: { id: mailId, status: "PENDING" },
-    });
-
-    if (!mail) {
-      console.log(`📭 Mail ${mailId} not found or processed`);
-      return true;
-    }
-
-    if (mail.attempts >= 3) {
-      await deleteMail(mailId, "FAILED", "Max attempts reached");
-      return false;
-    }
-
-    // Increment attempts
-    await prisma.mailQueue.update({
-      where: { id: mailId },
-      data: { attempts: { increment: 1 }, lastAttemptAt: new Date() },
-    });
-
-    // Get sender config
-    const senderConfig = emailConfigs[mail.senderKey as keyof typeof emailConfigs];
-    if (!senderConfig) {
-      await deleteMail(mailId, "FAILED", "Invalid sender config");
-      return false;
-    }
-
-    // Send email with retry
-    const sendSuccess = await sendEmailWithRetry(mail, senderConfig);
-
-    if (sendSuccess) {
-      // Success - delete from queue
-      await deleteMail(mailId, "SENT", null);
-      return true;
-    } else {
-      // Failed - check if should delete or retry
-      const updatedMail = await prisma.mailQueue.findUnique({
-        where: { id: mailId },
-      });
-
-      if (updatedMail && updatedMail.attempts >= 3) {
-        await deleteMail(mailId, "FAILED", "Send failed after 3 attempts");
-      }
-      return false;
-    }
-  } catch (error) {
-    console.error(`❌ Error processing mail ${mailId}:`, error);
-    return false;
-  }
-}
-
-/**
- * STEP 5: Send email with smart retry
- */
-async function sendEmailWithRetry(mail: any, senderConfig: any): Promise<boolean> {
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    try {
-      const transporter = getTransporter(senderConfig);
-      const formattedFrom = `"Pluggn" <${senderConfig.user}>`;
-
-      // Send with timeout
-      await Promise.race([
-        transporter.sendMail({
-          from: formattedFrom,
-          to: mail.to,
-          subject: mail.subject,
-          html: mail.html,
-        }),
-        timeoutPromise(20000), // 20 second timeout
-      ]);
-
-      console.log(`✅ Email sent successfully: ${mail.id}`);
-      return true;
-    } catch (error) {
-      console.error(`❌ Send attempt ${attempt} failed for ${mail.id}:`, error);
-
-      // Reset transporter on connection issues
-      if (attempt === 1 && isConnectionError(error)) {
-        console.log(`🔄 Resetting transporter for retry`);
-        resetTransporter(mail.senderKey);
-        await sleep(1000);
-      }
-    }
-  }
-
-  return false;
-}
-
-/**
- * STEP 6: Clean deletion after success/failure
- */
-async function deleteMail(mailId: string, finalStatus: string, error: string | null): Promise<void> {
-  try {
-    if (finalStatus === "SENT") {
-      // Update status first, then delete
       await prisma.mailQueue.update({
-        where: { id: mailId },
-        data: { status: "SENT", sentAt: new Date(), error: null },
+        where: { id: mailn.id },
+        data: {
+          status: "FAILED",
+          attempts: { increment: 1 },
+        },
       });
-      
-      // Delete after short delay to avoid race conditions
-      setTimeout(async () => {
-        try {
-          await prisma.mailQueue.delete({ where: { id: mailId } });
-          console.log(`🗑️ Deleted sent mail: ${mailId}`);
-        } catch (err) {
-          console.error(`Failed to delete sent mail ${mailId}:`, err);
-        }
-      }, 1000);
-    } else {
-      // Update to failed status first, then delete
-      await prisma.mailQueue.update({
-        where: { id: mailId },
-        data: { status: "FAILED", error },
-      });
-      
-      // Delete failed mail after delay
-      setTimeout(async () => {
-        try {
-          await prisma.mailQueue.delete({ where: { id: mailId } });
-          console.log(`🗑️ Deleted failed mail: ${mailId}`);
-        } catch (err) {
-          console.error(`Failed to delete failed mail ${mailId}:`, err);
-        }
-      }, 2000);
     }
-  } catch (error) {
-    console.error(`❌ Error updating/deleting mail ${mailId}:`, error);
   }
 }
 
-// Helper functions
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+
+export function senderKeyToMailSender(key: keyof typeof emailConfigs) {
+  const sender = emailConfigs[key];
+  if (!sender) throw new Error(`Invalid senderKey: ${key}`);
+  return sender;
 }
-
-function timeoutPromise(ms: number): Promise<never> {
-  return new Promise((_, reject) => 
-    setTimeout(() => reject(new Error('Timeout')), ms)
-  );
-}
-
-function isConnectionError(error: any): boolean {
-  const message = error?.message?.toLowerCase() || '';
-  return message.includes('timeout') || 
-         message.includes('connection') || 
-         message.includes('enotfound') ||
-         message.includes('socket');
-}
-
-// Cleanup old records (run this periodically)
-export async function cleanupOldMails(): Promise<void> {
-  try {
-    const oneDayAgo = new Date();
-    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-
-    const deleted = await prisma.mailQueue.deleteMany({
-      where: {
-        OR: [
-          { status: "SENT", sentAt: { lt: oneDayAgo } },
-          { status: "FAILED", lastAttemptAt: { lt: oneDayAgo } },
-        ],
-      },
-    });
-
-    if (deleted.count > 0) {
-      console.log(`🧹 Cleaned up ${deleted.count} old mail records`);
-    }
-  } catch (error) {
-    console.error('❌ Cleanup error:', error);
-  }
-}
-
-// Convenience functions for different mail types
-export const queueSuccessOrderMail = (params: Omit<Parameters<typeof queueMail>[1], 'mailType'>) =>
-  queueMail("success_order", params, "high");
-
-export const queueFailedOrderMail = (params: Omit<Parameters<typeof queueMail>[1], 'mailType'>) =>
-  queueMail("failed_order", params, "high");
-
-export const queueNotifyAdminMail = (params: Omit<Parameters<typeof queueMail>[1], 'mailType'>) =>
-  queueMail("notify_admin", params, "normal");
-
-export const queueWelcomeMail = (params: Omit<Parameters<typeof queueMail>[1], 'mailType'>) =>
-  queueMail("welcome_user", params, "normal");
-
-export const queuePasswordResetMail = (params: Omit<Parameters<typeof queueMail>[1], 'mailType'>) =>
-  queueMail("password_reset", params, "high");
-
-// Start periodic cleanup
-setInterval(() => {
-  cleanupOldMails().catch(console.error);
-}, 30 * 60 * 1000); // Every 30 minutes

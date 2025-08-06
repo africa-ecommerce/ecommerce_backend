@@ -33,6 +33,7 @@ import {
 import { routeErrorCatcher } from "./middleware/error.middleware";
 import { errorMail } from "./helper/mail/dev/errorMail";
 import contactSupportRoutes from "./routes/contactSupport.routes";
+import mailRoutes from "./routes/mail.routes";
 
 
 // Load environment variables
@@ -287,6 +288,7 @@ app.use("/analytics", analyticsRoutes, routeErrorCatcher);
 app.use("/payments", paymentsRoutes, routeErrorCatcher);
 app.use("/contact-support", contactSupportRoutes, routeErrorCatcher);
 app.use("/admin", adminRoutes, routeErrorCatcher);
+app.use("/mail", mailRoutes, routeErrorCatcher);
 
 // Global error handling middleware
 app.use(async(err: any, req: Request, res: Response, next: NextFunction) => {

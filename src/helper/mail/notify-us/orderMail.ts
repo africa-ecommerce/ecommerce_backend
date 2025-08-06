@@ -29,11 +29,13 @@ export async function notifyOrderMail() {
   // });
 
 
-    await queueMail("general", {
+    await queueMail({
       to,
       subject,
       html,
       senderKey: "admin",
+      mailType: "general",
+      priority: "normal",
     });
 
    
