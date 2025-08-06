@@ -3,7 +3,7 @@ import { mail } from "../lib/mail";
 import { emailConfigs } from "../config";
 
 
-
+//try saving this mail in db also first, for us to reference and send in background
 export async function contactSupport(req: Request, res:Response, next: NextFunction) {
   const { email, subject, message } = req.body;
   const { support } = emailConfigs;

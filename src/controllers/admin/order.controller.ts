@@ -1,6 +1,5 @@
 import { NextFunction, Request, Response } from "express";
 import { prisma } from "../../config";
-// import { sendOrderMail } from "../../helper/mail/sendOrderMail";
 import { scheduleOrderPaymentProcessing } from "../../helper/workers/paymentProcessor";
 import { shippedOrderMail } from "../../helper/mail/order/shippedOrderMail";
 import { deliveredOrderMail } from "../../helper/mail/order/deliveredOrderMail";
@@ -68,15 +67,6 @@ export const shippedOrder = async (req: Request, res: Response) => {
       message: "Order status updated successfully!",
       data: { status: "SHIPPED" },
     });
-
-    // // Background mail process
-    // setImmediate(() => {
-    //   shippedOrderMail(order.buyerEmail, order.buyerName, order.orderNumber).catch(
-    //     (error) => {
-    //       console.error("Failed to send shipped order email:", error);
-    //     }
-    //   );
-    // });
   } catch (err) {
     console.error("Error updating order status:", err);
     res.status(500).json({ error: "Internal server error!" });

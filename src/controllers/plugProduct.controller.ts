@@ -76,7 +76,7 @@ export const plugProductController = {
         return;
       }
 
-      const result = await prisma.$transaction(async (tx) => {
+       await prisma.$transaction(async (tx) => {
         // Prepare products
         const productsToCreate = products.map((product) => ({
           originalId: product.id,
@@ -102,33 +102,11 @@ export const plugProductController = {
             },
           });
         }
-        // // Return the latest products for this plug
-        // const createdPlugProducts = await tx.plugProduct.findMany({
-        //   where: {
-        //     plugId: plug.id,
-        //     originalId: { in: uniqueProductIds },
-        //   },
-        //   include: {
-        //     originalProduct: {
-        //       include: {
-        //         variations: true,
-        //       },
-        //     },
-        //   },
-        //   orderBy: { createdAt: "desc" },
-        // });
-
-        // // Format each product with complete details
-        // const formattedProducts = createdPlugProducts.map((product) =>
-        //   formatPlugProduct(product)
-        // );
-
-        // return formattedProducts;
+       
       });
 
       res.status(201).json({
         message: `Added products to your store!`,
-        // data: result,
       });
     } catch (error) {
       next(error);
@@ -184,10 +162,8 @@ export const plugProductController = {
       const productId = req.params.productId;
       const plug = req.plug!;
       const { price, commissionRate } = req.body;
-      console.log(price);
-      console.log(commissionRate);
-
-      // Find the product  // --------------> ADD COMMISSION AS AT TIME OF ADDING PRODUCTS
+     
+      // Find the product  
       const existingProduct = await prisma.plugProduct.findFirst({
         where: {
           id: productId,
@@ -224,11 +200,6 @@ export const plugProductController = {
         return;
       }
 
-      // // Calculate effective date (1 day from now)
-      // const priceEffectiveAt = new Date();
-      // priceEffectiveAt.setDate(priceEffectiveAt.getDate() + 1);
-
-      // Update with pending price and effective date
       const updatedProduct = await prisma.plugProduct.update({
         where: { id: productId, plugId: plug.id },
         data: {
@@ -238,9 +209,6 @@ export const plugProductController = {
         },
       });
 
-      // Schedule this specific product's update - this will start the scheduler
-      // or adjust it based on if the user updates price again during this time
-      // await scheduleProductUpdate(productId, priceEffectiveAt);
       // Format response
       const formattedProduct = formatPlugProduct(updatedProduct);
       res.status(200).json({

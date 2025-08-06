@@ -1,5 +1,7 @@
 MANAGE RETURNS IF THERE ARE RETURNS
 REMOVE OUR PERCENT AND SHOULD WE LET PLUG WAIT FOR 3 DAYS
+//try saving contact support mail in db also first, for us to reference and send in background
+
 
 
 

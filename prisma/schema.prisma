@@ -104,7 +104,7 @@ model Plug {
   aboutBusiness   String?
   niches          String[] // Array of strings
   generalMerchant Boolean
-   avatar          String? 
+  avatar          String?
 
   // Add site configuration fields
   subdomain    String?       @unique
@@ -237,8 +237,8 @@ model Product {
   name         String
   description  String?
   price        Float
-  minPrice     Float?
-  maxPrice     Float?
+  minPrice     Float
+  maxPrice     Float
   category     String
   images       String // minio storage path or URL
   supplierId   String
@@ -249,7 +249,6 @@ model Product {
   plugsCount   Int                @default(0) // Counter for number of plugs using this product
   supplier     Supplier           @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   variations   ProductVariation[]
-  // orderItems   OrderItem[]
   plugProducts PlugProduct[] // Relationship to track which plugs are using this product
   reviews      Review[] // relation for reviews
   createdAt    DateTime           @default(now())
@@ -282,18 +281,15 @@ model ProductVariation {
 }
 
 model PlugProduct {
-  id                String    @id @default(cuid())
-  originalId        String
-  plugId            String
-  price             Float
-  commission        Float?
-  // pendingPrice      Float? //  field for scheduled price
-  // priceEffectiveAt  DateTime? //  field for effective date
-  // lastPriceUpdateAt DateTime? //  field to track when a price was actually updated
-  plug              Plug      @relation(fields: [plugId], references: [id], onDelete: Cascade)
-  originalProduct   Product   @relation(fields: [originalId], references: [id], onDelete: Cascade)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id              String   @id @default(cuid())
+  originalId      String
+  plugId          String
+  price           Float
+  commission      Float
+  plug            Plug     @relation(fields: [plugId], references: [id], onDelete: Cascade)
+  originalProduct Product  @relation(fields: [originalId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@unique([plugId, originalId]) // Ensure a plug can't add the same product twice
   @@index([plugId])
@@ -315,13 +311,7 @@ model Order {
   buyer              Buyer             @relation(fields: [buyerId], references: [id])
   plugId             String
   plug               Plug              @relation(fields: [plugId], references: [id])
-  // supplierId         String
-  // supplier           Supplier         @relation(fields: [supplierId], references: [id])
   totalAmount        Float             @default(0) //Total amount paid by the buyer for this order
-  // supplierAmount     Float            @default(0) //TOTAL AMOUNT SUPPLIER GETS FROM THIS ORDER
-  // plugAmount         Float            @default(0) //TOTAL AMOUNT PLUG GETS FROM THIS ORDER
-  // plugPrice          Float            @default(0) //PLUG PRICE FOR THE PRODUCT
-  // supplierPrice      Float            @default(0) //SUPPLIER PRICE FOR THE PRODUCT
   deliveryFee        Float             @default(0)
   paymentMethod      String
   status             OrderStatus       @default(PENDING)
@@ -368,17 +358,12 @@ model OrderItem {
   productColor      String? // Color of the product, if applicable
   variantSize       String? // Size of the product variant, if applicable
   variantColor      String? // Color of the product variant, if applicable
-  // returned      Boolean  @default(false) // Track if this item was returned
-  // returnedQuantity Int?  @default(0) // Quantity of the item returned, if applicable
   order             Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  // variant      ProductVariation? @relation(fields: [variantId], references: [id])
-  // product      Product           @relation(fields: [productId], references: [id])
   PausedOrderItem   PausedOrderItem? // Track paused order items
   ReturnedOrderItem ReturnedOrderItem? // Track returned order items
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
-  // @@index([returned]) // Add index for efficient queries on returned items
-
+ 
   @@index([orderId])
   @@index([productId])
 }
@@ -426,7 +411,6 @@ model Link {
   targetUrl String
   plug      Plug            @relation(fields: [plugId], references: [id], onDelete: Cascade)
   analytics LinkAnalytics[]
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -439,7 +423,6 @@ model LinkAnalytics {
   platform String
   clicks   Int    @default(0)
   link     Link   @relation(fields: [linkId], references: [id], onDelete: Cascade)
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -453,23 +436,41 @@ model StoreAnalytics {
   count     Int    @default(0)
 }
 
-
 //QUEUE MAILS FOR VERCEL SEVERLESS
+// model MailQueue {
+//   id        String   @id @default(cuid())
+//   to        String
+//   subject   String
+//   html      String
+//   senderKey String // "orders", "admin", etc.
+//   replyTo   String?
+//   status    String   @default("PENDING") // SENT, FAILED
+//   attempts  Int      @default(0)
+//   createdAt DateTime @default(now())
+// }
+
+
 model MailQueue {
-  id        String   @id @default(cuid())
-  to        String
-  subject   String
-  html      String
-  senderKey String   // "orders", "admin", etc.
-  replyTo   String?
-  status    String   @default("PENDING") // SENT, FAILED
-  attempts  Int      @default(0)
-  createdAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  to            String
+  subject       String
+  html          String   @db.Text
+  senderKey     String
+  replyTo       String?
+  status        String   @default("PENDING")
+  attempts      Int      @default(0)
+  error         String?  @db.Text
+  createdAt     DateTime @default(now())
+  lastAttemptAt DateTime?
+  sentAt        DateTime?
+
+  @@index([status])
+  @@map("mail_queue")
 }
+
 model AdminOTP {
   id        String   @id @default(cuid())
   token     String   @unique
   expires   DateTime
   createdAt DateTime @default(now())
 }
-

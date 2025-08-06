@@ -10,6 +10,7 @@ import {
 import { subdomainSchema } from "../lib/zod/schema";
 import { AuthRequest } from "../types";
 
+
 /**
  * Create a new store for a user
  * Ensures atomicity between MinIO and database operations

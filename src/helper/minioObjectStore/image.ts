@@ -68,13 +68,7 @@ const getContentDisposition = (filename: string): string => {
 };
 
 
-// Upload multiple images to MinIO
-// export const uploadImages = async (
-//   files: Express.Multer.File[]
-// ): Promise<string[]> => {
-//   const uploadPromises = files.map(file => uploadImage(file));
-//   return Promise.all(uploadPromises);
-// };
+
 
 
 export async function uploadImages(files: Express.Multer.File[]): Promise<string[]> {
@@ -132,23 +126,6 @@ export const extractObjectName = (url: string): string => {
     return url.replace(/^\/+/, "");
   }
 };
-
-// Delete images from MinIO
-// export const deleteImages = async (urls: string[]): Promise<void> => {
-//   if (!urls.length) return;
-  
-//   for (const url of urls) {
-//     try {
-//       const objectName = extractObjectName(url);
-//       await minioClient.removeObject(IMAGES_BUCKET, objectName);
-//       console.log(`Deleted image from MinIO: ${objectName}`);
-//     } catch (error) {
-//       console.error(`Failed to delete image ${url}:`, error);
-//       throw error;
-//     }
-//   }
-// };
-
 
 
 

@@ -219,7 +219,7 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
     });
 
     // ✅ Fire both off right after the DB/save logic in the background
-    void successOrderMail(
+    await successOrderMail(
       formattedInput.buyerEmail,
       response.buyerName,
       response.paymentMethod,
@@ -228,7 +228,7 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
       orderNumber
     ).catch((err) => console.error("Failed to queue successOrderMail", err));
 
-    void notifyOrderMail().catch((err) =>
+    await notifyOrderMail().catch((err) =>
       console.error("Failed to queue notifyOrderMail", err)
     );
   } catch (error) {
@@ -243,16 +243,6 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
     }
     
     next(error);
-  
-    // // Send fallback email *after* response begins processing
-    // setImmediate(() => {
-    //   failedOrderMail(
-    //     formattedInput.buyerEmail,
-    //     formattedInput.buyerName
-    //   ).catch((err) => {
-    //     console.error("Error sending fallback email to buyer:", err);
-    //   });
-    // });
 }
 }
 export async function getBuyerInfo(req: Request, res: Response, next: NextFunction) {
