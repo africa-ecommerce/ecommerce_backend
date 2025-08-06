@@ -1,5 +1,5 @@
 import {  frontendUrl } from "../../../config";
-import { sendQueuedMail } from "../../workers/mailQueue";
+import { queueMail, sendQueuedMail } from "../../workers/mailQueue";
 
 export async function successOrderMail(
   to: string,
@@ -85,10 +85,21 @@ export async function successOrderMail(
     </div>
   `;
 
-  await sendQueuedMail({
-    to,
-    subject,
-    html,
-    senderKey: "orders", // key from emailConfigs
-  });
+  // await sendQueuedMail({
+  //   to,
+  //   subject,
+  //   html,
+  //   senderKey: "orders", // key from emailConfigs
+  // });
+
+
+  await queueMail(
+    "general",
+    {
+      to,
+      subject,
+      html,
+      senderKey: "orders",
+    }
+  );
 }

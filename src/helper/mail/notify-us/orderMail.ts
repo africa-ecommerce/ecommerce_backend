@@ -1,6 +1,6 @@
 import { mail } from "../../../lib/mail";
 import { emailConfigs } from "../../../config";
-import { sendQueuedMail } from "../../workers/mailQueue";
+import { queueMail, sendQueuedMail } from "../../workers/mailQueue";
 
 
 export async function notifyOrderMail() {
@@ -21,12 +21,20 @@ export async function notifyOrderMail() {
 `;
 
 
-  await sendQueuedMail({
-    to,
-    subject,
-    html,
-    senderKey: "admin", // key from emailConfigs
-  });
+  // await sendQueuedMail({
+  //   to,
+  //   subject,
+  //   html,
+  //   senderKey: "admin", // key from emailConfigs
+  // });
+
+
+    await queueMail("general", {
+      to,
+      subject,
+      html,
+      senderKey: "admin",
+    });
 
    
 }

@@ -450,22 +450,53 @@ model StoreAnalytics {
 // }
 
 
+// model MailQueue {
+//   id            String   @id @default(cuid())
+//   to            String
+//   subject       String
+//   html          String   @db.Text
+//   senderKey     String
+//   replyTo       String?
+//   status        String   @default("PENDING")
+//   attempts      Int      @default(0)
+//   error         String?  @db.Text
+//   createdAt     DateTime @default(now())
+//   lastAttemptAt DateTime?
+//   sentAt        DateTime?
+
+//   @@index([status])
+//   @@map("mail_queue")
+// }
+
+
+
 model MailQueue {
-  id            String   @id @default(cuid())
+  id            String     @id @default(cuid())
   to            String
   subject       String
-  html          String   @db.Text
+  html          String     @db.Text
   senderKey     String
   replyTo       String?
-  status        String   @default("PENDING")
-  attempts      Int      @default(0)
-  error         String?  @db.Text
-  createdAt     DateTime @default(now())
+  status        MailStatus @default(PENDING)
+  attempts      Int        @default(0)
+  mailType      String     @default("general")
+  priority      String     @default("normal") // ADD PRIORITY FIELD
+  error         String?
+  createdAt     DateTime   @default(now())
   lastAttemptAt DateTime?
   sentAt        DateTime?
 
-  @@index([status])
-  @@map("mail_queue")
+  @@index([status, attempts])
+  @@index([createdAt])
+  @@index([mailType, status, attempts])
+  @@index([mailType, priority, status]) // ADD PRIORITY INDEX
+  @@map("mailQueue")
+}
+
+enum MailStatus {
+  PENDING
+  SENT
+  FAILED
 }
 
 model AdminOTP {
