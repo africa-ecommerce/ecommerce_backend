@@ -56,8 +56,8 @@ const initializeImagesBucket = async () => {
       Statement: [
         {
           Effect: "Allow",
-          Principal: { AWS: ["*"] },
-          Action: ["s3:GetObject"],
+         "Principal": { "AWS": ["arn:aws:iam:::user/*"] },
+          Action: ["s3:GetObject", "s3:PutObject"],
           Resource: [`arn:aws:s3:::${IMAGES_BUCKET}/*`],
         },
       ],
@@ -118,8 +118,8 @@ const initializeStoreConfigBucket = async () => {
       Statement: [
         {
           Effect: "Allow",
-          Principal: { AWS: ["*"] },
-          Action: ["s3:GetObject"],
+          Principal: { AWS: ["arn:aws:iam:::user/*"] },
+          Action: ["s3:GetObject", "s3:PutObject"],
           Resource: [`arn:aws:s3:::${STORE_CONFIG_BUCKET}/*`],
         },
       ],

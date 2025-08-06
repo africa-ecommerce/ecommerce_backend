@@ -15,7 +15,8 @@ REMOVE OUR PERCENT AND SHOULD WE LET PLUG WAIT FOR 3 DAYS
 
 
 
-
+format mail
+minio priviledges
 
 
 
