@@ -1,6 +1,6 @@
 import { mail } from "../../../lib/mail";
 import { emailConfigs } from "../../../config";
-import { queueMail, sendQueuedMail } from "../../workers/mailQueue";
+import { queueMail } from "../../workers/mailQueue";
 
 
 export async function notifyOrderMail() {
