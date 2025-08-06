@@ -218,55 +218,19 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
       data: response,
     });
 
-    // // ✅ Fire both off right after the DB/save logic in the background
-    // await successOrderMail(
-    //   formattedInput.buyerEmail,
-    //   response.buyerName,
-    //   response.paymentMethod,
-    //   response.plugBusinessName!,
-    //   response.plugStore,
-    //   orderNumber
-    // ).catch((err) => console.error("Failed to queue successOrderMail", err));
+    // ✅ Fire both off right after the DB/save logic in the background
+    await successOrderMail(
+      formattedInput.buyerEmail,
+      response.buyerName,
+      response.paymentMethod,
+      response.plugBusinessName!,
+      response.plugStore,
+      orderNumber
+    ).catch((err) => console.error("Failed to queue successOrderMail", err));
 
-    // await notifyOrderMail().catch((err) =>
-    //   console.error("Failed to queue notifyOrderMail", err)
-    // );
-
-    // **FIX: Handle emails sequentially with proper error handling**
-    try {
-      console.log(
-        `🚀 Queueing success email for order ${response.orderNumber}`
-      );
-      await successOrderMail(
-        formattedInput.buyerEmail,
-        response.buyerName,
-        response.paymentMethod,
-        response.plugBusinessName!,
-        response.plugStore,
-        response.orderNumber
-      );
-      console.log(`✅ Success email queued for order ${response.orderNumber}`);
-    } catch (emailError) {
-      console.error(
-        `❌ Failed to queue success email for order ${response.orderNumber}:`,
-        emailError
-      );
-    }
-
-    try {
-      console.log(
-        `🔔 Queueing notification email for order ${response.orderNumber}`
-      );
-      await notifyOrderMail();
-      console.log(
-        `✅ Notification email queued for order ${response.orderNumber}`
-      );
-    } catch (notifyError) {
-      console.error(
-        `❌ Failed to queue notification email for order ${response.orderNumber}:`,
-        notifyError
-      );
-    }
+    await notifyOrderMail().catch((err) =>
+      console.error("Failed to queue notifyOrderMail", err)
+    );
   } catch (error) {
     // Delegate error handling to middleware immediately TO PREVENT SMTP BLOCKING ISSUES
     try {
