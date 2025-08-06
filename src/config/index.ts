@@ -23,7 +23,7 @@ export const port = Number(process.env.PORT) || 5000;
 // Define unique bucket names with a prefix to avoid conflicts in play.min.io
 export const minioBucketPrefix = process.env.MINIO_BUCKET_PREFIX || "pluggn";
 //  minio images bucket
-export const minioImagesBucket = process.env.MINIO_IMAGES_BUCKET || "images";
+export const minioImagesBucket = process.env.MINIO_IMAGES_BUCKET || "imagesy";
 //  minio user store config bucket
 export const minioStoreConfigBucket =
   process.env.MINIO_STORE_CONFIG_BUCKET || "storeconfig";
