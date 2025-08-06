@@ -2192,7 +2192,7 @@ export async function queueMail({
 
     // Trigger mail processor
     const baseUrl = process.env.BACKEND_URL || "http://localhost:3000";
-    fetch(`${baseUrl}/api/mail/processQueuedMail`, {
+    fetch(`${baseUrl}/mail/processQueuedMail`, {
       method: "POST",
     }).catch((err) => {
       console.error("❌ Could not trigger mail processor:", err);
