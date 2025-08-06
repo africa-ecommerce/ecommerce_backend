@@ -2220,38 +2220,41 @@ export async function startBackgroundProcessor(
     take: 5, // optional throttle
   });
 
-  for (const mailn of mails) {
-    const sender = senderKeyToMailSender(
-      mailn.senderKey as keyof typeof emailConfigs
-    );
+  for (const mailJob of mails) {
     try {
+      const sender = senderKeyToMailSender(mailJob.senderKey as any);
+
       await mail(
-        mailn.to,
-        mailn.subject,
-        mailn.html,
+        mailJob.to,
+        mailJob.subject,
+        mailJob.html,
         sender,
-        mailn.replyTo || undefined
+        mailJob.replyTo || undefined
       );
 
-      await prisma.mailQueue.update({
-        where: { id: mailn.id },
-        data: {
-          status: "SENT",
-          sentAt: new Date(),
-        },
+      // ✅ On success, delete from queue
+      await prisma.mailQueue.delete({
+        where: { id: mailJob.id },
       });
 
-      console.log(`✅ Sent mail: ${mailn.id}`);
+      console.log(`✅ Sent & deleted mail: ${mailJob.id}`);
     } catch (err: any) {
-      console.error(`❌ Failed to send mail: ${mailn.id}`, err);
+      console.error(`❌ Failed to send mail: ${mailJob.id}`, err);
 
-      await prisma.mailQueue.update({
-        where: { id: mailn.id },
+      const updated = await prisma.mailQueue.update({
+        where: { id: mailJob.id },
         data: {
-          status: "FAILED",
           attempts: { increment: 1 },
         },
       });
+
+      // ❌ If failed 3+ times, delete it
+      if (updated.attempts >= 3) {
+        await prisma.mailQueue.delete({
+          where: { id: mailJob.id },
+        });
+        console.warn(`⚠️ Mail deleted after 3 failed attempts: ${mailJob.id}`);
+      }
     }
   }
 }
