@@ -11,8 +11,8 @@ import {
 } from "..";
 import * as Minio from "minio";
 
-export const IMAGES_BUCKET = `${minioBucketPrefix}${minioImagesBucket}`;
-export const STORE_CONFIG_BUCKET = `${minioBucketPrefix}${minioStoreConfigBucket}`;
+export const IMAGES_BUCKET = `${minioImagesBucket}`;
+export const STORE_CONFIG_BUCKET = `${minioStoreConfigBucket}`;
 
 // Load configuration from environment variables and set up minio config
 export const getMinioConfig = () => {
