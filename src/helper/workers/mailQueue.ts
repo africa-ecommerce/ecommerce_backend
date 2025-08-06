@@ -1843,8 +1843,7 @@ export async function queueMail(
         status: "PENDING",
         attempts: 0,
         mailType,
-        priority,
-        createdAt: new Date(),
+        priority
       },
     });
 
