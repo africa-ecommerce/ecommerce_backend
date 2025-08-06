@@ -57,7 +57,7 @@ const initializeImagesBucket = async () => {
         {
           Effect: "Allow",
          "Principal": { "AWS": ["*"] },
-          Action: ["s3:GetObject", "s3:PutObject"],
+          Action: ["s3:GetObject"],
           Resource: [`arn:aws:s3:::${IMAGES_BUCKET}/*`],
         },
       ],
