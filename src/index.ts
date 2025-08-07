@@ -34,6 +34,7 @@ import { routeErrorCatcher } from "./middleware/error.middleware";
 import { errorMail } from "./helper/mail/dev/errorMail";
 import contactSupportRoutes from "./routes/contactSupport.routes";
 import mailRoutes from "./routes/mail.routes";
+import { closeAllTransporters, initializeMailTransporters } from "./lib/mail";
 
 
 // Load environment variables
@@ -272,6 +273,16 @@ initializePaymentProcessingScheduler()
     console.error("Error initializing payment processing scheduler:", error);
   });
 
+
+  //Mail transporters initialization
+initializeMailTransporters()
+  .then(() => {
+    console.log("✅ Mail transporters initialized and warmed up");
+  })
+  .catch((error) => {
+    console.error("❌ Error initializing mail transporters:", error);
+  });
+
 //Routes
 app.use("/auth", authRoutes, routeErrorCatcher);
 app.use("/onboarding", onboardingRoutes, routeErrorCatcher);
@@ -316,6 +327,7 @@ process.on("SIGTERM", () => {
 
   // First shut down the scheduler
   shutdownPaymentProcessingScheduler();
+  closeAllTransporters();
 
   // Then close the server
   server.close(() => {
