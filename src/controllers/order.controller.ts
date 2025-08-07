@@ -5,9 +5,6 @@ import { AuthRequest } from "../types";
 import { formatPlugOrders, formatSupplierOrders } from "../helper/formatData";
 import { OrderStatus } from "@prisma/client";
 import { customAlphabet } from "nanoid";
-import { successOrderMail } from "../helper/mail/order/successOrderMail";
-import { failedOrderMail } from "../helper/mail/order/failedOrderMail";
-import { notifyOrderMail } from "../helper/mail/notify-us/orderMail";
 
 export async function placeOrder(req: Request, res: Response, next: NextFunction) {
   const {
@@ -218,29 +215,8 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
       data: response,
     });
 
-    // ✅ Fire both off right after the DB/save logic in the background
-    await successOrderMail(
-      formattedInput.buyerEmail,
-      response.buyerName,
-      response.paymentMethod,
-      response.plugBusinessName!,
-      response.plugStore,
-      orderNumber
-    ).catch((err) => console.error("Failed to queue successOrderMail", err));
-
-    // await notifyOrderMail().catch((err) =>
-    //   console.error("Failed to queue notifyOrderMail", err)
-    // );
   } catch (error) {
-    // Delegate error handling to middleware immediately TO PREVENT SMTP BLOCKING ISSUES
-    try {
-      await failedOrderMail(
-        formattedInput.buyerEmail,
-        formattedInput.buyerName
-      ); 
-    } catch (error) {
-      console.error("Error sending fallback email to buyer:", error);
-    }
+    
     
     next(error);
 }
