@@ -4,19 +4,34 @@ import { queueMail, startBackgroundProcessor } from "../helper/workers/mailQueue
 
 const router = express.Router();
 
+// router.post("/processQueuedMail", async (req, res) => {
+//   try {
+//     await startBackgroundProcessor("general", "high");
+//     await startBackgroundProcessor("general", "normal");
+//     await startBackgroundProcessor("general", "low");
+
+//     res.status(200).json({ success: true });
+//   } catch (error: any) {
+//     console.error("❌ Mail processing error:", error);
+//     res.status(500).json({ error: error.message });
+//   }
+// });
+
+
+
 router.post("/processQueuedMail", async (req, res) => {
   try {
+    // Process in priority order, small batches
     await startBackgroundProcessor("general", "high");
     await startBackgroundProcessor("general", "normal");
     await startBackgroundProcessor("general", "low");
 
-    res.status(200).json({ success: true });
+    res.status(200).json({ success: true, message: "Processing complete" });
   } catch (error: any) {
     console.error("❌ Mail processing error:", error);
     res.status(500).json({ error: error.message });
   }
 });
-
 export default router;
 
 // ➤ routes/api/queueMail.ts (Express Route)

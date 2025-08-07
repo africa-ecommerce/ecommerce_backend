@@ -93,14 +93,12 @@ export async function successOrderMail(
   // });
 
 
-  await queueMail(
-    {
-      to,
-      subject,
-      html,
-      senderKey: "orders",
-      mailType: "general",
-      priority: "normal",
-    }
-  );
+  await queueMail({
+    to,
+    subject,
+    html,
+    senderKey: "orders",
+    mailType: "order_confirmation",
+    priority: "high", // High priority for immediate processing
+  });
 }

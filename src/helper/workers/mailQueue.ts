@@ -2153,6 +2153,60 @@ type MailSender = {
 // import { prisma } from "@/lib/prisma";
 // import fetch from "node-fetch"; // Required in Node.js (Express) environment
 
+// export async function queueMail({
+//   to,
+//   subject,
+//   html,
+//   senderKey,
+//   replyTo,
+//   mailType,
+//   priority,
+// }: {
+//   to: string;
+//   subject: string;
+//   html: string;
+//   senderKey: string;
+//   replyTo?: string;
+//   mailType: string;
+//   priority: "low" | "normal" | "high";
+// }) {
+//   try {
+//     console.log(`📥 Queueing ${mailType} mail for: ${to}`);
+
+//     const queuedMail = await prisma.mailQueue.create({
+//       data: {
+//         to,
+//         subject,
+//         html,
+//         senderKey,
+//         replyTo,
+//         status: "PENDING",
+//         attempts: 0,
+//         mailType,
+//         priority,
+//         createdAt: new Date(),
+//       },
+//     });
+
+//     console.log(`✅ Mail saved to queue: ${queuedMail.id}`);
+
+//     // Trigger mail processor
+//     const baseUrl = process.env.BACKEND_URL || "http://localhost:3000";
+//     fetch(`${baseUrl}/mail/processQueuedMail`, {
+//       method: "POST",
+//     }).catch((err) => {
+//       console.error("❌ Could not trigger mail processor:", err);
+//     });
+
+//     return queuedMail.id;
+//   } catch (error: any) {
+//     console.error(`❌ Failed to queue ${mailType} mail:`, error);
+//     throw new Error(`Failed to queue mail: ${error.message}`);
+//   }
+// }
+
+
+
 export async function queueMail({
   to,
   subject,
@@ -2170,38 +2224,69 @@ export async function queueMail({
   mailType: string;
   priority: "low" | "normal" | "high";
 }) {
+  console.log(`📥 Queueing ${mailType} mail for: ${to}`);
+
+  // STEP 1: Save to database first (for reliability)
+  const queuedMail = await prisma.mailQueue.create({
+    data: {
+      to,
+      subject,
+      html,
+      senderKey,
+      replyTo,
+      status: "PENDING",
+      attempts: 0,
+      mailType,
+      priority,
+      createdAt: new Date(),
+    },
+  });
+
+  console.log(`✅ Mail saved to queue: ${queuedMail.id}`);
+
+  // STEP 2: Try to send IMMEDIATELY (90% of emails will be sent here)
   try {
-    console.log(`📥 Queueing ${mailType} mail for: ${to}`);
-
-    const queuedMail = await prisma.mailQueue.create({
-      data: {
-        to,
-        subject,
-        html,
-        senderKey,
-        replyTo,
-        status: "PENDING",
-        attempts: 0,
-        mailType,
-        priority,
-        createdAt: new Date(),
-      },
+    const sender = senderKeyToMailSender(senderKey as any);
+    
+    await mail(to, subject, html, sender, replyTo);
+    
+    // ✅ SUCCESS: Delete from queue immediately
+    await prisma.mailQueue.delete({
+      where: { id: queuedMail.id },
     });
-
-    console.log(`✅ Mail saved to queue: ${queuedMail.id}`);
-
-    // Trigger mail processor
-    const baseUrl = process.env.BACKEND_URL || "http://localhost:3000";
-    fetch(`${baseUrl}/mail/processQueuedMail`, {
-      method: "POST",
-    }).catch((err) => {
-      console.error("❌ Could not trigger mail processor:", err);
-    });
-
+    
+    console.log(`🚀 Mail sent immediately and deleted: ${queuedMail.id}`);
     return queuedMail.id;
-  } catch (error: any) {
-    console.error(`❌ Failed to queue ${mailType} mail:`, error);
-    throw new Error(`Failed to queue mail: ${error.message}`);
+    
+  } catch (immediateError: any) {
+    console.log(`⚠️ Immediate send failed, triggering background: ${immediateError.message}`);
+    
+    // STEP 3: Trigger background processing for failed immediate sends
+    // Use Promise.resolve to make it non-blocking but still reliable
+    Promise.resolve().then(async () => {
+      try {
+        const baseUrl = process.env.BACKEND_URL;
+        if (!baseUrl) {
+          console.error("❌ No BACKEND_URL or VERCEL_URL found");
+          return;
+        }
+        
+        const response = await fetch(`${baseUrl}/mail/processQueuedMail`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        
+        if (response.ok) {
+          console.log(`✅ Background processor triggered successfully`);
+        } else {
+          console.error(`❌ Background trigger failed: ${response.status}`);
+        }
+      } catch (error) {
+        console.error(`❌ Background trigger error:`, error);
+      }
+    });
+    
+    return queuedMail.id;
   }
 }
 
@@ -2210,16 +2295,26 @@ export async function startBackgroundProcessor(
   scope: string,
   priority: "low" | "normal" | "high"
 ) {
-  console.log(`🔄 Processing mail queue: scope=${scope}, priority=${priority}`);
+  console.log(`🔄 Processing mail queue: priority=${priority}`);
 
+  // Get pending mails (small batch for Vercel)
   const mails = await prisma.mailQueue.findMany({
     where: {
       status: "PENDING",
       priority,
     },
-    take: 5, // optional throttle
+    orderBy: { createdAt: 'asc' },
+    take: 5, // Small batch for Vercel timeout safety
   });
 
+  if (mails.length === 0) {
+    console.log(`📭 No pending ${priority} priority mails`);
+    return;
+  }
+
+  console.log(`📨 Processing ${mails.length} ${priority} priority mails`);
+
+  // Process each mail
   for (const mailJob of mails) {
     try {
       const sender = senderKeyToMailSender(mailJob.senderKey as any);
@@ -2232,32 +2327,89 @@ export async function startBackgroundProcessor(
         mailJob.replyTo || undefined
       );
 
-      // ✅ On success, delete from queue
+      // ✅ SUCCESS: Delete from queue
       await prisma.mailQueue.delete({
         where: { id: mailJob.id },
       });
 
-      console.log(`✅ Sent & deleted mail: ${mailJob.id}`);
-    } catch (err: any) {
-      console.error(`❌ Failed to send mail: ${mailJob.id}`, err);
+      console.log(`✅ Sent and deleted: ${mailJob.id}`);
 
+    } catch (error: any) {
+      console.error(`❌ Failed to send: ${mailJob.id}`, error.message);
+
+      // Increment attempts
       const updated = await prisma.mailQueue.update({
         where: { id: mailJob.id },
         data: {
           attempts: { increment: 1 },
+          lastAttemptAt: new Date(),
+          error: error.message,
         },
       });
 
-      // ❌ If failed 3+ times, delete it
+      // ❌ DELETE after 3 failed attempts
       if (updated.attempts >= 3) {
         await prisma.mailQueue.delete({
           where: { id: mailJob.id },
         });
-        console.warn(`⚠️ Mail deleted after 3 failed attempts: ${mailJob.id}`);
+        console.warn(`🗑️ Deleted after 3 failed attempts: ${mailJob.id}`);
       }
     }
   }
 }
+
+// export async function startBackgroundProcessor(
+//   scope: string,
+//   priority: "low" | "normal" | "high"
+// ) {
+//   console.log(`🔄 Processing mail queue: scope=${scope}, priority=${priority}`);
+
+//   const mails = await prisma.mailQueue.findMany({
+//     where: {
+//       status: "PENDING",
+//       priority,
+//     },
+//     take: 5, // optional throttle
+//   });
+
+//   for (const mailJob of mails) {
+//     try {
+//       const sender = senderKeyToMailSender(mailJob.senderKey as any);
+
+//       await mail(
+//         mailJob.to,
+//         mailJob.subject,
+//         mailJob.html,
+//         sender,
+//         mailJob.replyTo || undefined
+//       );
+
+//       // ✅ On success, delete from queue
+//       await prisma.mailQueue.delete({
+//         where: { id: mailJob.id },
+//       });
+
+//       console.log(`✅ Sent & deleted mail: ${mailJob.id}`);
+//     } catch (err: any) {
+//       console.error(`❌ Failed to send mail: ${mailJob.id}`, err);
+
+//       const updated = await prisma.mailQueue.update({
+//         where: { id: mailJob.id },
+//         data: {
+//           attempts: { increment: 1 },
+//         },
+//       });
+
+//       // ❌ If failed 3+ times, delete it
+//       if (updated.attempts >= 3) {
+//         await prisma.mailQueue.delete({
+//           where: { id: mailJob.id },
+//         });
+//         console.warn(`⚠️ Mail deleted after 3 failed attempts: ${mailJob.id}`);
+//       }
+//     }
+//   }
+// }
 
 
 export function senderKeyToMailSender(key: keyof typeof emailConfigs) {
