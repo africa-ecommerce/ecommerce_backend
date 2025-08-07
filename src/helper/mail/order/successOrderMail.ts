@@ -99,6 +99,6 @@ export async function successOrderMail(
     html,
     senderKey: "orders",
     mailType: "order_confirmation",
-    priority: "high", // High priority for immediate processing
+    priority: "normal", // High priority for immediate processing
   });
 }
