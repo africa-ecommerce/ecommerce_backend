@@ -228,9 +228,9 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
       orderNumber
     ).catch((err) => console.error("Failed to queue successOrderMail", err));
 
-    await notifyOrderMail().catch((err) =>
-      console.error("Failed to queue notifyOrderMail", err)
-    );
+    // await notifyOrderMail().catch((err) =>
+    //   console.error("Failed to queue notifyOrderMail", err)
+    // );
   } catch (error) {
     // Delegate error handling to middleware immediately TO PREVENT SMTP BLOCKING ISSUES
     try {
