@@ -53,30 +53,29 @@ type MailSender = {
 
 const transporterPool: Record<string, Transporter> = {};
 
-function getTransporter(sender: MailSender): Transporter {
-  if (!transporterPool[sender.user]) {
-    transporterPool[sender.user] = nodemailer.createTransport({
-      host: "smtp.zoho.com",
-      port: 465,
-      secure: true,
-      pool: true,
-      maxConnections: 3,
-      maxMessages: 100,
+ function getTransporter(sender: MailSender): Transporter {
+   if (!transporterPool[sender.user]) {
+     transporterPool[sender.user] = nodemailer.createTransport({
+       host: "smtp.zoho.com",
+       port: 465,
+       secure: true,
+       pool: true,
       auth: {
-        user: sender.user,
-        pass: sender.pass,
-      },
-      connectionTimeout: 10_000,
-      socketTimeout: 20_000,
-      logger: true,
-      debug: true,
-    });
+      user: sender.user,
+      pass: sender.pass,
+    },
+    connectionTimeout: 5000,  //Reduced from 10s
+    socketTimeout: 10000,  //Reduced from 20s
+    logger: false,  //Disable detailed logging
+    debug: false,  //Disable debug mode
+  });
 
-    console.log(`🚀 SMTP transporter created for: ${sender.user}`);
-  }
 
-  return transporterPool[sender.user];
-}
+     console.log(`🚀 SMTP transporter created for: ${sender.user}`);
+   }
+
+   return transporterPool[sender.user];
+ }
 
 export const mail = async (
   email: string,
@@ -113,3 +112,62 @@ export const mail = async (
     throw new Error("Failed to send email");
   }
 };
+
+
+
+// import nodemailer, { Transporter } from "nodemailer";
+
+// type MailSender = {
+//   from: string;
+//   user: string;
+//   pass: string;
+// };
+
+// // Don't use connection pooling - create fresh connections
+// function createTransporter(sender: MailSender): Transporter {
+//   return nodemailer.createTransport({
+//     host: "smtp.zoho.com",
+//     port: 465,
+//     secure: true,
+//     pool: false, // No pooling to avoid connection issues
+//     auth: {
+//       user: sender.user,
+//       pass: sender.pass,
+//     },
+//     connectionTimeout: 5000, // Reduced from 10s
+//     socketTimeout: 10000, // Reduced from 20s
+//     logger: false, // Disable detailed logging
+//     debug: false, // Disable debug mode
+//   });
+// }
+
+// // SIMPLIFIED MAIL FUNCTION
+// export const mail = async (
+//   email: string,
+//   subject: string,
+//   html: string,
+//   sender: MailSender,
+//   replyTo?: string
+// ) => {
+//   const transporter = createTransporter(sender);
+//   const formattedFrom = `"Pluggn" <${sender.user}>`;
+
+//   try {
+//     const info = await transporter.sendMail({
+//       from: formattedFrom,
+//       to: email,
+//       subject,
+//       html,
+//       replyTo,
+//     });
+
+//     console.log(`📨 Email sent: ${info.messageId}`);
+//     return info;
+//   } catch (error: any) {
+//     console.error(`❌ Email failed:`, error.message);
+//     throw error;
+//   } finally {
+//     // Always close the connection
+//     transporter.close();
+//   }
+// };

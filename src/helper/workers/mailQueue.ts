@@ -2207,6 +2207,90 @@ type MailSender = {
 
 
 
+// export async function queueMail({
+//   to,
+//   subject,
+//   html,
+//   senderKey,
+//   replyTo,
+//   mailType,
+//   priority,
+// }: {
+//   to: string;
+//   subject: string;
+//   html: string;
+//   senderKey: string;
+//   replyTo?: string;
+//   mailType: string;
+//   priority: "low" | "normal" | "high";
+// }) {
+//   console.log(`📥 Queueing ${mailType} mail for: ${to}`);
+
+//   // STEP 1: Save to database first (for reliability)
+//   const queuedMail = await prisma.mailQueue.create({
+//     data: {
+//       to,
+//       subject,
+//       html,
+//       senderKey,
+//       replyTo,
+//       status: "PENDING",
+//       attempts: 0,
+//       mailType,
+//       priority,
+//       createdAt: new Date(),
+//     },
+//   });
+
+//   console.log(`✅ Mail saved to queue: ${queuedMail.id}`);
+
+//   // STEP 2: Try to send IMMEDIATELY (90% of emails will be sent here)
+//   try {
+//     const sender = senderKeyToMailSender(senderKey as any);
+    
+//     await mail(to, subject, html, sender, replyTo);
+    
+//     // ✅ SUCCESS: Delete from queue immediately
+//     await prisma.mailQueue.delete({
+//       where: { id: queuedMail.id },
+//     });
+    
+//     console.log(`🚀 Mail sent immediately and deleted: ${queuedMail.id}`);
+//     return queuedMail.id;
+    
+//   } catch (immediateError: any) {
+//     console.log(`⚠️ Immediate send failed, triggering background: ${immediateError.message}`);
+    
+//     // STEP 3: Trigger background processing for failed immediate sends
+//     // Use Promise.resolve to make it non-blocking but still reliable
+//     Promise.resolve().then(async () => {
+//       try {
+//         const baseUrl = process.env.BACKEND_URL;
+//         if (!baseUrl) {
+//           console.error("❌ No BACKEND_URL or VERCEL_URL found");
+//           return;
+//         }
+        
+//         const response = await fetch(`${baseUrl}/mail/processQueuedMail`, {
+//           method: "POST",
+//           headers: { "Content-Type": "application/json" },
+//         });
+        
+//         if (response.ok) {
+//           console.log(`✅ Background processor triggered successfully`);
+//         } else {
+//           console.error(`❌ Background trigger failed: ${response.status}`);
+//         }
+//       } catch (error) {
+//         console.error(`❌ Background trigger error:`, error);
+//       }
+//     });
+    
+//     return queuedMail.id;
+//   }
+// }
+
+
 export async function queueMail({
   to,
   subject,
@@ -2226,7 +2310,7 @@ export async function queueMail({
 }) {
   console.log(`📥 Queueing ${mailType} mail for: ${to}`);
 
-  // STEP 1: Save to database first (for reliability)
+  // ONLY SAVE TO DATABASE - NO SMTP HERE
   const queuedMail = await prisma.mailQueue.create({
     data: {
       to,
@@ -2242,69 +2326,66 @@ export async function queueMail({
     },
   });
 
-  console.log(`✅ Mail saved to queue: ${queuedMail.id}`);
+  console.log(`✅ Mail queued successfully: ${queuedMail.id}`);
 
-  // STEP 2: Try to send IMMEDIATELY (90% of emails will be sent here)
+  // TRIGGER BACKGROUND PROCESSING (non-blocking)
+  // This won't wait for the response, preventing timeouts
+  setImmediate(() => {
+    triggerBackgroundProcessing().catch((err) =>
+      console.error("Background trigger failed:", err.message)
+    );
+  });
+
+  return queuedMail.id;
+}
+
+
+
+
+
+async function triggerBackgroundProcessing() {
   try {
-    const sender = senderKeyToMailSender(senderKey as any);
-    
-    await mail(to, subject, html, sender, replyTo);
-    
-    // ✅ SUCCESS: Delete from queue immediately
-    await prisma.mailQueue.delete({
-      where: { id: queuedMail.id },
-    });
-    
-    console.log(`🚀 Mail sent immediately and deleted: ${queuedMail.id}`);
-    return queuedMail.id;
-    
-  } catch (immediateError: any) {
-    console.log(`⚠️ Immediate send failed, triggering background: ${immediateError.message}`);
-    
-    // STEP 3: Trigger background processing for failed immediate sends
-    // Use Promise.resolve to make it non-blocking but still reliable
-    Promise.resolve().then(async () => {
-      try {
-        const baseUrl = process.env.BACKEND_URL;
-        if (!baseUrl) {
-          console.error("❌ No BACKEND_URL or VERCEL_URL found");
-          return;
-        }
-        
-        const response = await fetch(`${baseUrl}/mail/processQueuedMail`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        });
-        
+    const baseUrl = process.env.BACKEND_URL || process.env.VERCEL_URL;
+    if (!baseUrl) {
+      console.log("⚠️ No URL found for background processing");
+      return;
+    }
+
+    // Fire and forget - don't wait for response
+    fetch(`${baseUrl}/mail/processQueuedMail`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    })
+      .then((response) => {
         if (response.ok) {
-          console.log(`✅ Background processor triggered successfully`);
+          console.log(`🚀 Background processing triggered`);
         } else {
-          console.error(`❌ Background trigger failed: ${response.status}`);
+          console.log(`⚠️ Background trigger returned: ${response.status}`);
         }
-      } catch (error) {
-        console.error(`❌ Background trigger error:`, error);
-      }
-    });
-    
-    return queuedMail.id;
+      })
+      .catch((err) => {
+        console.log(`⚠️ Background trigger error: ${err.message}`);
+      });
+  } catch (error: any) {
+    console.log(`⚠️ Trigger setup error: ${error.message}`);
   }
 }
+
 
 
 export async function startBackgroundProcessor(
   scope: string,
   priority: "low" | "normal" | "high"
 ) {
-  console.log(`🔄 Processing mail queue: priority=${priority}`);
+  console.log(`🔄 Processing ${priority} priority mails`);
 
-  // Get pending mails (small batch for Vercel)
   const mails = await prisma.mailQueue.findMany({
     where: {
       status: "PENDING",
       priority,
     },
     orderBy: { createdAt: 'asc' },
-    take: 5, // Small batch for Vercel timeout safety
+    take: 3, // Even smaller batch for safety
   });
 
   if (mails.length === 0) {
@@ -2312,13 +2393,13 @@ export async function startBackgroundProcessor(
     return;
   }
 
-  console.log(`📨 Processing ${mails.length} ${priority} priority mails`);
+  console.log(`📨 Found ${mails.length} mails to process`);
 
-  // Process each mail
   for (const mailJob of mails) {
     try {
       const sender = senderKeyToMailSender(mailJob.senderKey as any);
 
+      // Send the email
       await mail(
         mailJob.to,
         mailJob.subject,
@@ -2335,9 +2416,9 @@ export async function startBackgroundProcessor(
       console.log(`✅ Sent and deleted: ${mailJob.id}`);
 
     } catch (error: any) {
-      console.error(`❌ Failed to send: ${mailJob.id}`, error.message);
+      console.error(`❌ Failed: ${mailJob.id} - ${error.message}`);
 
-      // Increment attempts
+      // Update attempts
       const updated = await prisma.mailQueue.update({
         where: { id: mailJob.id },
         data: {
@@ -2347,16 +2428,86 @@ export async function startBackgroundProcessor(
         },
       });
 
-      // ❌ DELETE after 3 failed attempts
+      // Delete after 3 attempts
       if (updated.attempts >= 3) {
         await prisma.mailQueue.delete({
           where: { id: mailJob.id },
         });
-        console.warn(`🗑️ Deleted after 3 failed attempts: ${mailJob.id}`);
+        console.warn(`🗑️ Deleted after 3 attempts: ${mailJob.id}`);
       }
     }
+
+    // Small delay between sends
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
 }
+
+// export async function startBackgroundProcessor(
+//   scope: string,
+//   priority: "low" | "normal" | "high"
+// ) {
+//   console.log(`🔄 Processing mail queue: priority=${priority}`);
+
+//   // Get pending mails (small batch for Vercel)
+//   const mails = await prisma.mailQueue.findMany({
+//     where: {
+//       status: "PENDING",
+//       priority,
+//     },
+//     orderBy: { createdAt: 'asc' },
+//     take: 5, // Small batch for Vercel timeout safety
+//   });
+
+//   if (mails.length === 0) {
+//     console.log(`📭 No pending ${priority} priority mails`);
+//     return;
+//   }
+
+//   console.log(`📨 Processing ${mails.length} ${priority} priority mails`);
+
+//   // Process each mail
+//   for (const mailJob of mails) {
+//     try {
+//       const sender = senderKeyToMailSender(mailJob.senderKey as any);
+
+//       await mail(
+//         mailJob.to,
+//         mailJob.subject,
+//         mailJob.html,
+//         sender,
+//         mailJob.replyTo || undefined
+//       );
+
+//       // ✅ SUCCESS: Delete from queue
+//       await prisma.mailQueue.delete({
+//         where: { id: mailJob.id },
+//       });
+
+//       console.log(`✅ Sent and deleted: ${mailJob.id}`);
+
+//     } catch (error: any) {
+//       console.error(`❌ Failed to send: ${mailJob.id}`, error.message);
+
+//       // Increment attempts
+//       const updated = await prisma.mailQueue.update({
+//         where: { id: mailJob.id },
+//         data: {
+//           attempts: { increment: 1 },
+//           lastAttemptAt: new Date(),
+//           error: error.message,
+//         },
+//       });
+
+//       // ❌ DELETE after 3 failed attempts
+//       if (updated.attempts >= 3) {
+//         await prisma.mailQueue.delete({
+//           where: { id: mailJob.id },
+//         });
+//         console.warn(`🗑️ Deleted after 3 failed attempts: ${mailJob.id}`);
+//       }
+//     }
+//   }
+// }
 
 // export async function startBackgroundProcessor(
 //   scope: string,
