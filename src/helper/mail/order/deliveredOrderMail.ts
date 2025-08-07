@@ -43,11 +43,14 @@ export async function deliveredOrderMail(
     </div>
   `;
 
- 
-   await queueMail({
-     to,
-     subject,
-     html,
-     senderKey: "orders", // key from emailConfigs
-   });
+
+     await queueMail({
+       to,
+       subject,
+       html,
+       senderKey: "orders",
+       mailType: "delivered_order",
+       priority: "normal",
+     });
+   
 }

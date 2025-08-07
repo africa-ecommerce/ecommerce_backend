@@ -52,11 +52,12 @@ export async function failedOrderMail(to: string, buyerName: string) {
     </div>
   `;
 
-  
-    await queueMail({
-      to,
-      subject,
-      html,
-      senderKey: "orders", // key from emailConfigs
-    });
+     await queueMail({
+           to,
+           subject,
+           html,
+           senderKey: "orders",
+           mailType: "failed_order",
+           priority: "normal",
+      });
 }

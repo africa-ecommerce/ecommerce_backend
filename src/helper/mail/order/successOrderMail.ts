@@ -85,13 +85,6 @@ export async function successOrderMail(
     </div>
   `;
 
-  // await sendQueuedMail({
-  //   to,
-  //   subject,
-  //   html,
-  //   senderKey: "orders", // key from emailConfigs
-  // });
-
 
   await queueMail({
     to,
@@ -99,6 +92,6 @@ export async function successOrderMail(
     html,
     senderKey: "orders",
     mailType: "order_confirmation",
-    priority: "normal", // High priority for immediate processing
+    priority: "normal", 
   });
 }

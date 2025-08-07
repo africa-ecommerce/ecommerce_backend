@@ -34,10 +34,12 @@ export async function shippedOrderMail(
     </div>
   `;
 
-  await queueMail({
-    to,
-    subject,
-    html,
-    senderKey: "orders", // key from emailConfigs
-  });
+       await queueMail({
+             to,
+             subject,
+             html,
+             senderKey: "orders",
+             mailType: "shipped_order",
+             priority: "normal",
+        });
 }

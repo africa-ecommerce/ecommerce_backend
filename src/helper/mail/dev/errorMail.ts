@@ -1,26 +1,3 @@
-// // helper/mail/notifyDevTeam.ts
-// import { emailConfigs } from "../../../config";
-// import { mail } from "../../../lib/mail";
-
-
-
-// const { devTeam } = emailConfigs;
-// export async function errorMail(formattedInput: any, error: any) {
-//   const subject = `⚠️ Manual Order Required - ${formattedInput.buyerName}`;
-//   const html = `
-//     <div style="font-family: monospace, Arial; background: #fefefe; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-//       <h3 style="color: #b00020;">A customer's order failed and needs manual processing.</h3>
-//       <p>Details:</p>
-//       <pre style="background:#f4f4f4;padding:10px;border-radius:5px;font-size:13px;">
-// ${JSON.stringify({ ...formattedInput, error: error.message }, null, 2)}
-//       </pre>
-//     </div>
-//   `;
-
-//   await mail("devTeam@pluggn.com.ng", subject, html, devTeam);
-// }
-
-
 
 // helper/mail/errorMail.ts
 import { emailConfigs } from "../../../config";
@@ -72,11 +49,13 @@ ${error?.stack || ""}
       </pre>
     </div>
   `;
-  await queueMail({
-    to,
-    subject,
-    html,
-    senderKey: "devTeam", // key from emailConfigs
-  });
  
+    await queueMail({
+      to,
+      subject,
+      html,
+      senderKey: "devTeam",
+      mailType: "error",
+      priority: "normal", 
+    });
 }
