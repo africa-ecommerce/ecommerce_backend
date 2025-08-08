@@ -13,7 +13,7 @@ export async function trackShareAnalytics(
 
 
     console.log(platform)
-    console.log(userId)
+    console.log(userId);
     if (!userId || !platform || typeof platform !== "string") {
        res
         .status(400)
