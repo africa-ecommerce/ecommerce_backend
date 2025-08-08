@@ -1,19 +1,8 @@
 import { emailConfigs, prisma } from "../../config";
 import { mail } from "../../lib/mail";
 
-type MailSender = {
-  from: string;
-  user: string;
-  pass: string;
-};
 
 
-
-
-
-// ========================================
-// QUEUE MAIL (Updated - but same interface)
-// ========================================
 
 export async function queueMail({
   to,
@@ -21,18 +10,14 @@ export async function queueMail({
   html,
   senderKey,
   replyTo,
-  mailType,
-  priority,
 }: {
   to: string;
   subject: string;
   html: string;
   senderKey: string;
   replyTo?: string;
-  mailType: string;
-  priority: "low" | "normal" | "high";
 }) {
-  console.log(`📥 Queueing ${mailType} mail for: ${to}`);
+  
 
   // Save to database first
   const queuedMail = await prisma.mailQueue.create({
@@ -44,13 +29,9 @@ export async function queueMail({
       replyTo,
       status: "PENDING",
       attempts: 0,
-      mailType,
-      priority,
       createdAt: new Date(),
     },
   });
-
-  console.log(`✅ Mail queued: ${queuedMail.id}`);
 
   // Trigger background processing (non-blocking)
   setImmediate(() => {
@@ -68,25 +49,18 @@ export async function queueMail({
 
 async function triggerBackgroundProcessing() {
   try {
-    const baseUrl = process.env.BACKEND_URL || process.env.VERCEL_URL;
+    const baseUrl = process.env.BACKEND_URL;
     if (!baseUrl) {
-      console.log("⚠️ No URL found for background processing");
       return;
     }
 
     fetch(`${baseUrl}/mail/processQueuedMail`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-    }).then(response => {
-      if (response.ok) {
-        console.log(`🚀 Background processing triggered`);
-      }
-    }).catch(err => {
-      console.log(`⚠️ Background trigger error: ${err.message}`);
-    });
+    })
 
   } catch (error: any) {
-    console.log(`⚠️ Trigger setup error: ${error.message}`);
+    console.error(`⚠️ Trigger setup error: ${error.message}`);
   }
 }
 
@@ -97,26 +71,21 @@ export function senderKeyToMailSender(key: keyof typeof emailConfigs) {
 }
 
 export async function startBackgroundProcessor(
-  scope: string,
-  priority: "low" | "normal" | "high"
 ) {
-  console.log(`🔄 Processing ${priority} priority mails`);
+
 
   const mails = await prisma.mailQueue.findMany({
     where: {
       status: "PENDING",
-      priority,
     },
     orderBy: { createdAt: 'asc' },
     take: 5,
   });
 
   if (mails.length === 0) {
-    console.log(`📭 No pending ${priority} priority mails`);
     return;
   }
 
-  console.log(`📨 Found ${mails.length} mails to process`);
 
   for (const mailJob of mails) {
     try {
@@ -136,7 +105,6 @@ export async function startBackgroundProcessor(
         where: { id: mailJob.id },
       });
 
-      console.log(`✅ Sent and deleted: ${mailJob.id}`);
 
     } catch (error: any) {
       console.error(`❌ Failed: ${mailJob.id} - ${error.message}`);
@@ -159,6 +127,6 @@ export async function startBackgroundProcessor(
     }
 
     // Small delay between sends
-    await new Promise(resolve => setTimeout(resolve, 1));
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
 }

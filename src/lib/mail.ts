@@ -8,7 +8,6 @@ type MailSender = {
 };
 
 const transporterPool: Record<string, Transporter> = {};
-// const transporterPool: Record<string, Transporter> = {};
 const initializationStatus: Record<string, boolean> = {};
 
 // ========================================
@@ -43,12 +42,10 @@ function createTransporter(sender: MailSender): Transporter {
 // ========================================
 
 export async function initializeMailTransporters(): Promise<void> {
-  console.log("🚀 Initializing mail transporters...");
 
   const initPromises = Object.entries(emailConfigs).map(
     async ([key, config]) => {
       try {
-        console.log(`📧 Initializing transporter for: ${config.user}`);
 
         const transporter = createTransporter(config);
 
@@ -59,7 +56,6 @@ export async function initializeMailTransporters(): Promise<void> {
         transporterPool[config.user] = transporter;
         initializationStatus[config.user] = true;
 
-        console.log(`✅ Transporter ready for: ${config.user}`);
       } catch (error) {
         console.error(
           `❌ Failed to initialize transporter for ${config.user}:`,
@@ -75,9 +71,7 @@ export async function initializeMailTransporters(): Promise<void> {
   const readyCount = Object.values(initializationStatus).filter(Boolean).length;
   const totalCount = Object.keys(emailConfigs).length;
 
-  console.log(
-    `📊 Mail transporters initialized: ${readyCount}/${totalCount} ready`
-  );
+
 }
 
 // ========================================
@@ -91,7 +85,6 @@ function getTransporter(sender: MailSender): Transporter {
   }
 
   // Fallback: create on-demand (should rarely happen after initialization)
-  console.log(`⚠️ Creating transporter on-demand for: ${sender.user}`);
   const transporter = createTransporter(sender);
   transporterPool[sender.user] = transporter;
   return transporter;
@@ -125,7 +118,6 @@ export const mail = async (
       },
     });
 
-    console.log(`📨 Email sent: ${info.messageId} [${sender.user} → ${email}]`);
     return info;
   } catch (error: any) {
     console.error(
@@ -135,7 +127,6 @@ export const mail = async (
 
     // If connection failed, try to reinitialize transporter
     if (error.code === "ECONNECTION" || error.code === "ETIMEDOUT") {
-      console.log(`🔄 Reinitializing transporter for: ${sender.user}`);
       delete transporterPool[sender.user];
       // Don't await - let it initialize in background for next time
       setTimeout(() => {
@@ -144,7 +135,6 @@ export const mail = async (
           .verify()
           .then(() => {
             transporterPool[sender.user] = newTransporter;
-            console.log(`✅ Transporter reinitialized for: ${sender.user}`);
           })
           .catch((err) =>
             console.error(`❌ Reinitialize failed for ${sender.user}:`, err)
@@ -163,18 +153,15 @@ export const mail = async (
 // ========================================
 
 export async function closeAllTransporters(): Promise<void> {
-  console.log("🔄 Closing all mail transporters...");
   
   const closePromises = Object.entries(transporterPool).map(async ([user, transporter]) => {
     try {
       transporter.close();
-      console.log(`✅ Closed transporter for: ${user}`);
     } catch (error) {
       console.error(`❌ Error closing transporter for ${user}:`, error);
     }
   });
   
   await Promise.allSettled(closePromises);
-  console.log("📧 All transporters closed");
 }
 

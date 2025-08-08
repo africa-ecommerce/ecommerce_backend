@@ -5,6 +5,7 @@ import {
   // getTemplateById,
   getTemplateFile,
 } from "../controllers/template.controller";
+import { getSPATemplate } from "../controllers/SPA.template.controller";
 
 const router = Router();
 
@@ -16,5 +17,6 @@ const router = Router();
 
 // Get a specific file from a template (HTML, CSS, JS)
 router.get("/:id/:fileType", getTemplateFile);
+router.get('/spa/:subdomain', getSPATemplate);
 
 export default router;

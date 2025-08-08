@@ -5,9 +5,9 @@ const router = express.Router();
 router.post("/processQueuedMail", async (req, res) => {
   try {
    
-    await startBackgroundProcessor("general", "normal");
+    await startBackgroundProcessor();
 
-    res.status(200).json({ success: true, message: "Processing complete" });
+    res.status(200).json({ success: true});
   } catch (error: any) {
     console.error("❌ Mail processing error:", error);
     res.status(500).json({ error: error.message });
