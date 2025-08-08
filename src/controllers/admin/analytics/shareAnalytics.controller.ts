@@ -11,10 +11,14 @@ export async function trackShareAnalytics(
     const { platform } = req.body;
     const userId = req.user?.id;
 
+
+    console.log(platform)
+    console.log(userId)
     if (!userId || !platform || typeof platform !== "string") {
-      return res
+       res
         .status(400)
         .json({ error: "Missing or invalid user or platform" });
+        return;
     }
 
     const normalizedPlatform = platform.trim().toLowerCase();
@@ -41,7 +45,7 @@ export async function trackShareAnalytics(
       },
     });
 
-    return res.status(200).json({ message: "Share tracked successfully" });
+     res.status(200).json({ message: "Share tracked successfully" });
   } catch (err) {
     next(err);
   }
