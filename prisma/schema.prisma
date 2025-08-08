@@ -502,3 +502,15 @@ model AdminOTP {
   expires   DateTime
   createdAt DateTime @default(now())
 }
+
+
+model ShareAnalytics {
+  id        String   @id @default(cuid())
+  userId    String
+  platform  String
+  date      DateTime
+  shares    Int      @default(1)
+
+  @@unique([userId, platform, date])
+  @@index([platform, date])
+}

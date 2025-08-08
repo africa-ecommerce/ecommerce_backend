@@ -113,14 +113,12 @@ export const cookieConfig = {
        where: { id: decoded.userId },
        select: {
          id: true,
-         email: true,
-         name: true,
+        
          refreshToken: true,
-         emailVerified: true,
+        
          isOnboarded: true,
          userType: true,
-         createdAt: true,
-         updatedAt: true,
+         
        },
      });
 

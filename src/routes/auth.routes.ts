@@ -16,7 +16,7 @@ import {
 } from "../controllers/auth/forgotPassword";
 import { logout } from "../controllers/auth/logout";
 import { google, googleCallback } from "../controllers/auth/oauth";
-import { refreshToken } from "../controllers/auth/refreshToken";
+import { clearInvalidRefreshToken, refreshToken } from "../controllers/auth/refreshToken";
 import { updateProfile } from "../controllers/auth/updateProfile";
 import { updatePassword } from "../controllers/auth/updatePassword";
 import { frontendUrl } from "../config";
@@ -148,6 +148,7 @@ router.post(
 
 router.post("/verify-email", authLimiter, verifyEmail);
 router.post("/refresh", refreshLimiter, refreshToken);
+router.post("/clearRefresh", refreshLimiter, clearInvalidRefreshToken);
 
 router.post("/logout", authLimiter, authenticateJWT, logout);
 router.post("/update-password", authLimiter, authenticateJWT, updatePassword);

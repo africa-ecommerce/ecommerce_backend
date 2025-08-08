@@ -3,8 +3,10 @@ import {
   clearAuthCookies,
   refreshSession,
   setAuthCookies,
+  verifyRefreshToken,
 } from "../../helper/token";
 import jwt from "jsonwebtoken";
+import { prisma } from "../../config";
 
 export const refreshToken = async (
   req: Request,
@@ -66,5 +68,33 @@ export const refreshToken = async (
     } else {
       next(error); // Pass other errors to the error handler
     }
+  }
+};
+
+export const clearInvalidRefreshToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const refreshToken = req.cookies.refreshToken;
+
+  try {
+    // Verify refresh token
+    const decoded = verifyRefreshToken(refreshToken);
+
+    // Get user with refresh token
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        refreshToken: true,
+      },
+    });
+
+    
+    if (!user || user.refreshToken !== refreshToken) {
+      clearAuthCookies(res);
+    }
+  } catch (error) {
+    next(error);
   }
 };

@@ -3,6 +3,7 @@ import { getAllSuppliers } from "../controllers/admin/user.controller";
 import { adminProductController } from "../controllers/admin/product.controller";
 import { adminLogout, sendAdminOTP, verifyAdminOTP } from "../controllers/admin/auth.controller";
 import { deliveredOrder, getOrders, shippedOrder } from "../controllers/admin/order.controller";
+import { getShareAnalytics, trackShareAnalytics } from "../controllers/admin/analytics/shareAnalytics.controller";
 
 const router = Router();
 
@@ -31,6 +32,9 @@ router.post("/auth/send-otp", sendAdminOTP);
 router.post("/auth/verify-otp", verifyAdminOTP);
 router.post("/auth/logout", adminLogout);
 
+
+router.post("/analytics/share", trackShareAnalytics);
+router.get("/analytics/share", getShareAnalytics);
 
 
 
