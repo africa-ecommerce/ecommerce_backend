@@ -167,7 +167,8 @@ export const setAuthCookies = (res: Response, tokens: Tokens) => {
 export const clearAuthCookies = (res: Response) => {
   res
     .clearCookie("accessToken", cookieConfig)
-    .clearCookie("refreshToken", cookieConfig);
+    .clearCookie("refreshToken", cookieConfig)
+     .clearCookie("refreshAttempt", cookieConfig);
 };
 
 

@@ -70,13 +70,18 @@ export const refreshToken = async (
     }
   }
 };
-
 export const clearInvalidRefreshToken = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   const refreshToken = req.cookies.refreshToken;
+
+  // ✅ Avoid verifying if refreshToken is missing or obviously invalid
+  if (!refreshToken || typeof refreshToken !== "string" || refreshToken.split(".").length !== 3) {
+    clearAuthCookies(res); // Clear just in case
+    return next();
+  }
 
   try {
     // Verify refresh token
@@ -90,11 +95,14 @@ export const clearInvalidRefreshToken = async (
       },
     });
 
-    
     if (!user || user.refreshToken !== refreshToken) {
       clearAuthCookies(res);
     }
+
+    return next();
   } catch (error) {
-    next(error);
+    // Also clear cookies on verify failure
+    clearAuthCookies(res);
+    return next(); // Don't crash
   }
 };
