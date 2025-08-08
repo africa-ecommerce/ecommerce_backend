@@ -4,6 +4,8 @@ import { adminProductController } from "../controllers/admin/product.controller"
 import { adminLogout, sendAdminOTP, verifyAdminOTP } from "../controllers/admin/auth.controller";
 import { deliveredOrder, getOrders, shippedOrder } from "../controllers/admin/order.controller";
 import { getShareAnalytics, trackShareAnalytics } from "../controllers/admin/analytics/shareAnalytics.controller";
+import authenticateJWT from "../middleware/auth.middleware";
+
 
 const router = Router();
 
@@ -33,7 +35,7 @@ router.post("/auth/verify-otp", verifyAdminOTP);
 router.post("/auth/logout", adminLogout);
 
 
-router.post("/analytics/share", trackShareAnalytics);
+router.post("/analytics/share", authenticateJWT, trackShareAnalytics);
 router.get("/analytics/share", getShareAnalytics);
 
 
