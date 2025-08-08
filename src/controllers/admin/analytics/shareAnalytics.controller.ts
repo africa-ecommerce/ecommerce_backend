@@ -8,22 +8,25 @@ export async function trackShareAnalytics(
   next: NextFunction
 ) {
   try {
-    const  platform  = req.body;
+    const { platform } = req.body;
     const userId = req.user?.id;
 
-    if (!userId || !platform) {
-       res.status(400).json({ error: "Missing user or platform" });
-       return;
+    if (!userId || !platform || typeof platform !== "string") {
+      return res
+        .status(400)
+        .json({ error: "Missing or invalid user or platform" });
     }
 
+    const normalizedPlatform = platform.trim().toLowerCase();
+
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // normalize date to midnight
+    today.setHours(0, 0, 0, 0); // Normalize to start of day
 
     await prisma.shareAnalytics.upsert({
       where: {
         userId_platform_date: {
           userId,
-          platform,
+          platform: normalizedPlatform,
           date: today,
         },
       },
@@ -32,24 +35,25 @@ export async function trackShareAnalytics(
       },
       create: {
         userId,
-        platform,
+        platform: normalizedPlatform,
         date: today,
         shares: 1,
       },
     });
 
-     res.status(200).json({ message: "Share tracked successfully" });
-     return;
+    return res.status(200).json({ message: "Share tracked successfully" });
   } catch (err) {
     next(err);
   }
 }
 
-
-
 // GET /api/analytics/share?userId=abc123&platform=instagram&fromDate=2025-08-01&toDate=2025-08-07
 
-export async function getShareAnalytics(req: Request, res: Response, next: NextFunction) {
+export async function getShareAnalytics(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const { userId, platform, fromDate, toDate } = req.query;
 
@@ -68,8 +72,8 @@ export async function getShareAnalytics(req: Request, res: Response, next: NextF
       orderBy: { date: "desc" },
     });
 
-     res.status(200).json({ analytics });
-     return
+    res.status(200).json({ analytics });
+    return;
   } catch (err) {
     next(err);
   }
