@@ -8,7 +8,7 @@ export async function trackShareAnalytics(
   next: NextFunction
 ) {
   try {
-    const { platform } = req.body;
+    const  platform  = req.body;
     const userId = req.user?.id;
 
     if (!userId || !platform) {
