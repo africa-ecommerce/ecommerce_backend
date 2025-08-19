@@ -14,59 +14,25 @@ export const generateTokens = async (
   isOnboarded: boolean,
   userType: UserType
 ): Promise<Tokens> => {
-  // Always generate new access token
+  // Always generate fresh tokens (sliding session)
   const accessToken = jwt.sign({ userId, isOnboarded, userType }, jwtSecret, {
-    expiresIn: ACCESS_TOKEN_EXPIRY, 
+    expiresIn: ACCESS_TOKEN_EXPIRY,
   });
 
-  // Get existing refresh token from database
-  const user = await prisma.user.findUnique({
+  const refreshToken = jwt.sign(
+    { userId, isOnboarded, userType },
+    refreshTokenSecret,
+    { expiresIn: REFRESH_TOKEN_EXPIRY }
+  );
+
+  await prisma.user.update({
     where: { id: userId },
-    select: { refreshToken: true },
+    data: { refreshToken },
   });
-
-  let refreshToken: string;
-  let shouldUpdateDatabase = true;
-
-  // If user has an existing refresh token, check if we should rotate it
-  if (user?.refreshToken) {
-    const shouldRotate = shouldRotateRefreshToken(user.refreshToken);
-
-    if (shouldRotate) {
-      // Generate new refresh token
-      refreshToken = jwt.sign(
-        { userId, isOnboarded, userType },
-        refreshTokenSecret,
-        {
-          expiresIn: REFRESH_TOKEN_EXPIRY,
-        }
-      );
-    } else {
-      // Keep existing refresh token
-      refreshToken = user.refreshToken;
-      shouldUpdateDatabase = false; // No need to update DB
-    }
-  } else {
-    // No existing token, generate new one (for login, registration, etc.)
-    refreshToken = jwt.sign(
-      { userId, isOnboarded, userType },
-      refreshTokenSecret,
-      {
-        expiresIn: REFRESH_TOKEN_EXPIRY,
-      }
-    );
-  }
-
-  // Update database only if we generated a new refresh token
-  if (shouldUpdateDatabase) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { refreshToken },
-    });
-  }
 
   return { accessToken, refreshToken };
 };
+
 
 
 export const verifyAccessToken = (token: string) => {
