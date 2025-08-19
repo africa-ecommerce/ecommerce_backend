@@ -2,6 +2,7 @@ import multer from 'multer';
 import { Request } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
+import sharp from "sharp";
 import { minioClient,  getMinioUrl, IMAGES_BUCKET } from '../../config/minio';
 
 // Configure multer for in-memory file storage
@@ -86,32 +87,51 @@ export async function uploadImages(files: Express.Multer.File[]): Promise<string
 }
 
 
-// Upload a single image to MinIO
-export const uploadImage = async (
-  file: Express.Multer.File
-): Promise<string> => {
-  // Generate optimized object name
+// Upload an image to MinIO with compression if needed
+export const uploadImage = async (file: Express.Multer.File): Promise<string> => {
   const objectName = generateObjectName(file.originalname);
 
-  // Set metadata
+  // If file is > 1MB, compress it using sharp
+  let bufferToUpload = file.buffer;
+  let uploadSize = file.size;
+
+  if (file.size > 1 * 1024 * 1024) {
+    if (file.mimetype.startsWith("image/")) {
+      try {
+        // Compress using sharp (WebP is very efficient, but you can keep original format if needed)
+        const compressed = await sharp(file.buffer)
+          .resize({ width: 1920, withoutEnlargement: true }) // resize large images
+          .toFormat("webp", { quality: 80 }) // convert to webp with reasonable quality
+          .toBuffer();
+
+        bufferToUpload = compressed;
+        uploadSize = compressed.length;
+      } catch (err) {
+        console.error(`Sharp compression failed, fallback to original:`, err);
+      }
+    } else {
+      // For non-images, could add gzip/zip compression, or leave as is
+      console.log(`Non-image file >1MB, uploading as-is: ${file.originalname}`);
+    }
+  }
+
+  // Metadata
   const metaData = {
-    "Content-Type": file.mimetype,
+    "Content-Type": file.mimetype.startsWith("image/") ? "image/webp" : file.mimetype,
     "Cache-Control": getImageCacheControl(),
     "Content-Disposition": getContentDisposition(file.originalname),
     "X-Amz-Meta-Original-Name": file.originalname,
     "X-Amz-Meta-Upload-Date": new Date().toISOString(),
   };
 
-  // Upload to MinIO 
+  // Upload to MinIO
   await minioClient.putObject(
     IMAGES_BUCKET,
     objectName,
-    file.buffer,
-    file.size,
+    bufferToUpload,
+    uploadSize,
     metaData
   );
-
-  // Return public URL to the image
 
   return getMinioUrl(IMAGES_BUCKET, objectName);
 };

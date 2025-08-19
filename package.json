@@ -65,6 +65,7 @@
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
     "resend": "^4.1.2",
+    "sharp": "^0.34.3",
     "uuidv4": "^6.2.13",
     "validator": "^13.12.0",
     "zod": "^3.24.2"
