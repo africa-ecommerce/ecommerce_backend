@@ -161,7 +161,7 @@ export const updateProfile = [
         return;
       }
 
-      res.status(400).json({ error: "Invalid user. Please Onboard again!" });
+      res.status(400).json({ error: "Please refresh and try again!" });
     } catch (error) {
       if (avatarUrl && avatarUrl !== oldAvatarUrl) {
         await deleteImages([avatarUrl]);
