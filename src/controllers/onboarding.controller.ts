@@ -50,7 +50,10 @@ export const onboarding = [
 
       // ✅ Upload avatar if exists
       if (req.file) {
-        const [url] = await uploadImages([req.file] as Express.Multer.File[]);
+        // const [url] = await uploadImages([req.file] as Express.Multer.File[]);
+        const [url] = await uploadImages([req.file] as Express.Multer.File[], {
+          avatar: true,
+        });
         avatarUrl = url;
       }
 

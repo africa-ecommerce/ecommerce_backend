@@ -72,11 +72,30 @@ const getContentDisposition = (filename: string): string => {
 
 
 
-export async function uploadImages(files: Express.Multer.File[]): Promise<string[]> {
+// export async function uploadImages(files: Express.Multer.File[]): Promise<string[]> {
+//   const results: string[] = [];
+//   for (const file of files) {
+//     try {
+//       const url = await uploadImage(file);
+//       results.push(url);
+//     } catch (err) {
+//       console.error(`Failed to upload ${file.originalname}:`, err);
+//       // continue uploading the rest
+//     }
+//   }
+//   return results;
+// }
+
+
+
+export async function uploadImages(
+  files: Express.Multer.File[],
+  options?: { avatar?: boolean }
+): Promise<string[]> {
   const results: string[] = [];
   for (const file of files) {
     try {
-      const url = await uploadImage(file);
+      const url = await uploadImage(file, options); // ✅ forward options
       results.push(url);
     } catch (err) {
       console.error(`Failed to upload ${file.originalname}:`, err);
@@ -86,45 +105,95 @@ export async function uploadImages(files: Express.Multer.File[]): Promise<string
   return results;
 }
 
-
 // Upload an image to MinIO with compression if needed
-export const uploadImage = async (file: Express.Multer.File): Promise<string> => {
+// export const uploadImage = async (file: Express.Multer.File): Promise<string> => {
+//   const objectName = generateObjectName(file.originalname);
+
+//   // If file is > 1MB, compress it using sharp
+//   let bufferToUpload = file.buffer;
+//   let uploadSize = file.size;
+
+//   if (file.size > 1 * 1024 * 1024) {
+//     if (file.mimetype.startsWith("image/")) {
+//       try {
+//         // Compress using sharp (WebP is very efficient, but you can keep original format if needed)
+//         const compressed = await sharp(file.buffer)
+//           .resize({ width: 1920, withoutEnlargement: true }) // resize large images
+//           .toFormat("webp", { quality: 80 }) // convert to webp with reasonable quality
+//           .toBuffer();
+
+//         bufferToUpload = compressed;
+//         uploadSize = compressed.length;
+//       } catch (err) {
+//         console.error(`Sharp compression failed, fallback to original:`, err);
+//       }
+//     } else {
+//       // For non-images, could add gzip/zip compression, or leave as is
+//       console.log(`Non-image file >1MB, uploading as-is: ${file.originalname}`);
+//     }
+//   }
+
+//   // Metadata
+//   const metaData = {
+//     "Content-Type": file.mimetype.startsWith("image/") ? "image/webp" : file.mimetype,
+//     "Cache-Control": getImageCacheControl(),
+//     "Content-Disposition": getContentDisposition(file.originalname),
+//     "X-Amz-Meta-Original-Name": file.originalname,
+//     "X-Amz-Meta-Upload-Date": new Date().toISOString(),
+//   };
+
+//   // Upload to MinIO
+//   await minioClient.putObject(
+//     IMAGES_BUCKET,
+//     objectName,
+//     bufferToUpload,
+//     uploadSize,
+//     metaData
+//   );
+
+//   return getMinioUrl(IMAGES_BUCKET, objectName);
+// };
+
+
+export const uploadImage = async (
+  file: Express.Multer.File,
+  options?: { avatar?: boolean }
+): Promise<string> => {
   const objectName = generateObjectName(file.originalname);
 
-  // If file is > 1MB, compress it using sharp
   let bufferToUpload = file.buffer;
   let uploadSize = file.size;
 
-  if (file.size > 1 * 1024 * 1024) {
-    if (file.mimetype.startsWith("image/")) {
-      try {
-        // Compress using sharp (WebP is very efficient, but you can keep original format if needed)
+  if (file.mimetype.startsWith("image/")) {
+    try {
+      if (options?.avatar) {
+        // 👉 Square avatar only if flagged
+        const squared = await squareAvatar(file.buffer, 512);
+        bufferToUpload = squared;
+        uploadSize = squared.length;
+      } else if (file.size > 1 * 1024 * 1024) {
+        // 👉 Regular compression logic for other images
         const compressed = await sharp(file.buffer)
-          .resize({ width: 1920, withoutEnlargement: true }) // resize large images
-          .toFormat("webp", { quality: 80 }) // convert to webp with reasonable quality
+          .resize({ width: 1920, withoutEnlargement: true })
+          .toFormat("webp", { quality: 80 })
           .toBuffer();
 
         bufferToUpload = compressed;
         uploadSize = compressed.length;
-      } catch (err) {
-        console.error(`Sharp compression failed, fallback to original:`, err);
       }
-    } else {
-      // For non-images, could add gzip/zip compression, or leave as is
-      console.log(`Non-image file >1MB, uploading as-is: ${file.originalname}`);
+    } catch (err) {
+      console.error(`Sharp processing failed, fallback to original:`, err);
     }
   }
 
-  // Metadata
   const metaData = {
-    "Content-Type": file.mimetype.startsWith("image/") ? "image/webp" : file.mimetype,
+    "Content-Type": "image/webp",
     "Cache-Control": getImageCacheControl(),
     "Content-Disposition": getContentDisposition(file.originalname),
     "X-Amz-Meta-Original-Name": file.originalname,
     "X-Amz-Meta-Upload-Date": new Date().toISOString(),
   };
 
-  // Upload to MinIO
   await minioClient.putObject(
     IMAGES_BUCKET,
     objectName,
@@ -135,7 +204,6 @@ export const uploadImage = async (file: Express.Multer.File): Promise<string> =>
 
   return getMinioUrl(IMAGES_BUCKET, objectName);
 };
-
 
 // 2) Extract whatever key you uploaded, in order to delete/stat
 export const extractObjectName = (url: string): string => {
@@ -187,3 +255,18 @@ export const getImageInfo = async (url: string) => {
     throw error;
   }
 };
+
+
+
+async function squareAvatar(
+  buffer: Buffer,
+  size: number = 512
+): Promise<Buffer> {
+  return sharp(buffer)
+    .resize(size, size, {
+      fit: "contain", // keep aspect ratio, pad as needed
+      background: { r: 255, g: 255, b: 255, alpha: 0 }, // transparent padding
+    })
+    .toFormat("webp", { quality: 85 })
+    .toBuffer();
+}

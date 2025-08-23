@@ -79,7 +79,11 @@ export const updateProfile = [
         oldAvatarUrl = user.supplier.avatar || null;
 
         if (req.file) {
-          const [url] = await uploadImages([req.file] as Express.Multer.File[]);
+          // const [url] = await uploadImages([req.file] as Express.Multer.File[]);
+
+              const [url] = await uploadImages([req.file] as Express.Multer.File[], {
+                    avatar: true,
+                  });
           avatarUrl = url;
         }
 
@@ -137,7 +141,11 @@ export const updateProfile = [
         oldAvatarUrl = user.plug.avatar || null;
 
         if (req.file) {
-          const [url] = await uploadImages([req.file] as Express.Multer.File[]);
+          // const [url] = await uploadImages([req.file] as Express.Multer.File[]);
+
+              const [url] = await uploadImages([req.file] as Express.Multer.File[], {
+                    avatar: true,
+                  });
           avatarUrl = url;
         }
 
