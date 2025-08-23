@@ -135,7 +135,7 @@ export const refreshToken = async (
     refreshToken.split(".").length !== 3
   ) {
     clearAuthCookies(res);
-     res.status(401).json({
+     res.status(404).json({
       success: false,
       error: "No valid refresh token!",
       code: "REFRESH_TOKEN_MISSING",
@@ -167,7 +167,7 @@ export const refreshToken = async (
     const result = await refreshSession(refreshToken);
     if (!result.success || !result.newTokens) {
       clearAuthCookies(res);
-       res.status(401).json({
+       res.status(400).json({
         success: false,
         error: "Failed to refresh session!",
         code: "REFRESH_FAILED",
@@ -190,7 +190,7 @@ export const refreshToken = async (
     // ✅ Handle JWT-specific errors
     if (error instanceof jwt.TokenExpiredError) {
       clearAuthCookies(res);
-       res.status(401).json({
+       res.status(500).json({
         success: false,
         error: "Refresh token expired!",
         code: "TOKEN_EXPIRED",
@@ -198,7 +198,7 @@ export const refreshToken = async (
       return;
     } else if (error instanceof jwt.JsonWebTokenError) {
       clearAuthCookies(res);
-       res.status(401).json({
+       res.status(500).json({
         success: false,
         error: "Invalid refresh token!",
         code: "INVALID_TOKEN",
