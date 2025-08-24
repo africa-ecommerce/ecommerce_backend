@@ -69,50 +69,95 @@ export const cookieConfig = {
   ...(process.env.NODE_ENV === "production" && { domain: process.env.DOMAIN }),
 };
 
- export const refreshSession = async (refreshToken: string) => {
-   try {
-     // Verify refresh token
-     const decoded = verifyRefreshToken(refreshToken);
+//  export const refreshSession = async (refreshToken: string) => {
+//    try {
+//      // Verify refresh token
+//      const decoded = verifyRefreshToken(refreshToken);
 
-     // Get user with refresh token
-     const user = await prisma.user.findUnique({
-       where: { id: decoded.userId },
-       select: {
-         id: true,
+//      // Get user with refresh token
+//      const user = await prisma.user.findUnique({
+//        where: { id: decoded.userId },
+//        select: {
+//          id: true,
         
-         refreshToken: true,
+//          refreshToken: true,
         
-         isOnboarded: true,
-         userType: true,
+//          isOnboarded: true,
+//          userType: true,
          
-       },
-     });
+//        },
+//      });
 
-     // Instead of throwing, return a result object
-     if (!user || user.refreshToken !== refreshToken) {
-       return { success: false, error: "Invalid refresh token!" };
-     }
+//      // Instead of throwing, return a result object
+//      if (!user || user.refreshToken !== refreshToken) {
+//        return { success: false, error: "Invalid refresh token!" };
+//      }
 
-     // Generate new tokens
-     const newTokens = await generateTokens(
-       user.id,
-       user.isOnboarded,
-       user.userType
-     );
+//      // Generate new tokens
+//      const newTokens = await generateTokens(
+//        user.id,
+//        user.isOnboarded,
+//        user.userType
+//      );
 
     
      
-     return {
-       success: true,
-       user,
-       newTokens,
-     };
-   } catch (error: any) {
-     // Handle JWT verification errors
-     return { success: false, error: error.message };
-   }
- };
+//      return {
+//        success: true,
+//        user,
+//        newTokens,
+//      };
+//    } catch (error: any) {
+//      // Handle JWT verification errors
+//      return { success: false, error: error.message };
+//    }
+//  };
 
+
+export const refreshSession = async (
+  refreshToken: string,
+  options?: { allowDbTokenFallback?: boolean }
+) => {
+  try {
+    // Verify the token
+    const decoded = verifyRefreshToken(refreshToken);
+
+    // Get user from DB
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        refreshToken: true,
+        isOnboarded: true,
+        userType: true,
+      },
+    });
+
+    if (!user) {
+      return { success: false, error: "User not found!" };
+    }
+
+    // If token mismatch but fallback allowed, use DB token
+    if (user.refreshToken !== refreshToken) {
+      if (!options?.allowDbTokenFallback) {
+        return { success: false, error: "Invalid refresh token!" };
+      } else {
+        refreshToken = user?.refreshToken!; // overwrite with DB token
+      }
+    }
+
+    // Generate new tokens
+    const newTokens = await generateTokens(
+      user.id,
+      user.isOnboarded,
+      user.userType
+    );
+
+    return { success: true, user, newTokens };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+};
 
 
 export const setAuthCookies = (res: Response, tokens: Tokens) => {

@@ -263,6 +263,7 @@ async function squareAvatar(
   size: number = 512
 ): Promise<Buffer> {
   return sharp(buffer)
+    .rotate() // ✅ auto-rotates based on EXIF
     .resize(size, size, {
       fit: "contain", // keep aspect ratio, pad as needed
       background: { r: 255, g: 255, b: 255, alpha: 0 }, // transparent padding
