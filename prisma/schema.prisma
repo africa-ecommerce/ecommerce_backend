@@ -322,6 +322,8 @@ model Order {
   buyerAddress       String
   buyerState         String
   buyerLga           String
+  terminalAddress    String?
+  deliveryType       String
   buyerDirections    String?
   buyerLatitude      Float
   buyerLongitude     Float
@@ -363,7 +365,7 @@ model OrderItem {
   ReturnedOrderItem ReturnedOrderItem? // Track returned order items
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
- 
+
   @@index([orderId])
   @@index([productId])
 }
@@ -411,18 +413,18 @@ model Link {
   targetUrl String
   plug      Plug            @relation(fields: [plugId], references: [id], onDelete: Cascade)
   analytics LinkAnalytics[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 
   @@index([plugId])
 }
 
 model LinkAnalytics {
-  id       String @id @default(cuid())
-  linkId   String
-  platform String
-  clicks   Int    @default(0)
-  link     Link   @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  linkId    String
+  platform  String
+  clicks    Int      @default(0)
+  link      Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -449,7 +451,6 @@ model StoreAnalytics {
 //   createdAt DateTime @default(now())
 // }
 
-
 // model MailQueue {
 //   id            String   @id @default(cuid())
 //   to            String
@@ -468,8 +469,6 @@ model StoreAnalytics {
 //   @@map("mail_queue")
 // }
 
-
-
 model MailQueue {
   id            String     @id @default(cuid())
   to            String
@@ -485,8 +484,8 @@ model MailQueue {
   sentAt        DateTime?
 
   @@index([createdAt])
-  @@index([ status, attempts])
-  @@index([ status]) 
+  @@index([status, attempts])
+  @@index([status])
   @@map("mailQueue")
 }
 
@@ -503,13 +502,12 @@ model AdminOTP {
   createdAt DateTime @default(now())
 }
 
-
 model ShareAnalytics {
-  id        String   @id @default(cuid())
-  userId    String
-  platform  String
-  date      DateTime
-  shares    Int      @default(1)
+  id       String   @id @default(cuid())
+  userId   String
+  platform String
+  date     DateTime
+  shares   Int      @default(1)
 
   @@unique([userId, platform, date])
   @@index([platform, date])

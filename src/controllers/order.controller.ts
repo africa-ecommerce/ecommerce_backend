@@ -20,6 +20,8 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
     buyerLongitude,
     paymentMethod,
     totalAmount,
+    deliveryType,
+    terminalAddress,
     deliveryFee,
     plugId,
     subdomain,
@@ -41,6 +43,8 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
     paymentMethod,
     totalAmount,
     deliveryFee,
+    deliveryType,
+    terminalAddress,
     platform: platform?.trim(),
     plugId,
     subdomain,
@@ -190,6 +194,8 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
           paymentMethod: formattedInput.paymentMethod,
           buyerInstructions: formattedInput.buyerInstructions,
           paymentReference: formattedInput.paymentReference,
+          terminalAddress: formattedInput.terminalAddress,
+          deliveryType: formattedInput.deliveryType,
         },
       });
 

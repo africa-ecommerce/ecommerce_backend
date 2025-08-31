@@ -185,6 +185,8 @@ export const PlaceOrderSchema = z.object({
   paymentMethod: z.string().min(1),
   totalAmount: z.number().positive(),
   deliveryFee: z.number().min(0),
+  deliveryType: z.string(),
+  terminalAddress: z.string().optional(),
   paymentReference: z.string().min(1).optional(),
   plugId: z.string().optional(),
   subdomain: z.string().optional(),
