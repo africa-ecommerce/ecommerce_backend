@@ -6,7 +6,11 @@ import { formatPlugOrders, formatSupplierOrders } from "../helper/formatData";
 import { OrderStatus } from "@prisma/client";
 import { customAlphabet } from "nanoid";
 
-export async function placeOrder(req: Request, res: Response, next: NextFunction) {
+export async function placeOrder(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   const {
     buyerName,
     buyerEmail,
@@ -51,6 +55,8 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
     orderItems,
     paymentReference,
   };
+
+  console.log("formattedInput:", formattedInput);
 
   try {
     const fieldData = PlaceOrderSchema.safeParse(formattedInput);
@@ -213,6 +219,8 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
           : null,
         buyerName: formattedInput.buyerName,
         paymentMethod: formattedInput.paymentMethod,
+        terminalAddress: formattedInput.terminalAddress,
+        deliveryType: formattedInput.deliveryType,
       };
     });
 
@@ -220,14 +228,15 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
       message: "Order placed successfully!",
       data: response,
     });
-
   } catch (error) {
-    
-    
     next(error);
+  }
 }
-}
-export async function getBuyerInfo(req: Request, res: Response, next: NextFunction) {
+export async function getBuyerInfo(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     // Validate input
     const fieldData = BuyerInfoSchema.safeParse(req.query);
@@ -281,9 +290,11 @@ export async function getBuyerInfo(req: Request, res: Response, next: NextFuncti
   }
 }
 
-
-
-export async function getPlugOrders(req: AuthRequest, res: Response, next: NextFunction) {
+export async function getPlugOrders(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const plugId = req.plug?.id!;
     const status = (req.query.orderStatus as string | undefined)?.toUpperCase();
@@ -306,11 +317,15 @@ export async function getPlugOrders(req: AuthRequest, res: Response, next: NextF
     });
     return;
   } catch (error) {
-    next(error)
+    next(error);
   }
 }
 
-export async function getSupplierOrders(req: AuthRequest, res: Response, next: NextFunction) {
+export async function getSupplierOrders(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const supplierId = req.supplier?.id!;
     const statusParam = (
@@ -369,15 +384,15 @@ export const getPlugPausedOrderItems = async (
     });
 
     const data = pausedItems.map((p) => ({
-            orderNumber: p.orderItem.order.orderNumber,
-            pausedQuantity: p.quantity,
-            productName: p.orderItem.productName,
-            originalQuantity: p.orderItem.quantity,
-            productSize: p.orderItem.productSize,
-            productColor: p.orderItem.productColor,
-            variantSize: p.orderItem.variantSize,
-            variantColor: p.orderItem.variantColor,
-          }))
+      orderNumber: p.orderItem.order.orderNumber,
+      pausedQuantity: p.quantity,
+      productName: p.orderItem.productName,
+      originalQuantity: p.orderItem.quantity,
+      productSize: p.orderItem.productSize,
+      productColor: p.orderItem.productColor,
+      variantSize: p.orderItem.variantSize,
+      variantColor: p.orderItem.variantColor,
+    }));
     res.status(200).json({ message: "Paused order items fetched", data });
   } catch (err) {
     next(err);
@@ -410,15 +425,15 @@ export const getSupplierPausedOrderItems = async (
     });
 
     const data = pausedItems.map((p) => ({
-            orderNumber: p.orderItem.order.orderNumber,
-            pausedQuantity: p.quantity,
-            productName: p.orderItem.productName,
-            originalQuantity: p.orderItem.quantity,
-            productSize: p.orderItem.productSize,
-            productColor: p.orderItem.productColor,
-            variantSize: p.orderItem.variantSize,
-            variantColor: p.orderItem.variantColor,
-          }))
+      orderNumber: p.orderItem.order.orderNumber,
+      pausedQuantity: p.quantity,
+      productName: p.orderItem.productName,
+      originalQuantity: p.orderItem.quantity,
+      productSize: p.orderItem.productSize,
+      productColor: p.orderItem.productColor,
+      variantSize: p.orderItem.variantSize,
+      variantColor: p.orderItem.variantColor,
+    }));
     res.status(200).json({ message: "Paused order items fetched", data });
   } catch (err) {
     next(err);
@@ -452,15 +467,15 @@ export const getPlugReturnedOrderItems = async (
     });
 
     const data = returnedItems.map((r) => ({
-            orderNumber: r.orderItem.order.orderNumber,
-            pausedQuantity: r.quantity,
-            productName: r.orderItem.productName,
-            originalQuantity: r.orderItem.quantity,
-            productSize: r.orderItem.productSize,
-            productColor: r.orderItem.productColor,
-            variantSize: r.orderItem.variantSize,
-            variantColor: r.orderItem.variantColor,
-          }))
+      orderNumber: r.orderItem.order.orderNumber,
+      pausedQuantity: r.quantity,
+      productName: r.orderItem.productName,
+      originalQuantity: r.orderItem.quantity,
+      productSize: r.orderItem.productSize,
+      productColor: r.orderItem.productColor,
+      variantSize: r.orderItem.variantSize,
+      variantColor: r.orderItem.variantColor,
+    }));
 
     res.status(200).json({ message: "Returned order items fetched", data });
   } catch (err) {
@@ -494,16 +509,16 @@ export const getSupplierReturnedOrderItems = async (
     });
 
     const data = returnedItems.map((r) => ({
-            orderNumber: r.orderItem.order.orderNumber,
-            pausedQuantity: r.quantity,
-            productName: r.orderItem.productName,
-            originalQuantity: r.orderItem.quantity,
-            productSize: r.orderItem.productSize,
-            productColor: r.orderItem.productColor,
-            variantSize: r.orderItem.variantSize,
-            variantColor: r.orderItem.variantColor,
-          }))
-        
+      orderNumber: r.orderItem.order.orderNumber,
+      pausedQuantity: r.quantity,
+      productName: r.orderItem.productName,
+      originalQuantity: r.orderItem.quantity,
+      productSize: r.orderItem.productSize,
+      productColor: r.orderItem.productColor,
+      variantSize: r.orderItem.variantSize,
+      variantColor: r.orderItem.variantColor,
+    }));
+
     res.status(200).json({ message: "Returned order items fetched", data });
   } catch (err) {
     next(err);
