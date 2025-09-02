@@ -1,5 +1,5 @@
 import { Request } from "express";
-import { frontendUrl, logisticsBaseUrl } from "../config";
+import { frontendUrl } from "../config";
 import rateLimit from "express-rate-limit";
 
 // Helper function to validate the callback URL
@@ -26,42 +26,7 @@ export const isValidFullName = (fullName: string): boolean => {
   return nameParts.length > 1;
 };
 
-// helper to get geolocation
-export const getGeocode = async (address: string) => {
-  try {
-    const url = `${logisticsBaseUrl}/api/v1/ggcp?address=${encodeURIComponent(
-      address
-    )}`;
-    // +&placeId=${encodeURIComponent(placeID)}`;
 
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch geocode");
-    }
-    const data = await response.json();
-
-    const firstResult = data.results?.[0];
-
-    if (
-      !firstResult ||
-      !firstResult.geometry ||
-      !firstResult.geometry.location
-    ) {
-      throw new Error("No valid geocode found");
-    }
-
-    const { lat, lng } = firstResult.geometry.location;
-
-    return {
-      data: { lat, lng },
-      status: "success",
-    };
-  } catch (error) {
-    console.error("Error fetching geocode:", error);
-    return { data: null, status: "failed" };
-  }
-};
 
 
 

@@ -1,8 +1,8 @@
 // logisticsPricing.ts
 import { NextFunction, Request, Response } from "express";
 import { addressSchema } from "../lib/zod/schema";
-import { getGeocode } from "../helper/helperFunc";
 import { prisma } from "../config";
+import { getGeocode } from "../helper/logistics";
 
 // Hardcoded Ikeja base location
 const BASE = {
@@ -102,8 +102,6 @@ export const logisticsPricing = async (
   }
 };
 
-
-
 export const logisticsTracking = async (
   req: Request,
   res: Response,
@@ -125,8 +123,18 @@ export const logisticsTracking = async (
       res.status(404).json({ error: "Order not found" });
       return;
     }
+    const deliveryType = order.deliveryType;
+    let fullAddr = "";
+    if (deliveryType == "terminal") {
+      fullAddr = order.terminalAddress!;
+    } else if (deliveryType == "home") {
+      fullAddr = `${order.buyerAddress}, ${order.buyerLga}, ${order.buyerState}`;
+    }
+    const geo = await getGeocode(fullAddr);
+    if (geo.status !== "success" || !geo.data)
+      throw new Error("Geocode failed");
 
-
+    const { lat, lng } = geo.data;
 
     res.status(200).json({
       message: "Logistics tracking info",
@@ -139,21 +147,22 @@ export const logisticsTracking = async (
           state: BASE.state,
         },
         buyer: {
-          latitude: order.buyerLatitude,
-          longitude: order.buyerLongitude,
+          latitude: lat,
+          longitude: lng,
+          terminalAddress: order.terminalAddress,
           address: order.buyerAddress,
           lga: order.buyerLga,
           state: order.buyerState,
           name: order.buyerName,
         },
         status: order.status,
+        deliveryType,
       },
     });
   } catch (err) {
     next(err);
   }
 };
-
 
 //SUPPLIER OR ADMIN FUNCTION
 // export const requestDelivery = async (req: Request, res: Response) => {

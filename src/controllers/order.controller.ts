@@ -5,6 +5,7 @@ import { AuthRequest } from "../types";
 import { formatPlugOrders, formatSupplierOrders } from "../helper/formatData";
 import { OrderStatus } from "@prisma/client";
 import { customAlphabet } from "nanoid";
+import { getTerminalInfo } from "../helper/logistics";
 
 export async function placeOrder(
   req: Request,
@@ -20,8 +21,8 @@ export async function placeOrder(
     buyerLga,
     buyerDirections,
     buyerInstructions,
-    buyerLatitude,
-    buyerLongitude,
+    // buyerLatitude,
+    // buyerLongitude,
     paymentMethod,
     totalAmount,
     deliveryType,
@@ -33,6 +34,7 @@ export async function placeOrder(
     platform,
     orderItems,
   } = req.body;
+
   const formattedInput = {
     buyerName: buyerName?.trim(),
     buyerEmail: buyerEmail?.toLowerCase(),
@@ -42,8 +44,8 @@ export async function placeOrder(
     buyerLga,
     buyerDirections: buyerDirections?.trim(),
     buyerInstructions,
-    buyerLatitude,
-    buyerLongitude,
+    // buyerLatitude,
+    // buyerLongitude,
     paymentMethod,
     totalAmount,
     deliveryFee,
@@ -88,8 +90,46 @@ export async function placeOrder(
     const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const nanoid6 = customAlphabet(alphabet, 6);
     const orderNumber = `ORD-${datePart}-${nanoid6()}`;
+    const fullAddress = getTerminalInfo(formattedInput.terminalAddress);
 
     const response = await prisma.$transaction(async (tx) => {
+      // Prepare update data based on delivery type
+      const buyerUpdateData: any = {
+        name: formattedInput.buyerName,
+      };
+
+      // Only update address fields if deliveryType is "home" or if they have valid values
+      if (formattedInput.deliveryType === "home") {
+        buyerUpdateData.streetAddress = formattedInput.buyerAddress;
+        buyerUpdateData.state = formattedInput.buyerState;
+        buyerUpdateData.lga = formattedInput.buyerLga;
+        buyerUpdateData.directions = formattedInput.buyerDirections;
+        // buyerUpdateData.latitude = formattedInput.buyerLatitude;
+        // buyerUpdateData.longitude = formattedInput.buyerLongitude;
+      } else if (formattedInput.deliveryType === "terminal") {
+        // For terminal delivery, update terminal address and only update street address fields if they have valid values
+        buyerUpdateData.terminalAddress = fullAddress;
+
+        // if (formattedInput.buyerAddress) {
+        //   buyerUpdateData.streetAddress = formattedInput.buyerAddress;
+        // }
+        // if (formattedInput.buyerState) {
+        //   buyerUpdateData.state = formattedInput.buyerState;
+        // }
+        // if (formattedInput.buyerLga) {
+        //   buyerUpdateData.lga = formattedInput.buyerLga;
+        // }
+        // if (formattedInput.buyerDirections) {
+        //   buyerUpdateData.directions = formattedInput.buyerDirections;
+        // }
+        // if (formattedInput.buyerLatitude) {
+        //   buyerUpdateData.latitude = formattedInput.buyerLatitude;
+        // }
+        // if (formattedInput.buyerLongitude) {
+        //   buyerUpdateData.longitude = formattedInput.buyerLongitude;
+        // }
+      }
+
       const buyer = await tx.buyer.upsert({
         where: {
           email_phone: {
@@ -97,25 +137,18 @@ export async function placeOrder(
             phone: formattedInput.buyerPhone,
           },
         },
-        update: {
-          name: formattedInput.buyerName,
-          streetAddress: formattedInput.buyerAddress,
-          state: formattedInput.buyerState,
-          lga: formattedInput.buyerLga,
-          directions: formattedInput.buyerDirections,
-          latitude: formattedInput.buyerLatitude,
-          longitude: formattedInput.buyerLongitude,
-        },
+        update: buyerUpdateData,
         create: {
           name: formattedInput.buyerName,
           email: formattedInput.buyerEmail,
           phone: formattedInput.buyerPhone,
           streetAddress: formattedInput.buyerAddress,
+          terminalAddress: fullAddress,
           state: formattedInput.buyerState,
           lga: formattedInput.buyerLga,
           directions: formattedInput.buyerDirections,
-          latitude: formattedInput.buyerLatitude,
-          longitude: formattedInput.buyerLongitude,
+          // latitude: formattedInput.buyerLatitude,
+          // longitude: formattedInput.buyerLongitude,
         },
       });
 
@@ -195,8 +228,8 @@ export async function placeOrder(
           buyerState: formattedInput.buyerState,
           buyerLga: formattedInput.buyerLga,
           buyerDirections: formattedInput.buyerDirections,
-          buyerLatitude: formattedInput.buyerLatitude,
-          buyerLongitude: formattedInput.buyerLongitude,
+          // buyerLatitude: formattedInput.buyerLatitude,
+          // buyerLongitude: formattedInput.buyerLongitude,
           paymentMethod: formattedInput.paymentMethod,
           buyerInstructions: formattedInput.buyerInstructions,
           paymentReference: formattedInput.paymentReference,
