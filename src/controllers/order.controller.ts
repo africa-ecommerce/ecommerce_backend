@@ -90,7 +90,7 @@ export async function placeOrder(
     const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const nanoid6 = customAlphabet(alphabet, 6);
     const orderNumber = `ORD-${datePart}-${nanoid6()}`;
-    const fullAddress = getTerminalInfo(formattedInput.terminalAddress);
+    const fullAddress = formattedInput.terminalAddress && getTerminalInfo(formattedInput.terminalAddress);
 
     const response = await prisma.$transaction(async (tx) => {
       // Prepare update data based on delivery type
