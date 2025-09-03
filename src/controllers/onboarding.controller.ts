@@ -14,7 +14,7 @@ import {
   deleteImages,
 } from "../helper/minioObjectStore/image";
 import { z } from "zod";
-import { getGeocode } from "../helper/helperFunc";
+import { getGeocode } from "../helper/logistics";
 
 export const onboarding = [
   uploadMiddleware.single("avatar"),

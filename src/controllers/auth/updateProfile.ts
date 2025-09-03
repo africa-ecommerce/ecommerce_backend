@@ -11,8 +11,8 @@ import {
   updateSupplierInfoSchema,
   updatePlugInfoSchema,
 } from "../../lib/zod/schema";
-import { getGeocode } from "../../helper/helperFunc";
 import { z } from "zod";
+import { getGeocode } from "../../helper/logistics";
 
 
 export const updateProfile = [
