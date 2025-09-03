@@ -90,7 +90,10 @@ export async function placeOrder(
     const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const nanoid6 = customAlphabet(alphabet, 6);
     const orderNumber = `ORD-${datePart}-${nanoid6()}`;
-    const fullAddress = formattedInput.terminalAddress && getTerminalInfo(formattedInput.terminalAddress);
+const fullAddress =
+  formattedInput.deliveryType === "terminal" && formattedInput.terminalAddress
+    ? getTerminalInfo(formattedInput.terminalAddress)
+    : null;
 
     const response = await prisma.$transaction(async (tx) => {
       // Prepare update data based on delivery type
@@ -233,7 +236,7 @@ export async function placeOrder(
           paymentMethod: formattedInput.paymentMethod,
           buyerInstructions: formattedInput.buyerInstructions,
           paymentReference: formattedInput.paymentReference,
-          terminalAddress: formattedInput.terminalAddress,
+          terminalAddress: fullAddress,
           deliveryType: formattedInput.deliveryType,
         },
       });
@@ -252,7 +255,7 @@ export async function placeOrder(
           : null,
         buyerName: formattedInput.buyerName,
         paymentMethod: formattedInput.paymentMethod,
-        terminalAddress: formattedInput.terminalAddress,
+        terminalAddress: fullAddress,
         deliveryType: formattedInput.deliveryType,
       };
     });

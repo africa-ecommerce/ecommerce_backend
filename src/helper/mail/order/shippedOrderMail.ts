@@ -5,11 +5,32 @@ import { frontendUrl } from "../../../config";
 export async function shippedOrderMail(
   to: string,
   buyerName: string,
-  orderId: string
+  orderId: string,
+  deliveryType: string,
+  terminalAddress: string | null
 ) {
   const subject = "🚚 Your Order Has Been Shipped – Pluggn";
 
   const trackingLink = `<a href="${frontendUrl}/track-order/${orderId}" style="color: #0b5ed7; font-weight: 500; font-size: 12px;">Track your order</a>`;
+
+  // Conditional pickup section for terminal deliveries
+  const terminalInfo =
+    deliveryType === "terminal" && terminalAddress
+      ? `
+        <div style="margin: 20px 0; padding: 12px; border-radius: 6px; background-color: #f9fafb; border: 1px solid #e5e7eb;">
+          <h3 style="color: #111827; font-size: 15px; margin: 0 0 8px 0;">Pickup Instructions</h3>
+          <p style="font-size: 13px; color: #374151; margin: 0 0 6px 0;">
+            Once your package arrives, you can pick it up at the following terminal:
+          </p>
+          <p style="font-size: 13px; color: #111827; font-weight: bold; margin: 0 0 8px 0;">
+            ${terminalAddress}
+          </p>
+          <p style="font-size: 13px; color: #374151; margin: 0;">
+            Please tender your Pluggn Order Number <strong>#${orderId}</strong> when picking up from <strong>GIG Logistics</strong>.
+          </p>
+        </div>
+      `
+      : "";
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #f9f9f9; font-size: 13px;">
@@ -20,6 +41,8 @@ export async function shippedOrderMail(
       <p style="color: #374151; font-size: 13px;">You can follow the delivery progress here:</p>
 
       <p style="margin: 8px 0;">${trackingLink}</p>
+
+      ${terminalInfo}
 
       <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;" />
 

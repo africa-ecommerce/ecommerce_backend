@@ -56,7 +56,9 @@ export const shippedOrder = async (req: Request, res: Response) => {
       await shippedOrderMail(
         order.buyerEmail,
         order.buyerName,
-        order.orderNumber
+        order.orderNumber,
+        order.deliveryType,
+        order.terminalAddress
       );
     } catch (error) {
       console.error("Failed to send shipped order email:", error);
@@ -285,7 +287,9 @@ export const deliveredOrder = async (req: Request, res: Response) => {
       await deliveredOrderMail(
         order.buyerEmail,
         order.buyerName,
-        order.orderNumber
+        order.orderNumber,
+        order.deliveryType,
+        order.terminalAddress
       );
     } catch (error) {
       console.error("Failed to send delivered order email:", error);

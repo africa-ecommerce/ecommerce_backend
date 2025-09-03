@@ -7,9 +7,30 @@ const { orders } = emailConfigs;
 export async function deliveredOrderMail(
   to: string,
   buyerName: string,
-  orderId: string
+  orderId: string,
+  deliveryType: string,
+  terminalAddress: string | null
 ) {
   const subject = "📦 Your Order Has Been Delivered – Pluggn";
+
+  // Conditional terminal pickup instructions
+  const terminalInfo =
+    deliveryType === "terminal" && terminalAddress
+      ? `
+        <div style="margin: 20px 0; padding: 12px; border-radius: 6px; background-color: #f9fafb; border: 1px solid #e5e7eb;">
+          <h3 style="color: #111827; font-size: 15px; margin: 0 0 8px 0;">Pickup Instructions</h3>
+          <p style="font-size: 13px; color: #374151; margin: 0 0 6px 0;">
+            Your package is ready for pickup at the following terminal:
+          </p>
+          <p style="font-size: 13px; color: #111827; font-weight: bold; margin: 0 0 8px 0;">
+            ${terminalAddress}
+          </p>
+          <p style="font-size: 13px; color: #374151; margin: 0;">
+            Please tender your Pluggn Order Number <strong>#${orderId}</strong> when picking up from <strong>GIG Logistics</strong>.
+          </p>
+        </div>
+      `
+      : "";
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border-radius: 8px; background-color: #ffffff; border: 1px solid #e5e7eb; font-size: 13px;">
@@ -18,6 +39,8 @@ export async function deliveredOrderMail(
       <p style="font-size: 13px; color: #374151;">
         Thank you for shopping with us on Pluggn. We're pleased to inform you that your order with ID <strong>#${orderId}</strong> has been <strong style="color: #10b981;">successfully delivered</strong>.
       </p>
+
+      ${terminalInfo}
 
       <p style="font-size: 13px; color: #374151;">
         If you have any questions or concerns regarding your order, our support team is available and ready to assist you.
