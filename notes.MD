@@ -87,12 +87,16 @@ pg_dump -U your_user -h your_host -d your_dbname -F c -f backup.dump
 # Plain SQL version
 pg_dump -U your_user -h your_host -d your_dbname -F p -f backup.sql
 
+#okay
+pg_dump -h your_host -U your_user  -d your_dbname -F c -b -v -f backup.dump
+
 
 🧪 Development Environment
 In development, your goal is to define, test, and version your schema changes safely and iteratively.
 
 Command	Purpose
 npx prisma init	Initializes Prisma in your project (schema.prisma, .env, etc.)
+npx prisma db execute --file ./scripts/add_supplier_product.sql
 npx prisma generate	Regenerates the Prisma Client (after changes to schema.prisma)
 npx prisma migrate dev --name <name>	Creates a migration and applies it to your dev DB (preferred for dev work)
 npx prisma db push	Pushes schema changes directly to the DB (use only for quick testing, not with migrations)
