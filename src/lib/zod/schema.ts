@@ -108,8 +108,8 @@ export const productSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().optional(),
   price: z.number().positive(),
-  minPrice: z.number().positive(),
-  maxPrice: z.number().positive(),
+  minPrice: z.number().positive().optional(),
+  maxPrice: z.number().positive().optional(),
   category: z.string(),
   //variations
   size: z.string().optional(),
