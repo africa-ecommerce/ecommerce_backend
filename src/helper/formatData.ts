@@ -45,7 +45,7 @@ export const formatPlugProduct = (plugProduct: any) => {
     sold: originalProduct?.sold,
     plugsCount: originalProduct?.plugsCount,
     size: originalProduct?.size,
-    color: originalProduct?.color,
+    colors: originalProduct?.colors,
     images: originalProduct?.images
       ? JSON.parse(originalProduct?.images as string)
       : [],
