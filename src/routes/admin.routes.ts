@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getAllSuppliers } from "../controllers/admin/user.controller";
+import { getAllSuppliers, verifySupplier } from "../controllers/admin/user.controller";
 import { adminProductController } from "../controllers/admin/product.controller";
 import { adminLogout, sendAdminOTP, verifyAdminOTP } from "../controllers/admin/auth.controller";
 import { deliveredOrder, getOrders, shippedOrder } from "../controllers/admin/order.controller";
@@ -14,6 +14,9 @@ router.get(
   "/user/suppliers",
   getAllSuppliers
 )
+
+//verify supplier 
+router.post("/verifySupplier/:supplierId", verifySupplier);
 // Get product by ID
 router.get("/product/:supplierId", adminProductController.getSupplierProducts);
 

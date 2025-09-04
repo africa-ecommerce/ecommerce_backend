@@ -17,14 +17,14 @@ router.get(
 router.get("/:productId", authenticateJWT, productController.getProductById);
 
 // create product
-// router.post("/", authenticateJWT, isSupplier, productController.createProduct);
+router.post("/", authenticateJWT, isSupplier, productController.createProduct);
 
 // Update product
 router.put(
   "/:productId",
   authenticateJWT,
   isSupplier,
-  productController.updateProductStockAndPrice
+  productController.updateProduct
 );
 
 // Delete product

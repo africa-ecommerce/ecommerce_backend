@@ -33,7 +33,7 @@
           maxPrice: productData.maxPrice,
           category: productData.category,
           size: productData.size,
-          color: productData.color,
+          colors: productData.colors,
           stock: productData.stock,
         });
         if (!validatedData.success) {
@@ -76,7 +76,7 @@
               category: validatedData.data.category,
               images: JSON.stringify(imageUrls), // Store URLs as JSON string
               size: validatedData.data.size?.trim(),
-              color: validatedData.data.color?.trim(),
+              colors: validatedData.data.colors || [],
               stock: validatedData.data.stock,
               minPrice: validatedData.data.minPrice,
               maxPrice: validatedData.data.maxPrice,
@@ -84,7 +84,7 @@
               variations: {
                 create: validatedVariations.map((variation: any) => ({
                   size: variation.size?.trim(),
-                  color: variation.color?.trim(),
+                  colors: variation.colors || [],
                   stock: variation.stock,
                 })),
               },
@@ -220,7 +220,7 @@
                 maxPrice: validatedData.data.maxPrice,
                 category: validatedData.data.category,
                 size: validatedData.data.size?.trim(),
-                color: validatedData.data.color?.trim(),
+                colors: validatedData.data.colors,
                 stock: validatedData.data.stock,
                 images: JSON.stringify(updatedImages),
                 updatedAt: new Date(),

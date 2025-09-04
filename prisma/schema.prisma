@@ -1,515 +1,463 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client-js"
+    provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-enum UserType {
-  UNSET
-  SUPPLIER
-  PLUG
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  password      String
-  name          String
-  emailVerified Boolean   @default(false)
-  refreshToken  String?   @unique
-  isOnboarded   Boolean   @default(false)
-  userType      UserType  @default(UNSET)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  //  EITHER SUPPLIER OR PLUG
-  supplier      Supplier?
-  plug          Plug?
+    id                           String                        @id @default(cuid())
+    email                        String                        @unique
+    password                     String
+    name                         String
+    emailVerified                Boolean                       @default(false)
+    refreshToken                 String?                       @unique
+    isOnboarded                  Boolean                       @default(false)
+    userType                     UserType                      @default(UNSET)
+    createdAt                    DateTime                      @default(now())
+    updatedAt                    DateTime                      @updatedAt
+    emailVerifications           EmailVerification?
+    passwordTokens               PasswordToken[]
+    plug                         Plug?
+    supplier                     Supplier?
+    withdrawalVerificationTokens WithdrawalVerificationToken[]
 
-  // Relations
-  withdrawalVerificationTokens WithdrawalVerificationToken[]
-  emailVerifications           EmailVerification[]
-  passwordTokens               PasswordToken[]
-
-  @@index([email, name])
+    @@index([email, name])
 }
 
 model EmailVerification {
-  id      String   @id @default(cuid())
-  token   String   @unique
-  expires DateTime
-  userId  String   @unique
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    id      String   @id @default(cuid())
+    token   String   @unique
+    expires DateTime
+    userId  String   @unique
+    user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([token])
+    @@index([token])
 }
 
 model PasswordToken {
-  id      String   @id @default(cuid())
-  email   String
-  token   String   @unique
-  expires DateTime
-  userId  String
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    id      String   @id @default(cuid())
+    email   String
+    token   String   @unique
+    expires DateTime
+    userId  String
+    user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([email, token])
-  @@index([token])
+    @@unique([email, token])
+    @@index([token])
 }
 
 model WithdrawalVerificationToken {
-  id        String   @id @default(cuid())
-  token     String   @unique
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  expires   DateTime
+    id        String   @id @default(cuid())
+    token     String   @unique
+    userId    String
+    createdAt DateTime @default(now())
+    expires   DateTime
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([token])
-  @@index([userId])
+    @@index([token])
+    @@index([userId])
 }
 
 model Supplier {
-  id               String            @id @default(cuid())
-  businessName     String            @default("")
-  businessType     String?
-  phone            String
-  avatar           String?
-  userId           String            @unique
-  addressId        String            @unique
-  pickupLocation   SupplierAddress   @relation(fields: [addressId], references: [id], onDelete: Cascade)
-  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  products         Product[]
-  // orders           Order[]
-  supplierPayments SupplierPayment[]
-  verified         Boolean           @default(false)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+    id               String            @id @default(cuid())
+    businessName     String            @default("")
+    businessType     String?
+    phone            String
+    avatar           String?
+    userId           String            @unique
+    addressId        String            @unique
+    verified         Boolean           @default(false)
+    createdAt        DateTime          @default(now())
+    updatedAt        DateTime          @updatedAt
+    Product          Product[]
+    pickupLocation   SupplierAddress   @relation(fields: [addressId], references: [id], onDelete: Cascade)
+    user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+    supplierPayments SupplierPayment[]
 
-  @@index([businessName])
+    @@index([businessName])
 }
 
 model Plug {
-  id              String   @id @default(cuid())
-  businessName    String
-  phone           String?
-  state           String?
-  aboutBusiness   String?
-  niches          String[] // Array of strings
-  generalMerchant Boolean
-  avatar          String?
+    id              String        @id @default(cuid())
+    businessName    String
+    phone           String?
+    state           String?
+    aboutBusiness   String?
+    niches          String[]
+    generalMerchant Boolean
+    subdomain       String?       @unique
+    configUrl       String?
+    userId          String        @unique
+    createdAt       DateTime      @default(now())
+    updatedAt       DateTime      @updatedAt
+    avatar          String?
+    links           Link[]
+    orders          Order[]
+    user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+    plugPayments    PlugPayment[]
+    plugProduct     PlugProduct[]
+    reviews         Review[]
 
-  // Add site configuration fields
-  subdomain    String?       @unique
-  configUrl    String?
-  orders       Order[]
-  plugProduct  PlugProduct[]
-  reviews      Review[] // Add this relation for reviews
-  userId       String        @unique
-  plugPayments PlugPayment[]
-  links        Link[] // ✅ Relation to links
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-
-  @@index([businessName])
+    @@index([businessName])
 }
 
 model Buyer {
-  id              String   @id @default(cuid())
-  name            String
-  email           String
-  orders          Order[]
-  phone           String
-  streetAddress   String?
-  terminalAddress String?
-  lga             String?
-  state           String?
-  directions      String?
-  // latitude        Float
-  // longitude       Float
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+    id              String   @id @default(cuid())
+    name            String
+    email           String
+    phone           String
+    streetAddress   String?
+    lga             String?
+    state           String?
+    directions      String?
+    createdAt       DateTime @default(now())
+    updatedAt       DateTime @updatedAt
+    terminalAddress String?
+    orders          Order[]
 
-  @@unique([email, phone], name: "email_phone")
+    @@unique([email, phone], name: "email_phone")
 }
 
 model SupplierAddress {
-  id            String    @id @default(cuid())
-  streetAddress String
-  lga           String
-  state         String
-  directions    String?
-  latitude      Float
-  longitude     Float
-  supplier      Supplier?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+    id            String    @id @default(cuid())
+    streetAddress String
+    lga           String
+    state         String
+    directions    String?
+    latitude      Float
+    longitude     Float
+    createdAt     DateTime  @default(now())
+    updatedAt     DateTime  @updatedAt
+    supplier      Supplier?
 
-  @@index([latitude, longitude]) // Add composite index for location queries
-}
-
-enum PaymentStatus {
-  LOCKED // Just created, not yet eligible for withdrawal
-  OPENED // Eligible for withdrawal
-  PAID // Already disbursed
+    @@index([latitude, longitude])
 }
 
 model SupplierPayment {
-  id         String        @id @default(cuid())
-  orderId    String
-  supplierId String
-  amount     Float
-  status     PaymentStatus @default(LOCKED)
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+    id         String        @id @default(cuid())
+    orderId    String
+    supplierId String
+    amount     Float
+    status     PaymentStatus @default(LOCKED)
+    createdAt  DateTime      @default(now())
+    updatedAt  DateTime      @updatedAt
+    order      Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+    supplier   Supplier      @relation(fields: [supplierId], references: [id], onDelete: Cascade)
 
-  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  @@index([supplierId])
-  @@index([status])
+    @@index([supplierId])
+    @@index([status])
 }
 
 model PlugPayment {
-  id        String        @id @default(cuid())
-  orderId   String        @unique
-  plugId    String
-  amount    Float
-  status    PaymentStatus @default(LOCKED)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  plug      Plug          @relation(fields: [plugId], references: [id], onDelete: Cascade)
-  order     Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+    id        String        @id @default(cuid())
+    orderId   String        @unique
+    plugId    String
+    amount    Float
+    status    PaymentStatus @default(LOCKED)
+    createdAt DateTime      @default(now())
+    updatedAt DateTime      @updatedAt
+    order     Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+    plug      Plug          @relation(fields: [plugId], references: [id], onDelete: Cascade)
 
-  @@index([plugId])
-  @@index([status])
+    @@index([plugId])
+    @@index([status])
 }
 
 model ResolvePlugPayment {
-  id            String        @id @default(cuid())
-  orderItemId   String
-  plugId        String
-  orderId       String
-  amount        Float
-  paymentStatus PaymentStatus @default(OPENED)
-  createdAt     DateTime      @default(now())
+    id            String        @id @default(cuid())
+    orderItemId   String
+    plugId        String
+    orderId       String
+    amount        Float
+    paymentStatus PaymentStatus @default(OPENED)
+    createdAt     DateTime      @default(now())
 }
 
 model ResolveSupplierPayment {
-  id            String        @id @default(cuid())
-  orderItemId   String
-  supplierId    String
-  orderId       String
-  amount        Float
-  paymentStatus PaymentStatus @default(OPENED)
-  createdAt     DateTime      @default(now())
+    id            String        @id @default(cuid())
+    orderItemId   String
+    supplierId    String
+    orderId       String
+    amount        Float
+    paymentStatus PaymentStatus @default(OPENED)
+    createdAt     DateTime      @default(now())
 }
 
 model PlugWithdrawalHistory {
-  id        String   @id @default(cuid())
-  plugId    String
-  amount    Int
-  reference String
-  status    String // SUCCESS, FAILED
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+    id        String   @id @default(cuid())
+    plugId    String
+    amount    Int
+    reference String
+    status    String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }
 
 model SupplierWithdrawalHistory {
-  id         String   @id @default(cuid())
-  supplierId String
-  amount     Int
-  reference  String
-  status     String // SUCCESS, FAILED
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+    id         String   @id @default(cuid())
+    supplierId String
+    amount     Int
+    reference  String
+    status     String
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
 }
 
 model Product {
-  id           String             @id @default(cuid())
-  name         String
-  description  String?
-  price        Float
-  minPrice     Float
-  maxPrice     Float
-  category     String
-  images       String // minio storage path or URL
-  supplierId   String
-  size         String?
-  color        String?
-  sold         Int                @default(0) // No of product sold
-  stock        Int                @default(0)
-  plugsCount   Int                @default(0) // Counter for number of plugs using this product
-  supplier     Supplier           @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  variations   ProductVariation[]
-  plugProducts PlugProduct[] // Relationship to track which plugs are using this product
-  reviews      Review[] // relation for reviews
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
+    id           String             @id @default(cuid())
+    name         String
+    description  String?
+    price        Float
+    category     String
+    images       String
+    supplierId   String
+    size         String?
+    colors       String[]           @default([])
+    sold         Int                @default(0)
+    stock        Int                @default(0)
+    plugsCount   Int                @default(0)
+    createdAt    DateTime           @default(now())
+    updatedAt    DateTime           @updatedAt
+    maxPrice     Float              @default(0)
+    minPrice     Float              @default(0)
+    status       ProductStatus      @default(PENDING)
+    plugProducts PlugProduct[]
+    supplier     Supplier           @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+    variations   ProductVariation[]
+    reviews      Review[]
 
-  // indexes to improve query performance
-  @@index([price])
-  @@index([name])
-  @@index([category])
-  @@index([createdAt])
-  @@index([supplierId])
-  // Compound index for common filter combinations
-  @@index([category, price])
-  @@index([plugsCount]) // Index for the plugs count for efficient querying
-}
-
-model ProductVariation {
-  id        String   @id @default(cuid())
-  size      String?
-  color     String?
-  stock     Int      @default(0)
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  // orderItems OrderItem[] // Add this relation
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([productId])
-  @@index([size, color, stock])
+    @@index([supplierId])
+    @@index([category])
+    @@index([category, price])
+    @@index([createdAt])
+    @@index([name])
+    @@index([plugsCount])
+    @@index([price])
 }
 
 model PlugProduct {
-  id              String   @id @default(cuid())
-  originalId      String
-  plugId          String
-  price           Float
-  commission      Float
-  plug            Plug     @relation(fields: [plugId], references: [id], onDelete: Cascade)
-  originalProduct Product  @relation(fields: [originalId], references: [id], onDelete: Cascade)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+    id              String   @id @default(cuid())
+    originalId      String
+    plugId          String
+    price           Float
+    createdAt       DateTime @default(now())
+    updatedAt       DateTime @updatedAt
+    commission      Float
+    originalProduct Product  @relation(fields: [originalId], references: [id], onDelete: Cascade)
+    plug            Plug     @relation(fields: [plugId], references: [id], onDelete: Cascade)
 
-  @@unique([plugId, originalId]) // Ensure a plug can't add the same product twice
-  @@index([plugId])
-  @@index([originalId]) // Index for efficient lookup of original products
-  @@index([price])
-}
-
-enum OrderStatus {
-  PENDING // Initial state when order is created
-  SHIPPED // Order has been handed to logistics 
-  DELIVERED // Order has been delivered successfully // logistics function to update status  
-  CANCELLED // Order was cancelled 
+    @@unique([plugId, originalId])
+    @@index([plugId])
+    @@index([originalId])
+    @@index([price])
 }
 
 model Order {
-  id                 String            @id @default(cuid())
-  orderNumber        String            @unique
-  buyerId            String
-  buyer              Buyer             @relation(fields: [buyerId], references: [id])
-  plugId             String
-  plug               Plug              @relation(fields: [plugId], references: [id])
-  totalAmount        Float             @default(0) //Total amount paid by the buyer for this order
-  deliveryFee        Float             @default(0)
-  paymentMethod      String
-  status             OrderStatus       @default(PENDING)
-  //Keep buyer details on order
-  buyerName          String
-  buyerEmail         String
-  buyerPhone         String
-  buyerAddress       String?
-  buyerState         String
-  buyerLga           String?
-  terminalAddress    String?
-  deliveryType       String
-  buyerDirections    String?
-  // buyerLatitude      Float
-  // buyerLongitude     Float
-  buyerInstructions  String? // Additional instructions for delivery
-  paymentReference   String? // Reference for payment gateway
-  platform           String?           @default("Unknown") // Platform where order was placed (e.g., storefront, whatsApp, etc.)
-  deliveryTrackingId String            @default("") // since we are creating orders before delivery, this can be empty initially
-  plugPayment        PlugPayment?
-  supplierPayment    SupplierPayment[]
-  orderItems         OrderItem[]
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+    id                 String            @id @default(cuid())
+    orderNumber        String            @unique
+    buyerId            String
+    plugId             String
+    totalAmount        Float             @default(0)
+    deliveryFee        Float             @default(0)
+    paymentMethod      String
+    status             OrderStatus       @default(PENDING)
+    buyerName          String
+    buyerEmail         String
+    buyerPhone         String
+    buyerAddress       String?
+    buyerState         String
+    buyerLga           String?
+    buyerDirections    String?
+    buyerInstructions  String?
+    paymentReference   String?
+    deliveryTrackingId String            @default("")
+    createdAt          DateTime          @default(now())
+    updatedAt          DateTime          @updatedAt
+    platform           String?           @default("Unknown")
+    deliveryType       String
+    terminalAddress    String?
+    buyer              Buyer             @relation(fields: [buyerId], references: [id])
+    plug               Plug              @relation(fields: [plugId], references: [id])
+    orderItems         OrderItem[]
+    plugPayment        PlugPayment?
+    supplierPayment    SupplierPayment[]
 
-  // @@index([supplierId])
-  @@index([plugId])
-  @@index([status])
-  @@index([createdAt])
-  @@index([orderNumber])
+    @@index([plugId])
+    @@index([status])
+    @@index([createdAt])
+    @@index([orderNumber])
 }
 
-//may need to include supplier relation
 model OrderItem {
-  id                String             @id @default(cuid())
-  orderId           String
-  plugPrice         Float?
-  supplierPrice     Float?
-  supplierId        String?
-  productName       String?
-  productId         String
-  plugId            String?
-  variantId         String? // Optional reference to a specific product variation
-  quantity          Int
-  productSize       String? // Size of the product, if applicable
-  productColor      String? // Color of the product, if applicable
-  variantSize       String? // Size of the product variant, if applicable
-  variantColor      String? // Color of the product variant, if applicable
-  order             Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  PausedOrderItem   PausedOrderItem? // Track paused order items
-  ReturnedOrderItem ReturnedOrderItem? // Track returned order items
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+    id                String             @id @default(cuid())
+    orderId           String
+    productId         String
+    variantId         String?
+    quantity          Int
+    productSize       String?
+    productColor      String?
+    variantSize       String?
+    variantColor      String?
+    createdAt         DateTime           @default(now())
+    updatedAt         DateTime           @updatedAt
+    productName       String?
+    plugPrice         Float?
+    supplierId        String?
+    supplierPrice     Float?
+    plugId            String?
+    order             Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+    PausedOrderItem   PausedOrderItem?
+    ReturnedOrderItem ReturnedOrderItem?
 
-  @@index([orderId])
-  @@index([productId])
+    @@index([orderId])
+    @@index([productId])
 }
 
 model PausedOrderItem {
-  id          String    @id @default(cuid())
-  orderItemId String    @unique
-  quantity    Int
-  createdAt   DateTime  @default(now())
-  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
+    id          String    @id @default(cuid())
+    orderItemId String    @unique
+    quantity    Int
+    createdAt   DateTime  @default(now())
+    orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
 }
 
 model ReturnedOrderItem {
-  id          String    @id @default(cuid())
-  orderItemId String    @unique
-  quantity    Int
-  createdAt   DateTime  @default(now())
-  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
+    id          String    @id @default(cuid())
+    orderItemId String    @unique
+    quantity    Int
+    createdAt   DateTime  @default(now())
+    orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
 }
 
 model Review {
-  id        String   @id @default(cuid())
-  rating    Int // Rating from 1-5
-  review    String // Review text
-  productId String
-  plugId    String
-  // Relations
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  plug      Plug     @relation(fields: [plugId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+    id        String   @id @default(cuid())
+    rating    Int
+    review    String
+    productId String
+    plugId    String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    plug      Plug     @relation(fields: [plugId], references: [id], onDelete: Cascade)
+    product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  // Ensure one review per plug per product
-  @@unique([productId, plugId])
-  @@index([productId])
-  @@index([plugId])
-  @@index([rating])
-  @@index([createdAt])
+    @@unique([productId, plugId])
+    @@index([productId])
+    @@index([plugId])
+    @@index([rating])
+    @@index([createdAt])
 }
 
 model Link {
-  id        String          @id @default(cuid())
-  plugId    String
-  shortId   String          @unique
-  targetUrl String
-  plug      Plug            @relation(fields: [plugId], references: [id], onDelete: Cascade)
-  analytics LinkAnalytics[]
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+    id        String          @id @default(cuid())
+    shortId   String          @unique
+    targetUrl String
+    createdAt DateTime        @default(now())
+    updatedAt DateTime        @updatedAt
+    plugId    String
+    plug      Plug            @relation(fields: [plugId], references: [id], onDelete: Cascade)
+    analytics LinkAnalytics[]
 
-  @@index([plugId])
+    @@index([plugId])
 }
 
 model LinkAnalytics {
-  id        String   @id @default(cuid())
-  linkId    String
-  platform  String
-  clicks    Int      @default(0)
-  link      Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+    id        String   @id @default(cuid())
+    linkId    String
+    platform  String
+    clicks    Int      @default(0)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    link      Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
 
-  @@unique([linkId, platform])
-  @@index([linkId])
+    @@unique([linkId, platform])
+    @@index([linkId])
 }
 
 model StoreAnalytics {
-  id        String @id @default(cuid())
-  subdomain String @unique
-  count     Int    @default(0)
+    id        String @id @default(cuid())
+    subdomain String @unique
+    count     Int    @default(0)
 }
-
-//QUEUE MAILS FOR VERCEL SEVERLESS
-// model MailQueue {
-//   id        String   @id @default(cuid())
-//   to        String
-//   subject   String
-//   html      String
-//   senderKey String // "orders", "admin", etc.
-//   replyTo   String?
-//   status    String   @default("PENDING") // SENT, FAILED
-//   attempts  Int      @default(0)
-//   createdAt DateTime @default(now())
-// }
-
-// model MailQueue {
-//   id            String   @id @default(cuid())
-//   to            String
-//   subject       String
-//   html          String   @db.Text
-//   senderKey     String
-//   replyTo       String?
-//   status        String   @default("PENDING")
-//   attempts      Int      @default(0)
-//   error         String?  @db.Text
-//   createdAt     DateTime @default(now())
-//   lastAttemptAt DateTime?
-//   sentAt        DateTime?
-
-//   @@index([status])
-//   @@map("mail_queue")
-// }
 
 model MailQueue {
-  id            String     @id @default(cuid())
-  to            String
-  subject       String
-  html          String     @db.Text
-  senderKey     String
-  replyTo       String?
-  status        MailStatus @default(PENDING)
-  attempts      Int        @default(0)
-  error         String?
-  createdAt     DateTime   @default(now())
-  lastAttemptAt DateTime?
-  sentAt        DateTime?
+    id            String     @id @default(cuid())
+    to            String
+    subject       String
+    html          String
+    senderKey     String
+    replyTo       String?
+    status        MailStatus @default(PENDING)
+    attempts      Int        @default(0)
+    error         String?
+    createdAt     DateTime   @default(now())
+    lastAttemptAt DateTime?
+    sentAt        DateTime?
 
-  @@index([createdAt])
-  @@index([status, attempts])
-  @@index([status])
-  @@map("mailQueue")
-}
-
-enum MailStatus {
-  PENDING
-  SENT
-  FAILED
+    @@index([createdAt])
+    @@index([status, attempts])
+    @@index([status])
+    @@map("mailQueue")
 }
 
 model AdminOTP {
-  id        String   @id @default(cuid())
-  token     String   @unique
-  expires   DateTime
-  createdAt DateTime @default(now())
+    id        String   @id @default(cuid())
+    token     String   @unique
+    expires   DateTime
+    createdAt DateTime @default(now())
 }
 
 model ShareAnalytics {
-  id       String   @id @default(cuid())
-  userId   String
-  platform String
-  date     DateTime
-  shares   Int      @default(1)
+    id       String   @id @default(cuid())
+    userId   String
+    platform String
+    date     DateTime
+    shares   Int      @default(1)
 
-  @@unique([userId, platform, date])
-  @@index([platform, date])
+    @@unique([userId, platform, date])
+    @@index([platform, date])
+}
+
+model ProductVariation {
+    id        String   @id
+    size      String?
+    colors    String[] @default([])
+    stock     Int      @default(0)
+    productId String
+    createdAt DateTime @default(now())
+    updatedAt DateTime
+    Product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+enum UserType {
+    UNSET
+    SUPPLIER
+    PLUG
+}
+
+enum PaymentStatus {
+    LOCKED
+    OPENED
+    PAID
+}
+
+enum OrderStatus {
+    PENDING
+    SHIPPED
+    DELIVERED
+    CANCELLED
+}
+
+enum MailStatus {
+    PENDING
+    SENT
+    FAILED
+}
+
+enum ProductStatus {
+    PENDING
+    APPROVED
+    QUERIED
 }

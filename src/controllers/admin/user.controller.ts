@@ -49,3 +49,33 @@ export const getAllSuppliers = async (
     next(error);
   }
 };
+
+export const verifySupplier = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const supplierId = req.params.supplierId as string;
+
+    if (!supplierId) {
+       res.status(400).json({ error: "Supplier ID is required" });
+       return
+    }
+
+    await prisma.supplier.update({
+      where: {
+        id: supplierId
+      },
+      data: {
+        verified: true,
+      },
+    });
+
+    res.status(200).json({
+      message: "Supplier verified successfully!",
+    });
+  } catch (error) {
+    next(error);
+  }
+}
