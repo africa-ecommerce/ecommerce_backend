@@ -414,7 +414,7 @@ model ShareAnalytics {
     userId   String
     platform String
     date     DateTime
-    shares   Int      @default(1)
+    shares   Int      @default(0)
 
     @@unique([userId, platform, date])
     @@index([platform, date])
@@ -427,7 +427,7 @@ model ProductVariation {
     stock     Int      @default(0)
     productId String
     createdAt DateTime @default(now())
-    updatedAt DateTime
+    updatedAt DateTime @updatedAt
     Product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
