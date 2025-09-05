@@ -421,7 +421,7 @@ model ShareAnalytics {
 }
 
 model ProductVariation {
-    id        String   @id
+    id        String   @id @default(cuid())
     size      String?
     colors    String[] @default([])
     stock     Int      @default(0)

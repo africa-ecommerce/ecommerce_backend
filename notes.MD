@@ -72,7 +72,7 @@ git checkout dev
 
 
 
-format order colors or so
+format order colors or so, if user picks multiple color then it is different variation shouldnt e an array
 
 
 
