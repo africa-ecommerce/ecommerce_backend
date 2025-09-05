@@ -267,7 +267,7 @@ export const productController = {
           price: parseFloat(productData.price),
           category: productData.category,
           size: productData.size,
-          color: productData.color,
+          colors: productData.colors || [],
           stock: productData.stock,
         });
 
@@ -325,7 +325,7 @@ export const productController = {
               data: validatedVariations.map((variation: any) => ({
                 productId,
                 size: variation.size?.trim(),
-                color: variation.color?.trim(),
+                colors: variation.colors || [],
                 stock: variation.stock,
               })),
             });
@@ -339,7 +339,8 @@ export const productController = {
               price: validatedData.data.price,
               category: validatedData.data.category,
               size: validatedData.data.size?.trim(),
-              colors: validatedData.data.colors,
+              colors: validatedData.data.colors || [],
+              status: "PENDING", // Reset to pending on update
               stock: validatedData.data.stock,
               images: JSON.stringify(updatedImages),
               updatedAt: new Date(),
