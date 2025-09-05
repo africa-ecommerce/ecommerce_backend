@@ -262,7 +262,6 @@ model Order {
     plugId             String
     totalAmount        Float             @default(0)
     deliveryFee        Float             @default(0)
-    paymentMethod      String
     status             OrderStatus       @default(PENDING)
     buyerName          String
     buyerEmail         String
@@ -443,11 +442,20 @@ enum PaymentStatus {
     PAID
 }
 
+// enum OrderStatus {
+//     PENDING
+//     SHIPPED
+//     DELIVERED
+//     CANCELLED
+// }
+
 enum OrderStatus {
-    PENDING
-    SHIPPED
-    DELIVERED
-    CANCELLED
+  STAGED     // New status for staged orders before payment
+  PENDING    // After payment confirmation
+//   CONFIRMED  //supplier confirmed order for pickup
+//   CANCELLED  // supplier cancelled order
+  SHIPPED   // order is on the way to customer
+  DELIVERED  // order delivered to customer
 }
 
 enum MailStatus {

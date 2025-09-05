@@ -3,7 +3,8 @@ import {
   getBuyerInfo,
   getPlugOrders,
   getSupplierOrders,
-  placeOrder,
+  stageOrder,
+  confirmOrder,
   getPlugPausedOrderItems,
   getPlugReturnedOrderItems,
   getSupplierPausedOrderItems,
@@ -13,7 +14,8 @@ import authenticateJWT from "../middleware/auth.middleware";
 import { isPlug, isSupplier } from "../middleware/role.middleware";
 const router = Router();
 
-router.post("/place-order", placeOrder);
+router.post("/stage-order", stageOrder);
+router.post("/confirm-order", confirmOrder);
 router.get("/buyer-info", getBuyerInfo);
 router.get("/plug", authenticateJWT, isPlug, getPlugOrders);
 router.get("/supplier", authenticateJWT, isSupplier, getSupplierOrders);

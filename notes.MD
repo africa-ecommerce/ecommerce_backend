@@ -204,7 +204,7 @@ NOT SENDING DIMENSIONS
 
 
 
-
+always check payment reference to verify order before
 If you are running your Postgres Db on a VPs and you want to migrate to a managed db like neon or so, and using prisma how do you do it, or if you are running minio for s3 how do you migrate data to something like  aws S3 
 
 

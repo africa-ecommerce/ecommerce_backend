@@ -753,6 +753,7 @@ const terminalMapping = {
  * @returns {Object|null} - Full terminal details or null if not found
  */
 export function getTerminalInfo(shortAddress: keyof typeof terminalMapping) {
+  
   const terminal = terminalMapping[shortAddress];
   const address = terminal.fullAddress;
   return address;

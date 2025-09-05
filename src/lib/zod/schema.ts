@@ -157,20 +157,41 @@ export const BuyerInfoSchema = z.object({
 });
 
 const OrderItemSchema = z.object({
-  plugPrice: z.number().min(0),
-  supplierPrice: z.number().min(0),
-  productName: z.string().min(1),
-  supplierId: z.string().min(1),
-  productId: z.string().min(1),
+  productId: z.string(),
   variantId: z.string().optional(),
-  quantity: z.number().int().min(1),
+  quantity: z.number().positive(),
   productSize: z.string().optional(),
   productColor: z.string().optional(),
   variantSize: z.string().optional(),
   variantColor: z.string().optional(),
+  plugPrice: z.number().positive(),
+  supplierPrice: z.number().positive(),
+  supplierId: z.string(),
 });
 
-export const PlaceOrderSchema = z.object({
+// export const PlaceOrderSchema = z.object({
+//   buyerName: z.string().min(1),
+//   buyerEmail: z.string().email(),
+//   buyerPhone: z.string().min(1),
+//   buyerAddress: z.string().optional(),
+//   buyerState: z.string().min(1),
+//   buyerLga: z.string().optional(),
+//   buyerDirections: z.string().optional(),
+//   buyerInstructions: z.string().optional(),
+//   platform: z.string().min(1).optional(),
+//   paymentMethod: z.string().min(1),
+//   totalAmount: z.number().positive(),
+//   deliveryFee: z.number().min(0),
+//   deliveryType: z.string(),
+//   terminalAddress: z.string().optional(),
+//   paymentReference: z.string().min(1),
+//   plugId: z.string().optional(),
+//   subdomain: z.string().optional(),
+//   orderItems: z.array(OrderItemSchema).min(1),
+// });
+
+
+export const StageOrderSchema = z.object({
   buyerName: z.string().min(1),
   buyerEmail: z.string().email(),
   buyerPhone: z.string().min(1),
@@ -178,17 +199,17 @@ export const PlaceOrderSchema = z.object({
   buyerState: z.string().min(1),
   buyerLga: z.string().optional(),
   buyerDirections: z.string().optional(),
-  // buyerLatitude: z.number().optional(),
-  // buyerLongitude: z.number().optional(),
   buyerInstructions: z.string().optional(),
-  platform: z.string().min(1).optional(),
-  paymentMethod: z.string().min(1),
   totalAmount: z.number().positive(),
   deliveryFee: z.number().min(0),
   deliveryType: z.string(),
   terminalAddress: z.string().optional(),
-  paymentReference: z.string().min(1).optional(),
+  platform: z.string().min(1).optional(),
   plugId: z.string().optional(),
   subdomain: z.string().optional(),
   orderItems: z.array(OrderItemSchema).min(1),
+});
+
+export const ConfirmOrderSchema = z.object({
+  reference: z.string().min(1),
 });
