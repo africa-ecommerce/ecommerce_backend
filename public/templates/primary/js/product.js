@@ -285,6 +285,7 @@ class EnhancedProductCache {
       const result = await response.json()
 
       if (result.message === "Products fetched successfully!" && result.data) {
+        console.log("data", result.data)
         return this.transformProducts(result.data)
       } else {
         throw new Error("Invalid API response format")
