@@ -454,7 +454,7 @@ class EnhancedProductCache {
               hasVariations: hasVariations,
               dimensions: product.dimensions,
               size: product.size,
-              color: product.color,
+              colors: product.colors,
             };
         });
     }

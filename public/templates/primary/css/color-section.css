@@ -1,0 +1,236 @@
+/* Color Selection Styles */
+.color-selection-container {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.color-selection-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.color-selection-label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.color-required-indicator {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.color-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.color-option {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color, #f3f4f6);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.color-option:hover {
+  transform: scale(1.1);
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.color-option.selected {
+  border-color: var(--primary-color);
+  border-width: 3px;
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+}
+
+.color-checkmark {
+  color: white;
+  font-weight: bold;
+  font-size: 1.2rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.color-option.selected .color-checkmark {
+  opacity: 1;
+}
+
+/* Special handling for light colors */
+.color-option[data-color*="white"] .color-checkmark,
+.color-option[data-color*="yellow"] .color-checkmark,
+.color-option[data-color*="lime"] .color-checkmark {
+  color: #1f2937;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+.selected-color-display {
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.selected-color-text {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* Highlight animation for required selection */
+.color-options.highlight-required {
+  animation: highlightRequired 0.5s ease-in-out 3;
+}
+
+@keyframes highlightRequired {
+  0%,
+  100% {
+    border-color: transparent;
+    background: rgba(255, 255, 255, 0.05);
+  }
+  50% {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+  }
+}
+
+/* Button states */
+.btn.color-required {
+  opacity: 0.6;
+  cursor: not-allowed;
+  position: relative;
+}
+
+.btn.color-required::after {
+  content: "Select color first";
+  position: absolute;
+  bottom: -1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  color: #ef4444;
+  white-space: nowrap;
+}
+
+.btn.color-selected {
+  opacity: 1;
+  cursor: pointer;
+}
+
+/* Notification styles */
+.color-required-notification {
+  position: fixed;
+  top: 2rem;
+  right: 2rem;
+  z-index: 10000;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+  animation: slideInRight 0.3s ease-out;
+  max-width: 300px;
+}
+
+.notification-content {
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.notification-icon {
+  font-size: 1.25rem;
+}
+
+.notification-text {
+  flex: 1;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+
+.notification-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .color-selection-container {
+    margin: 0.75rem 0;
+    padding: 0.75rem;
+  }
+
+  .color-option {
+    width: 35px;
+    height: 35px;
+  }
+
+  .color-required-notification {
+    top: 1rem;
+    right: 1rem;
+    left: 1rem;
+    max-width: none;
+  }
+
+  .notification-content {
+    padding: 0.75rem 1rem;
+  }
+}
+
+/* Integration with existing product cards */
+.product-card .color-selection-container,
+.product-info .color-selection-container {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Ensure proper spacing in product details page */
+.product-details .color-selection-container {
+  margin: 1.5rem 0;
+}
