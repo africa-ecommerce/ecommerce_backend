@@ -362,6 +362,7 @@ export const adminProductController = {
   ) => {
     try {
       const productId = req.params.productId;
+      console.log("body", req.body);
       const { minPrice, maxPrice } = approveProductSchema.parse(req.body);
 
       // Check product

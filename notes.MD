@@ -73,6 +73,7 @@ git checkout dev
 
 
 format order colors or so, if user picks multiple color then it is different variation shouldnt e an array
+price change when supplier changes price, we filter out product price that has changed and approved, 
 
 
 
