@@ -86,7 +86,7 @@ class ShoppingCart {
               (color, index) => `
             <div class="color-item" data-color="${color}">
               <div class="color-option">
-                <span class="color-dot" style="background-color: ${color.toLowerCase()}"></span>
+                
                 <span class="color-name">${color.toUpperCase()}</span>
               </div>
               <button class="btn btn-primary color-select-btn" data-color-index="${index}">
@@ -198,8 +198,8 @@ class ShoppingCart {
                   ${variation.colors.map((color, cIndex) => `
                     <div class="variation-color-option ${cIndex === 0 ? "active" : ""}" 
                          data-color="${color}">
-                      <span class="color-dot" style="background-color: ${color.toLowerCase()}"></span>
-                      <span class="color-name">${color}</span>
+                      
+                      <span class="color-name">${color.toUpperCase()}</span>
                     </div>
                   `).join("")}
                 </div>
