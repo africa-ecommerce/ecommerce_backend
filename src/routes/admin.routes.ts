@@ -29,6 +29,14 @@ router.delete(
   adminProductController.deleteProduct
 );
 
+// Approve product (with min/max price)
+router.put("/product/approve/:productId", adminProductController.approveSupplierProducts);
+
+// Query (reject) product
+router.put("/product/query/:productId", adminProductController.querySupplierProducts);
+
+
+
 router.get("/order", getOrders);
 router.post("/order/shipped", shippedOrder);
 router.post("/order/delivered", deliveredOrder);

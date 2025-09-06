@@ -213,3 +213,8 @@ export const StageOrderSchema = z.object({
 export const ConfirmOrderSchema = z.object({
   reference: z.string().min(1),
 });
+
+export const approveProductSchema = z.object({
+  minPrice: z.number().positive(),
+  maxPrice: z.number().positive(),
+});
