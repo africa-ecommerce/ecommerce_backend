@@ -492,6 +492,7 @@ class EnhancedProductDetailsCache {
           hasVariations: hasVariations,
           variations: apiProduct.variations || [],
           sold: apiProduct.sold || 0,
+          colors: apiProduct.colors || (apiProduct.color ? [apiProduct.color] : []),
         };
     }
 

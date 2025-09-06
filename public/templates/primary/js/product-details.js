@@ -819,6 +819,7 @@ function transformProductData(apiProduct) {
     variations: apiProduct.variations || [],
     sold: apiProduct.sold || 0,
     colors: apiProduct.colors || [],
+    
   }
 }
 
