@@ -54,6 +54,103 @@ class ShoppingCart {
     return Number.parseFloat(priceString.replace(/[₦,]/g, "")) || 0
   }
 
+  showColorModal(product, isBuyNow = false) {
+    // Create modal overlay
+    const overlay = document.createElement("div")
+    overlay.className = "color-modal-overlay"
+
+    // Create modal container
+    const modal = document.createElement("div")
+    modal.className = "color-modal"
+
+    // Create modal content
+    modal.innerHTML = `
+      <div class="color-modal-header">
+        <h3>Choose Color</h3>
+        <button class="color-modal-close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="color-modal-body">
+        <div class="product-color-info">
+          <img src="${product.image}" alt="${product.title}" class="color-product-image" crossorigin="anonymous">
+          <h4 class="color-product-title">${product.title}</h4>
+          <p class="color-product-price">₦${product.price.toLocaleString()}</p>
+        </div>
+        <div class="colors-list">
+          ${product.colors
+            .map(
+              (color, index) => `
+            <div class="color-item" data-color="${color}">
+              <div class="color-option">
+                <span class="color-dot" style="background-color: ${color.toLowerCase()}"></span>
+                <span class="color-name">${color}</span>
+              </div>
+              <button class="btn btn-primary color-select-btn" data-color-index="${index}">
+                ${isBuyNow ? "Buy Now" : "Add to Cart"}
+              </button>
+            </div>
+          `,
+            )
+            .join("")}
+        </div>
+      </div>
+    `
+
+    // Add modal to overlay
+    overlay.appendChild(modal)
+    document.body.appendChild(overlay)
+    document.body.style.overflow = "hidden"
+
+    // Add event listeners
+    const closeBtn = modal.querySelector(".color-modal-close")
+    const selectBtns = modal.querySelectorAll(".color-select-btn")
+
+    // Close modal function
+    const closeModal = () => {
+      overlay.remove()
+      document.body.style.overflow = ""
+    }
+
+    // Close button
+    closeBtn.addEventListener("click", closeModal)
+
+    // Click outside to close
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        closeModal()
+      }
+    })
+
+    // Color selection
+    selectBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const colorIndex = Number.parseInt(btn.getAttribute("data-color-index"))
+        const selectedColor = product.colors[colorIndex]
+
+        if (isBuyNow) {
+          // Redirect to checkout with color
+          const ref = this.getSubdomain()
+          const checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&color=${encodeURIComponent(selectedColor)}&ref=${ref}&platform=store`
+          window.open(checkoutUrl, "_blank")
+          closeModal()
+        } else {
+          // Add to cart with color
+          this.addItemWithColor(product, selectedColor)
+          closeModal()
+        }
+      })
+    })
+
+    // Show modal with animation
+    setTimeout(() => {
+      overlay.classList.add("active")
+    }, 10)
+  }
+
   showVariationModal(product, isBuyNow = false) {
     // Create modal overlay
     const overlay = document.createElement("div")
@@ -62,6 +159,12 @@ class ShoppingCart {
     // Create modal container
     const modal = document.createElement("div")
     modal.className = "variation-modal"
+
+    // Get available colors from variations if they exist
+    const variationColors =
+      product.variations && product.variations.length > 0 && product.variations[0].colors
+        ? product.variations[0].colors
+        : []
 
     // Create modal content
     modal.innerHTML = `
@@ -80,6 +183,27 @@ class ShoppingCart {
           <h4 class="variation-product-title">${product.title}</h4>
           <p class="variation-product-price">₦${product.price.toLocaleString()}</p>
         </div>
+        ${
+          variationColors.length > 0
+            ? `
+          <div class="variation-colors-section">
+            <h5>Choose Color:</h5>
+            <div class="variation-colors-list">
+              ${variationColors
+                .map(
+                  (color, index) => `
+                <div class="variation-color-option" data-color="${color}">
+                  <span class="color-dot" style="background-color: ${color.toLowerCase()}"></span>
+                  <span class="color-name">${color}</span>
+                </div>
+              `,
+                )
+                .join("")}
+            </div>
+          </div>
+        `
+            : ""
+        }
         <div class="variations-list">
           ${product.variations
             .map(
@@ -122,6 +246,9 @@ class ShoppingCart {
     // Add event listeners
     const closeBtn = modal.querySelector(".variation-modal-close")
     const selectBtns = modal.querySelectorAll(".variation-select-btn")
+    const colorOptions = modal.querySelectorAll(".variation-color-option")
+
+    let selectedColor = null
 
     // Close modal function
     const closeModal = () => {
@@ -139,6 +266,17 @@ class ShoppingCart {
       }
     })
 
+    // Color selection from variations.colors
+    colorOptions.forEach((option) => {
+      option.addEventListener("click", () => {
+        // Remove active class from all options
+        colorOptions.forEach((opt) => opt.classList.remove("active"))
+        // Add active class to selected option
+        option.classList.add("active")
+        selectedColor = option.getAttribute("data-color")
+      })
+    })
+
     // Variation selection
     selectBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -147,14 +285,17 @@ class ShoppingCart {
 
         if (selectedVariation.stocks > 0) {
           if (isBuyNow) {
-            // Redirect to checkout with variation
+            // Redirect to checkout with variation and color
             const ref = this.getSubdomain()
-            const checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&variation=${selectedVariation.id}&ref=${ref}&platform=store`
+            let checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&variation=${selectedVariation.id}&ref=${ref}&platform=store`
+            if (selectedColor) {
+              checkoutUrl += `&color=${encodeURIComponent(selectedColor)}`
+            }
             window.open(checkoutUrl, "_blank")
             closeModal()
           } else {
-            // Add to cart
-            this.addItem(product, selectedVariation)
+            // Add to cart with variation and color
+            this.addItemWithVariationAndColor(product, selectedVariation, selectedColor)
             closeModal()
           }
         } else {
@@ -169,23 +310,25 @@ class ShoppingCart {
     }, 10)
   }
 
-  addItem(product, selectedVariation = null) {
-    const selectedColor = window.colorSelectionManager?.getSelectedColor(product.id)
-    const colorSuffix = selectedColor ? `_${selectedColor}` : ""
-    const itemId = selectedVariation
-      ? `${product.id}_${selectedVariation.id}${colorSuffix}`
-      : `${product.id}${colorSuffix}`
+  addItemWithColor(product, selectedColor) {
+    // Create a unique item ID that includes color
+    const itemId = `${product.id}_color_${selectedColor}`
 
+    // Check if product already exists in cart
     const existingItem = this.items.find((item) => item.itemId === itemId)
-    const stockLimit = selectedVariation ? selectedVariation.stocks : product.stocks
+
+    // Determine stock limit
+    const stockLimit = product.stocks
 
     if (existingItem) {
+      // Check stock before increasing quantity
       if (stockLimit !== null && existingItem.quantity >= stockLimit) {
         this.showNotification(`Cannot add more ${product.title}. Only ${stockLimit} available in stock.`, "error")
         return
       }
       existingItem.quantity += 1
     } else {
+      // Check if we've reached the maximum number of different items
       if (this.items.length >= this.maxItems) {
         this.showNotification(
           `Cart limit reached! You can only have ${this.maxItems} different items in your cart.`,
@@ -194,6 +337,124 @@ class ShoppingCart {
         return
       }
 
+      // Check if stock is available for new item
+      if (stockLimit !== null && stockLimit < 1) {
+        this.showNotification(`${product.title} is out of stock.`, "error")
+        return
+      }
+
+      this.items.push({
+        ...product,
+        itemId: itemId,
+        quantity: 1,
+        stock: stockLimit,
+        selectedColor: selectedColor,
+        image: product.image || product.images[0] || `${this.baseUrl}/image/placeholder.svg`,
+        displayTitle: `${product.title} (${selectedColor})`,
+      })
+    }
+
+    this.saveCart()
+    const capitalizedName = `${product.title} (${selectedColor})`
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ")
+    this.showNotification(`${capitalizedName} added to cart!`)
+  }
+
+  addItemWithVariationAndColor(product, selectedVariation, selectedColor) {
+    // Create a unique item ID that includes variation and color
+    let itemId = `${product.id}_${selectedVariation.id}`
+    if (selectedColor) {
+      itemId += `_color_${selectedColor}`
+    }
+
+    // Check if product already exists in cart
+    const existingItem = this.items.find((item) => item.itemId === itemId)
+
+    // Determine stock limit
+    const stockLimit = selectedVariation.stocks
+
+    if (existingItem) {
+      // Check stock before increasing quantity
+      if (stockLimit !== null && existingItem.quantity >= stockLimit) {
+        this.showNotification(`Cannot add more ${product.title}. Only ${stockLimit} available in stock.`, "error")
+        return
+      }
+      existingItem.quantity += 1
+    } else {
+      // Check if we've reached the maximum number of different items
+      if (this.items.length >= this.maxItems) {
+        this.showNotification(
+          `Cart limit reached! You can only have ${this.maxItems} different items in your cart.`,
+          "error",
+        )
+        return
+      }
+
+      // Check if stock is available for new item
+      if (stockLimit !== null && stockLimit < 1) {
+        this.showNotification(`${product.title} is out of stock.`, "error")
+        return
+      }
+
+      let displayTitle = product.title
+      if (selectedColor) {
+        displayTitle += ` (${selectedColor})`
+      }
+
+      this.items.push({
+        ...product,
+        itemId: itemId,
+        quantity: 1,
+        stock: stockLimit,
+        variation: selectedVariation,
+        selectedColor: selectedColor,
+        image: product.image || product.images[0] || `${this.baseUrl}/image/placeholder.svg`,
+        displayTitle: displayTitle,
+      })
+    }
+
+    this.saveCart()
+    let displayName = product.title
+    if (selectedColor) {
+      displayName += ` (${selectedColor})`
+    }
+    const capitalizedName = displayName
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ")
+    this.showNotification(`${capitalizedName} added to cart!`)
+  }
+
+  addItem(product, selectedVariation = null) {
+    // Create a unique item ID that includes variation if present
+    const itemId = selectedVariation ? `${product.id}_${selectedVariation.id}` : product.id
+
+    // Check if product already exists in cart
+    const existingItem = this.items.find((item) => item.itemId === itemId)
+
+    // Determine stock limit
+    const stockLimit = selectedVariation ? selectedVariation.stocks : product.stocks
+
+    if (existingItem) {
+      // Check stock before increasing quantity
+      if (stockLimit !== null && existingItem.quantity >= stockLimit) {
+        this.showNotification(`Cannot add more ${product.title}. Only ${stockLimit} available in stock.`, "error")
+        return
+      }
+      existingItem.quantity += 1
+    } else {
+      // Check if we've reached the maximum number of different items
+      if (this.items.length >= this.maxItems) {
+        this.showNotification(
+          `Cart limit reached! You can only have ${this.maxItems} different items in your cart.`,
+          "error",
+        )
+        return
+      }
+
+      // Check if stock is available for new item
       if (stockLimit !== null && stockLimit < 1) {
         this.showNotification(`${product.title} is out of stock.`, "error")
         return
@@ -205,7 +466,7 @@ class ShoppingCart {
         quantity: 1,
         stock: stockLimit,
         variation: selectedVariation,
-        selectedColor: selectedColor, // Store selected color
+        // Add variation display name for cart
         image: product.image || product.images[0] || `${this.baseUrl}/image/placeholder.svg`,
         displayTitle: selectedVariation ? `${product.title}` : product.title,
       })
@@ -254,17 +515,20 @@ class ShoppingCart {
   }
 
   updateCartUI() {
+    // Update cart count (shows number of different items, not quantities)
     const cartCountElements = document.querySelectorAll(".cart-count")
     cartCountElements.forEach((element) => {
       element.textContent = this.count
     })
 
+    // Update cart items
     const cartItemsContainer = document.querySelector(".cart-modal-items")
     const cartEmptyElement = document.querySelector(".cart-empty")
     const totalAmountElement = document.querySelector(".total-amount")
 
     if (cartItemsContainer) {
       if (this.items.length === 0) {
+        // Show empty cart message
         cartItemsContainer.innerHTML = `
           <div class="cart-empty">
             <p>Your cart is empty</p>
@@ -272,10 +536,12 @@ class ShoppingCart {
           </div>
         `
       } else {
+        // Hide empty cart message if it exists
         if (cartEmptyElement) {
           cartEmptyElement.style.display = "none"
         }
 
+        // Replace the cart items rendering part in updateCartUI method
         cartItemsContainer.innerHTML = this.items
           .map(
             (item) => `
@@ -286,23 +552,23 @@ class ShoppingCart {
             <div class="cart-item-details">
               <h4 class="cart-item-title">${item.displayTitle || item.title}</h4>
               ${
-                item.variation || item.selectedColor
+                item.variation
                   ? `
                 <div class="cart-item-variation">
-                  ${
-                    item.selectedColor
-                      ? `<span class="variation-info">
-                          <span class="color-dot" style="background-color: ${this.getColorValue(item.selectedColor)}; width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 4px; border: 1px solid var(--color-border);"></span>
-                          ${this.formatColorName(item.selectedColor)}
-                        </span>`
-                      : ""
-                  }
-                  ${
-                    item.variation?.color && !item.selectedColor
-                      ? `<span class="variation-info">Color: ${item.variation.color}</span>`
-                      : ""
-                  }
-                  ${item.variation?.size ? `<span class="variation-info">Size: ${item.variation.size}</span>` : ""}
+                  ${item.variation.color ? `<span class="variation-info">Color: ${item.variation.color}</span>` : ""}
+                  ${item.variation.size ? `<span class="variation-info">Size: ${item.variation.size}</span>` : ""}
+                </div>
+              `
+                  : ""
+              }
+              ${
+                item.selectedColor && !item.variation
+                  ? `
+                <div class="cart-item-color">
+                  <span class="color-info">
+                    <span class="color-dot" style="background-color: ${item.selectedColor.toLowerCase()}"></span>
+                    ${item.selectedColor}
+                  </span>
                 </div>
               `
                   : ""
@@ -325,14 +591,17 @@ class ShoppingCart {
           )
           .join("")
 
+        // Add event listeners to cart items
         this.addCartItemEventListeners()
       }
 
+      // Update total amount
       if (totalAmountElement) {
         totalAmountElement.textContent = `₦${this.total.toLocaleString(undefined, {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
-        })}`
+        })}
+`
       }
     }
   }
@@ -414,6 +683,7 @@ class ShoppingCart {
         const productId = e.target.getAttribute("data-product-id")
         let product = null
 
+        // Try to get product from EnhancedProductCache
         if (window.EnhancedProductCache) {
           const cached = window.EnhancedProductCache.getFromMemoryCache()
           if (cached && cached.data) {
@@ -421,30 +691,25 @@ class ShoppingCart {
           }
         }
 
+        // Another fallback: try to get from FeaturedProducts
         if (!product && window.FeaturedProducts && window.FeaturedProducts.getFeaturedProducts) {
           const featuredProducts = window.FeaturedProducts.getFeaturedProducts()
           product = featuredProducts.find((p) => p.id == productId)
         }
 
+        // Final fallback: check if products array exists globally
         if (!product && typeof this.products !== "undefined") {
           product = this.products.find((p) => p.id == productId)
         }
 
         if (product) {
-          if (product.colors && Array.isArray(product.colors) && product.colors.length > 1) {
-            const selectedColor = window.colorSelectionManager?.getSelectedColor(productId)
-            if (!selectedColor) {
-              window.colorSelectionManager?.showColorSelectionError(
-                e.target,
-                "Please select a color before adding to cart",
-              )
-              return
-            }
-          }
-
+          // Check if product has variations
           if (product.hasVariations && product.variations && product.variations.length > 0) {
             this.showVariationModal(product)
+          } else if (product.colors && product.colors.length > 1) {
+            this.showColorModal(product)
           } else {
+            // Simple product or single color
             this.addItem(product)
           }
         } else {
@@ -461,37 +726,36 @@ class ShoppingCart {
         const product = this.getProductFromCache(productId)
 
         if (product) {
-          if (product.colors && Array.isArray(product.colors) && product.colors.length > 1) {
-            const selectedColor = window.colorSelectionManager?.getSelectedColor(productId)
-            if (!selectedColor) {
-              window.colorSelectionManager?.showColorSelectionError(e.target, "Please select a color before proceeding")
-              return
-            }
-          }
-
+          // Check if product is out of stock
           const productStock = product.stocks || product.stock || 0
 
           if (product.hasVariations && product.variations && product.variations.length > 0) {
+            // Check if all variations are out of stock
             const hasAvailableVariations = product.variations.some((v) => v.stocks > 0)
             if (!hasAvailableVariations) {
               this.showNotification("This product is out of stock", "error")
               return
             }
+            // Show variation modal for buy now
             this.showVariationModal(product, true)
+          } else if (product.colors && product.colors.length > 1) {
+            if (productStock < 1) {
+              this.showNotification("This product is out of stock", "error")
+              return
+            }
+            this.showColorModal(product, true)
           } else {
+            // Check stock for simple product
             if (productStock < 1) {
               this.showNotification("This product is out of stock", "error")
               return
             }
 
             const ref = this.getSubdomain()
-            const selectedColor = window.colorSelectionManager?.getColorForCheckout(productId)
             let checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&ref=${ref}&platform=store`
-
-            if (selectedColor) {
-              checkoutUrl += `&color=${selectedColor}`
+            if (product.colors && product.colors.length === 1) {
+              checkoutUrl += `&color=${encodeURIComponent(product.colors[0])}`
             }
-
             window.open(checkoutUrl, "_blank")
           }
         } else {
@@ -585,6 +849,7 @@ class ShoppingCart {
     const baseUrl = "https://pluggn.store/checkout"
     const params = new URLSearchParams()
 
+    // Add each cart item as a parameter
     this.items.forEach((item, index) => {
       params.append(`item[${index}][pid]`, item.id)
       params.append(`item[${index}][qty]`, item.quantity.toString())
@@ -604,44 +869,10 @@ class ShoppingCart {
     const checkoutUrl = `${baseUrl}?${params.toString()}`
     window.open(checkoutUrl, "_blank")
   }
-
-  getColorValue(colorName) {
-    const colorMap = {
-      red: "#ef4444",
-      blue: "#3b82f6",
-      green: "#10b981",
-      yellow: "#f59e0b",
-      purple: "#8b5cf6",
-      pink: "#ec4899",
-      orange: "#f97316",
-      gray: "#6b7280",
-      grey: "#6b7280",
-      black: "#1f2937",
-      white: "#ffffff",
-      brown: "#92400e",
-      navy: "#1e3a8a",
-      teal: "#14b8a6",
-      cyan: "#06b6d4",
-      lime: "#84cc16",
-      emerald: "#10b981",
-      rose: "#f43f5e",
-      violet: "#8b5cf6",
-      indigo: "#6366f1",
-    }
-
-    const normalizedColor = colorName.toLowerCase().trim()
-
-    if (normalizedColor.startsWith("#")) return normalizedColor
-    if (normalizedColor.startsWith("rgb")) return normalizedColor
-
-    return colorMap[normalizedColor] || colorMap["gray"]
-  }
-
-  formatColorName(color) {
-    return color.charAt(0).toUpperCase() + color.slice(1).toLowerCase()
-  }
 }
 
 // Initialize cart
 const cart = new ShoppingCart()
+
+// Export cart for use in other files
 window.cart = cart

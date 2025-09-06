@@ -6,12 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="">
     <title></title>
-    <script defer src="https://api.pluggn.com.ng/template/primary/js/config.js" crossorigin="anonymous"></script>
+    <script defer src="https://api.pluggn.com.ng/template/primary/js/config.js"
+        crossorigin="anonymous"></script>
     <link rel="stylesheet" href="https://api.pluggn.com.ng/template/primary/css/global.css" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://api.pluggn.com.ng/template/primary/css/product-details.css"
-        crossorigin="anonymous">
-    <!-- Added color selection CSS -->
-    <link rel="stylesheet" href="https://api.pluggn.com.ng/template/primary/css/color-selection.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://api.pluggn.com.ng/template/primary/css/product-details.css" crossorigin="anonymous">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -29,13 +27,13 @@
         <div class="container">
             <div class="header-content">
                 <h3 class="logo">
-
-                </h3>
+                
+                    </h3>
                 <nav class="main-nav">
                     <ul>
                         <li><a href="/" class="nav-link">Home</a></li>
                         <li><a href="/marketplace" class="nav-link">Products</a></li>
-
+                        
                     </ul>
                 </nav>
                 <div class="header-actions">
@@ -87,8 +85,8 @@
         <div class="mobile-sidebar">
             <div class="sidebar-header">
                 <h3 class="logo">
-
-                </h3>
+                
+                    </h3>
                 <button class="sidebar-close">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -101,7 +99,7 @@
                 <ul>
                     <li><a href="/">Home</a></li>
                     <li><a href="/marketplace">Products</a></li>
-
+                    
                 </ul>
             </nav>
         </div>
@@ -124,7 +122,7 @@
                     <a href="/marketplace" class="btn btn-primary">Shop Now</a>
                 </div>
             </div>
-
+           
 
 
             <div class="cart-modal-footer">
@@ -135,7 +133,7 @@
                 <button class="btn btn-primary btn-block checkout-btn">
                     Proceed to Checkout
                 </button>
-            </div>
+            </div>      
         </div>
     </header>
 
@@ -158,12 +156,11 @@
                     <!-- Product Gallery -->
                     <div class="product-gallery">
                         <div class="main-image">
-                            <img id="main-product-image"
-                                src="https://api.pluggn.com.ng/image/placeholder.svg?height=400&width=400"
+                            <img id="main-product-image" src="https://api.pluggn.com.ng/image/placeholder.svg?height=400&width=400"
                                 alt="Product Image" crossorigin="anonymous">
                         </div>
                         <div class="thumbnail-images">
-
+                          
                         </div>
                     </div>
 
@@ -171,14 +168,22 @@
                     <div class="product-info">
                         <h2 id="product-title">Product Title</h2>
                         <div class="product-meta">
-
+                            
                         </div>
                         <div class="product-price">
-
+                           
                         </div>
 
+                        <!-- Added product colors section -->
+                        <div class="product-colors" style="display: none;">
+                            <h4>Available Colors:</h4>
+                            <div class="colors-display">
+                                <!-- Colors will be populated by JavaScript -->
+                            </div>
+                        </div>
+                       
                         <div class="product-quantity">
-
+                           
                         </div>
                         <div class="product-actions">
                             <button id="add-to-cart" class="btn btn-dark">Add to Cart</button>
@@ -193,8 +198,7 @@
                                         d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
                                     <path d="m9 12 2 2 4-4" />
                                 </svg>
-                                <span>Orders are typically delivered 1-3 days for locations within lagos and ogun, and
-                                    3-7 days for other locations</span>
+                                <span>Orders are typically delivered 1-3 days for locations within lagos and ogun, and 3-7 days for other locations</span>
                             </div>
                             <div class="feature">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
@@ -204,10 +208,9 @@
                                         d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
                                     <path d="m9 12 2 2 4-4" />
                                 </svg>
-                                <span>We accept returns within 3 days of delivery, provided items are in good
-                                    condition</span>
+                                <span>We accept returns within 3 days of delivery, provided items are in good condition</span>
                             </div>
-
+                           
                         </div>
                     </div>
                 </div>
@@ -219,19 +222,19 @@
             <div class="container">
                 <div class="tabs">
                     <button class="tab-btn active" data-tab="description">Description</button>
-
+                   
                 </div>
                 <div class="tab-content">
                     <div class="tab-pane active" id="description">
-
+                      
                     </div>
-
+                    
                 </div>
             </div>
         </section>
 
         <!-- Related Products -->
-
+     
     </main>
 
     <!-- Footer -->
@@ -245,11 +248,11 @@
                         <li><a href="/marketplace">Products</a></li>
                     </ul>
                 </div>
-
+                
                 <div class="footer-column">
                     <h3 class="footer-title">Customer Service</h3>
                     <ul class="footer-links">
-
+                       
                         <li><a href="#">Shipping</a></li>
                         <li><a href="#">Returns</a></li>
                         <li><a href="#">Payment Options</a></li>
@@ -287,25 +290,20 @@
                     </div>
                 </div>
             </div>
-            <!-- Updated Footer Bottom Section - Replace your existing footer-bottom div with this -->
-            <div class="footer-bottom">
-                <p>&copy; 2023 Store. All rights reserved.</p>
-                <div class="powered-by">
-                    <span>Powered by</span>
-                    <img src="https://api.pluggn.com.ng/image/pluggn_logo.png" alt="Pluggn" class="brand-logo"
-                        crossorigin="anonymous">
-                </div>
+        <!-- Updated Footer Bottom Section - Replace your existing footer-bottom div with this -->
+        <div class="footer-bottom">
+            <p>&copy; 2023 Store. All rights reserved.</p>
+            <div class="powered-by">
+                <span>Powered by</span>
+                <img src="https://api.pluggn.com.ng/image/pluggn_logo.png" alt="Pluggn" class="brand-logo" crossorigin="anonymous">
             </div>
+        </div>
         </div>
     </footer>
 
     <!-- Scripts -->
-    <script src="https://api.pluggn.com.ng/template/primary/js/product-details-fetch.js"
-        crossorigin="anonymous"></script>
+    <script src="https://api.pluggn.com.ng/template/primary/js/product-details-fetch.js" crossorigin="anonymous"></script>
     <script src="https://api.pluggn.com.ng/template/primary/js/cart.js" crossorigin="anonymous"></script>
-    <!-- Added color selection and enhanced checkout scripts -->
-    <script src="https://api.pluggn.com.ng/template/primary/js/color-selection.js" crossorigin="anonymous"></script>
-    <script src="https://api.pluggn.com.ng/template/primary/js/enhanced-checkout.js" crossorigin="anonymous"></script>
     <script src="https://api.pluggn.com.ng/template/primary/js/common.js" crossorigin="anonymous"></script>
     <script src="https://api.pluggn.com.ng/template/primary/js/product-details.js" crossorigin="anonymous"></script>
 </body>
