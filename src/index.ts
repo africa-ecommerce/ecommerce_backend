@@ -57,6 +57,28 @@ const app = express();
 // Ensure Express trusts reverse proxy like nginx or rewrites
 app.set("trust proxy", true);
 
+const corsOptions = {
+  origin: function (origin: any, callback: any) {
+    if (!origin) return callback(null, true); // Allow server-to-server
+
+    if (allowedAppUrls.includes(origin) || wildcardDomainRegex.test(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+  optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
+
+
+// Body parsers
+app.use(express.json({ limit: "1mb" })); // For JSON bodies
+app.use(express.urlencoded({ limit: "1mb", extended: true })); // For URL-encoded bodies
+
+
 // GLOBAL RATE LIMITER (per IP + METHOD + PATH)
 const globalRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -77,30 +99,10 @@ const globalRateLimiter = rateLimit({
     return `${req.ip}-${req.method}-${req.path}`;
   },
 });
-
-// Body parsers
-app.use(express.json({ limit: "1mb" })); // For JSON bodies
-app.use(express.urlencoded({ limit: "1mb", extended: true })); // For URL-encoded bodies
-
 app.use(globalRateLimiter);
 
 
-const corsOptions = {
-  origin: function (origin: any, callback: any) {
-    if (!origin) return callback(null, true); // Allow server-to-server
 
-    if (allowedAppUrls.includes(origin) || wildcardDomainRegex.test(origin)) {
-      return callback(null, true);
-    }
-
-    return callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true,
-  optionsSuccessStatus: 200,
-};
-
-
-app.use(cors(corsOptions));
 app.use(
   helmet({
     contentSecurityPolicy: {
