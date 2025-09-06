@@ -87,7 +87,7 @@ class ShoppingCart {
             <div class="color-item" data-color="${color}">
               <div class="color-option">
                 <span class="color-dot" style="background-color: ${color.toLowerCase()}"></span>
-                <span class="color-name">${color}</span>
+                <span class="color-name">${color.toUpperCase()}</span>
               </div>
               <button class="btn btn-primary color-select-btn" data-color-index="${index}">
                 ${isBuyNow ? "Buy Now" : "Add to Cart"}
