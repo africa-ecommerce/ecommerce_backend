@@ -1283,6 +1283,51 @@ p {
   background: #f9fafb;
 }
 
+
+.variation-colors-popover {
+  position: relative;
+  display: inline-block;
+}
+
+.variation-color-toggle {
+  background: #f5f5f5;
+  border: 1px solid #ccc;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.variation-colors-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  max-height: 150px; /* fixed height */
+  overflow-y: auto;
+  display: none;
+  z-index: 20;
+  margin-top: 4px;
+}
+
+.variation-colors-list.active {
+  display: block;
+}
+
+.variation-color-option {
+  padding: 6px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.variation-color-option.active {
+  background: #f0f0f0;
+}
+
+
 /* Enhanced cart item styles for color display */
 .cart-item-color {
   margin-bottom: 8px;
@@ -1371,6 +1416,9 @@ p {
   flex-direction: column;
   gap: var(--spacing-2);
 }
+
+
+
 
 .product-grid {
   display: grid;
