@@ -281,72 +281,76 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     });
 
-    buyNowBtns.forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+   buyNowBtns.forEach((btn) => {
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-        const productId = btn.getAttribute("data-product-id");
-        const product = products.find((p) => p.id == productId);
+    const productId = btn.getAttribute("data-product-id");
+    const product = products.find((p) => p.id == productId);
 
-        if (product && window.cart) {
-          // Check if product is out of stock
-          const productStock = product.stocks || product.stock || 0;
+    if (product && window.cart) {
+      // Check if product is out of stock
+      const productStock = product.stocks || product.stock || 0;
 
-          if (
-            product.hasVariations &&
-            product.variations &&
-            product.variations.length > 0
-          ) {
-            // Check if all variations are out of stock
-            const hasAvailableVariations = product.variations.some(
-              (v) => v.stocks > 0
-            );
-            if (!hasAvailableVariations) {
-              showNotification("This product is out of stock", "error");
-              return;
-            }  
+      if (
+        product.hasVariations &&
+        product.variations &&
+        product.variations.length > 0
+      ) {
+        // Check if all variations are out of stock
+        const hasAvailableVariations = product.variations.some(
+          (v) => v.stocks > 0
+        );
+        if (!hasAvailableVariations) {
+          showNotification("This product is out of stock", "error");
+          return;
+        }  
 
-            // For buy now with variations, show modal with buy now flag
-            window.cart.showVariationModal(product, true);
-          } else {
-            // Check stock for simple product
-            if (productStock < 1) {
-              showNotification("This product is out of stock", "error");
-              return;
-            }
-
-            else if (product.colors && product.colors.length > 1) {
-            window.cart.showColorModal(product)
-          }
-
-            // Get subdomain and redirect to checkout
-            const getSubdomain = () => {
-              const host = window.location.hostname;
-              const hostParts = host.split(".");
-              return hostParts.length > 2 && host.endsWith("pluggn.store")
-                ? hostParts[0]
-                : null;
-            };
-
-            const ref = getSubdomain();
-           
-            let checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&ref=${ref}&platform=store`
-            if (product.colors && product.colors.length === 1) {
-              checkoutUrl += `&color=${encodeURIComponent(product.colors[0])}`
-            }
-            window.open(checkoutUrl, "_blank")
-          
-          }
-        } else {
-          console.error("Product not found or cart not available");
-          showNotification(
-            "Unable to process buy now. Please try again.",
-            "error"
-          );
+        // For buy now with variations, show modal with buy now flag
+        window.cart.showVariationModal(product, true);
+      } else if (product.colors && product.colors.length > 1) {
+        // Check stock for multiple colors
+        if (productStock < 1) {
+          showNotification("This product is out of stock", "error");
+          return;
         }
-      });
-    });
+        
+        // FIXED: Pass true as the second parameter for buy now
+        window.cart.showColorModal(product, true);
+      } else {
+        // Check stock for simple product
+        if (productStock < 1) {
+          showNotification("This product is out of stock", "error");
+          return;
+        }
+
+        // Get subdomain and redirect to checkout
+        const getSubdomain = () => {
+          const host = window.location.hostname;
+          const hostParts = host.split(".");
+          return hostParts.length > 2 && host.endsWith("pluggn.store")
+            ? hostParts[0]
+            : null;
+        };
+
+        const ref = getSubdomain();
+       
+        let checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&ref=${ref}&platform=store`;
+        if (product.colors && product.colors.length === 1) {
+          checkoutUrl += `&color=${encodeURIComponent(product.colors[0])}`;
+        }
+        window.open(checkoutUrl, "_blank");
+      }
+    } else {
+      console.error("Product not found or cart not available");
+      showNotification(
+        "Unable to process buy now. Please try again.",
+        "error"
+      );
+    }
+  });
+});
   }
 
   // Show notification function (fallback if not available from cart)

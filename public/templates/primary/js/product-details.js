@@ -485,7 +485,7 @@ class ProductDetailsPage {
             window.cart.showColorModal(product)
         } else {
            if (productStock < 1) {
-              this.showNotification("This product is out of stock", "error")
+              window.cart.showNotification("This product is out of stock", "error")
               return
             }
             window.cart.addItem(product)
@@ -495,47 +495,50 @@ class ProductDetailsPage {
     }
 
     // Buy now button
-    const buyNowBtn = document.getElementById("buy-now")
-    if (buyNowBtn) {
-      buyNowBtn.addEventListener("click", () => {
-        if (this.loadingState.isLoading) return // Prevent clicks during loading
+   const buyNowBtn = document.getElementById("buy-now")
+if (buyNowBtn) {
+  buyNowBtn.addEventListener("click", () => {
+    if (this.loadingState.isLoading) return // Prevent clicks during loading
 
-       const productStock = product.stocks || product.stock || 0
+    const productStock = product.stocks || product.stock || 0
 
+    if (product.hasVariations && product.variations && product.variations.length > 0) {
+      // Check if all variations are out of stock
+      const hasAvailableVariations = product.variations.some((v) => v.stocks > 0)
+      if (!hasAvailableVariations) {
+        this.showNotification("This product is out of stock", "error")
+        return
+      }
+    
+      // FIXED: Pass true for buy now flag
+      window.cart.showVariationModal(product, true)
+    
+    } else if (product.colors && product.colors.length > 1) {
+      // Product has multiple colors but no variations
+      if (productStock < 1) {
+        this.showNotification("This product is out of stock", "error")
+        return
+      }
+      
+      // FIXED: Pass true for buy now flag
+      window.cart.showColorModal(product, true)
+    } else {
+      if (productStock < 1) {
+        this.showNotification("This product is out of stock", "error")
+        return
+      }
 
-        if (product.hasVariations && product.variations && product.variations.length > 0) {
-            // Check if all variations are out of stock
-            const hasAvailableVariations = product.variations.some((v) => v.stocks > 0)
-            if (!hasAvailableVariations) {
-              window.cart.showNotification("This product is out of stock", "error")
-              return
-            }
-          
-            window.cart.showVariationModal(product)
-          
-        } else if (product.colors && product.colors.length > 1) {
-          // Product has multiple colors but no variations
-          if (productStock < 1) {
-              this.showNotification("This product is out of stock", "error")
-              return
-            }
-            window.cart.showColorModal(product)
-        } else {
-           if (productStock < 1) {
-              this.showNotification("This product is out of stock", "error")
-              return
-            }
-
-          // Redirect to checkout with single color if available
-          const ref = window.cart.getSubdomain()
-          let checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&ref=${ref}&platform=store`
-          if (product.colors && product.colors.length === 1) {
-            checkoutUrl += `&color=${encodeURIComponent(product.colors[0])}`
-          }
-          window.open(checkoutUrl, "_blank")
-        }
-      })
+      // Redirect to checkout with single color if available
+      const ref = window.cart.getSubdomain()
+      let checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&ref=${ref}&platform=store`
+      if (product.colors && product.colors.length === 1) {
+        checkoutUrl += `&color=${encodeURIComponent(product.colors[0])}`
+      }
+      window.open(checkoutUrl, "_blank")
     }
+  })
+}
+
 
     // Tab buttons
     const tabButtons = document.querySelectorAll(".tab-btn")
@@ -1003,7 +1006,6 @@ function addEventListenersBasic(product) {
 
   // Add to cart button
   const addToCartBtn = document.getElementById("add-to-cart")
-
   if (addToCartBtn && !addToCartBtn.disabled) {
     addToCartBtn.addEventListener("click", () => {
       if (product.hasVariations) {
@@ -1028,13 +1030,13 @@ function addEventListenersBasic(product) {
     })
   }
 
-  // Buy now button
+  // Buy now button (FIXED VERSION)
   const buyNowBtn = document.getElementById("buy-now")
-
   if (buyNowBtn && !buyNowBtn.disabled) {
     buyNowBtn.addEventListener("click", () => {
       if (product.hasVariations) {
         if (window.cart && typeof window.cart.showVariationModal === "function") {
+          // FIXED: Pass true for buy now flag
           window.cart.showVariationModal(product, true)
         } else {
           console.error("Cart variation modal not available")
@@ -1045,6 +1047,7 @@ function addEventListenersBasic(product) {
           return
         }
         if (window.cart && typeof window.cart.showColorModal === "function") {
+          // FIXED: Pass true for buy now flag  
           window.cart.showColorModal(product, true)
         } else {
           console.error("Cart color modal not available")
