@@ -463,25 +463,33 @@ class ProductDetailsPage {
       addToCartBtn.addEventListener("click", () => {
         if (this.loadingState.isLoading) return // Prevent clicks during loading
 
-        if (product.hasVariations) {
-          if (window.cart && typeof window.cart.showVariationModal === "function") {
+        const productStock = product.stocks || product.stock || 0
+
+
+        if (product.hasVariations && product.variations && product.variations.length > 0) {
+            // Check if all variations are out of stock
+            const hasAvailableVariations = product.variations.some((v) => v.stocks > 0)
+            if (!hasAvailableVariations) {
+              window.cart.showNotification("This product is out of stock", "error")
+              return
+            }
+          
             window.cart.showVariationModal(product)
-          } else {
-            console.error("Cart variation modal not available")
-          }
+          
         } else if (product.colors && product.colors.length > 1) {
           // Product has multiple colors but no variations
-          if (window.cart && typeof window.cart.showColorModal === "function") {
+          if (productStock < 1) {
+              this.showNotification("This product is out of stock", "error")
+              return
+            }
             window.cart.showColorModal(product)
-          } else {
-            console.error("Cart color modal not available")
-          }
         } else {
-          if (window.cart && typeof window.cart.addItem === "function") {
+           if (productStock < 1) {
+              this.showNotification("This product is out of stock", "error")
+              return
+            }
             window.cart.addItem(product)
-          } else {
-            console.error("Cart functionality not available")
-          }
+          
         }
       })
     }
@@ -492,28 +500,31 @@ class ProductDetailsPage {
       buyNowBtn.addEventListener("click", () => {
         if (this.loadingState.isLoading) return // Prevent clicks during loading
 
-        if (product.hasVariations) {
-          if (window.cart && typeof window.cart.showVariationModal === "function") {
-            window.cart.showVariationModal(product, true)
-          } else {
-            console.error("Cart variation modal not available")
-          }
+       const productStock = product.stocks || product.stock || 0
+
+
+        if (product.hasVariations && product.variations && product.variations.length > 0) {
+            // Check if all variations are out of stock
+            const hasAvailableVariations = product.variations.some((v) => v.stocks > 0)
+            if (!hasAvailableVariations) {
+              window.cart.showNotification("This product is out of stock", "error")
+              return
+            }
+          
+            window.cart.showVariationModal(product)
+          
         } else if (product.colors && product.colors.length > 1) {
           // Product has multiple colors but no variations
-          if (product.stocks < 1) {
-            window.cart.showNotification("This product is out of stock", "error")
-            return
-          }
-          if (window.cart && typeof window.cart.showColorModal === "function") {
-            window.cart.showColorModal(product, true)
-          } else {
-            console.error("Cart color modal not available")
-          }
+          if (productStock < 1) {
+              this.showNotification("This product is out of stock", "error")
+              return
+            }
+            window.cart.showColorModal(product)
         } else {
-          if (product.stocks < 1) {
-            window.cart.showNotification("This product is out of stock", "error")
-            return
-          }
+           if (productStock < 1) {
+              this.showNotification("This product is out of stock", "error")
+              return
+            }
 
           // Redirect to checkout with single color if available
           const ref = window.cart.getSubdomain()

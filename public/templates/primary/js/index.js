@@ -305,9 +305,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!hasAvailableVariations) {
               showNotification("This product is out of stock", "error");
               return;
-            }  else if (product.colors && product.colors.length > 1) {
-            window.cart.showColorModal(product)
-          }
+            }  
 
             // For buy now with variations, show modal with buy now flag
             window.cart.showVariationModal(product, true);
@@ -317,6 +315,10 @@ document.addEventListener("DOMContentLoaded", function () {
               showNotification("This product is out of stock", "error");
               return;
             }
+
+            else if (product.colors && product.colors.length > 1) {
+            window.cart.showColorModal(product)
+          }
 
             // Get subdomain and redirect to checkout
             const getSubdomain = () => {
@@ -328,8 +330,13 @@ document.addEventListener("DOMContentLoaded", function () {
             };
 
             const ref = getSubdomain();
-            const checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&ref=${ref}&platform=store`;
-            window.open(checkoutUrl, "_blank");
+           
+            let checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&ref=${ref}&platform=store`
+            if (product.colors && product.colors.length === 1) {
+              checkoutUrl += `&color=${encodeURIComponent(product.colors[0])}`
+            }
+            window.open(checkoutUrl, "_blank")
+          
           }
         } else {
           console.error("Product not found or cart not available");
