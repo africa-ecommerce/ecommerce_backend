@@ -251,7 +251,11 @@ document.addEventListener("DOMContentLoaded", function () {
             product.variations.length > 0
           ) {
             window.cart.showVariationModal(product);
-          } else {
+          } 
+          else if (product.colors && product.colors.length > 1) {
+            window.cart.showColorModal(product)
+          }
+          else {
             // Prepare product data for cart
             const cartProduct = {
               id: product.id,
@@ -301,7 +305,9 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!hasAvailableVariations) {
               showNotification("This product is out of stock", "error");
               return;
-            }
+            }  else if (product.colors && product.colors.length > 1) {
+            window.cart.showColorModal(product)
+          }
 
             // For buy now with variations, show modal with buy now flag
             window.cart.showVariationModal(product, true);
