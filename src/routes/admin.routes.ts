@@ -21,6 +21,13 @@ router.post("/verifySupplier/:supplierId", verifySupplier);
 router.get("/product/:supplierId", adminProductController.getSupplierProducts);
 
 router.post("/product/:supplierId", adminProductController.createProduct);
+
+// Approve product (with min/max price)
+router.put("/product/approve/:productId", adminProductController.approveSupplierProducts);
+
+// Query (reject) product
+router.put("/product/query/:productId", adminProductController.querySupplierProducts);
+
 // Update product
 router.put("/product/:supplierId/:productId", adminProductController.updateProduct);
 // Delete product
@@ -29,11 +36,7 @@ router.delete(
   adminProductController.deleteProduct
 );
 
-// Approve product (with min/max price)
-router.put("/product/approve/:productId", adminProductController.approveSupplierProducts);
 
-// Query (reject) product
-router.put("/product/query/:productId", adminProductController.querySupplierProducts);
 
 
 
