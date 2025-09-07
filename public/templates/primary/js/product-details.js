@@ -391,19 +391,28 @@ class ProductDetailsPage {
                                 </span>
                             </div>
                             <div class="variation-detail">
-                                ${
-                                  variation.color
-                                    ? `
-                                    <div class="variation-detail">
-                                        <span class="detail-label">Color:</span>
-                                        <div class="color-info">
-                                            <span class="color-dot" style="background-color: ${variation.color.toLowerCase()}"></span>
-                                            <span class="color-name">${variation.color}</span>
-                                        </div>
-                                    </div>
-                                `
-                                    : ""
-                                }
+                                 ${
+                 
+                  variation.colors
+                    ? `
+                      <div class="variation-detail">
+                        <span class="detail-label">Colors:</span>
+                        <div class="colors-list">
+                          ${variation.colors
+                            .map(
+                              (color) => `
+                                <div class="color-info">
+                                 
+                                  <span class="color-name">${color}</span>
+                                </div>
+                              `
+                            )
+                            .join("")}
+                        </div>
+                      </div>
+                    `
+                    : ""
+                }
                                 ${
                                   variation.size
                                     ? `
