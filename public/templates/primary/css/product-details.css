@@ -856,7 +856,7 @@
 }
 
 .detail-label {
-  color: var(--color-text-secondary, #6c757d);
+  color: black;
   font-weight: 500;
   min-width: 40px;
 }
