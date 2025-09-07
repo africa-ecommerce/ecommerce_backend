@@ -64,41 +64,43 @@ class ShoppingCart {
     modal.className = "color-modal"
 
     // Create modal content
-    modal.innerHTML = `
-      <div class="color-modal-header">
-        <h3>Choose Color</h3>
-        <button class="color-modal-close">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 6 6 18" />
-            <path d="m6 6 12 12" />
-          </svg>
-        </button>
+   modal.innerHTML = `
+  <div class="color-modal-header">
+    <h3>Choose Color</h3>
+    <button class="color-modal-close">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 6 6 18" />
+        <path d="m6 6 12 12" />
+      </svg>
+    </button>
+  </div>
+  <div class="color-modal-body">
+    <div class="product-color-info">
+      <div class="product-color-top">
+        <img src="${product.image}" alt="${product.title}" class="color-product-image" crossorigin="anonymous">
+        <p class="color-product-price">₦${product.price.toLocaleString()}</p>
       </div>
-      <div class="color-modal-body">
-        <div class="product-color-info">
-          <img src="${product.image}" alt="${product.title}" class="color-product-image" crossorigin="anonymous">
-          <h4 class="color-product-title">${product.title}</h4>
-          <p class="color-product-price">₦${product.price.toLocaleString()}</p>
-        </div>
-        <div class="colors-list">
-          ${product.colors
-            .map(
-              (color, index) => `
-            <div class="color-item" data-color="${color}">
-              <div class="color-option">
-                
-                <span class="color-name">${color.toUpperCase()}</span>
-              </div>
-              <button class="btn btn-primary color-select-btn" data-color-index="${index}">
-                ${isBuyNow ? "Buy Now" : "Add to Cart"}
-              </button>
+      <h4 class="color-product-title">${product.title}</h4>
+    </div>
+    <div class="colors-list">
+      ${product.colors
+        .map(
+          (color, index) => `
+          <div class="color-item" data-color="${color}">
+            <div class="color-option">
+              <span class="color-name">${color.toUpperCase()}</span>
             </div>
-          `,
-            )
-            .join("")}
-        </div>
-      </div>
-    `
+            <button class="btn btn-primary color-select-btn" data-color-index="${index}">
+              ${isBuyNow ? "Buy Now" : "Add to Cart"}
+            </button>
+          </div>
+        `
+        )
+        .join("")}
+    </div>
+  </div>
+`
+
 
     // Add modal to overlay
     overlay.appendChild(modal)
@@ -192,7 +194,7 @@ class ShoppingCart {
             ${variation.colors && variation.colors.length > 0 ? `
               <div class="variation-colors-popover">
                 <button class="variation-color-toggle">
-                  ${variation.colors[0]} ▼
+                  ${variation.colors[0].toUpperCase()} ▼
                 </button>
                 <div class="variation-colors-list">
                   ${variation.colors.map((color, cIndex) => `
