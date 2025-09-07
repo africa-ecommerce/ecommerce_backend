@@ -1282,20 +1282,39 @@ p {
 .colors-display {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 0.75rem;
 }
 
 .colors-display .color-option {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
 
+.colors-display .color-option:hover {
+  border-color: var(--color-primary, #007bff);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
 
-  font-size: 0.875rem;
+.colors-display .color-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid #ccc;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.colors-display .color-name {
   font-weight: 500;
+  color: var(--color-text-primary, #212529);
   text-transform: capitalize;
-  
 }
 
 

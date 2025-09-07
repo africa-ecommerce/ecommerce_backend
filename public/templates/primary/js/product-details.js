@@ -291,21 +291,22 @@ class ProductDetailsPage {
       productPrice.textContent = `₦${product.price.toLocaleString()}`
     }
 
-    const productColorsSection = document.querySelector(".product-colors")
-    if (productColorsSection && product.colors && product.colors.length > 0) {
-      const colorsDisplay = productColorsSection.querySelector(".colors-display")
-      colorsDisplay.innerHTML = product.colors
-        .map(
-          (color) => `
-                <div class="color-option">
-                    
-                    <span class="color-name">${color}</span>
-                </div>
-            `,
-        )
-        .join("")
-      productColorsSection.style.display = "block"
-    }
+  const productColorsSection = document.querySelector(".product-colors")
+  if (productColorsSection && product.colors && product.colors.length > 0) {
+    const colorsDisplay = productColorsSection.querySelector(".colors-display")
+    colorsDisplay.innerHTML = product.colors
+      .map(
+        (color) => `
+          <div class="color-option">
+          
+            <span class="color-name">${color}</span>
+          </div>
+        `,
+      )
+      .join("")
+    productColorsSection.style.display = "block"
+  }
+
 
     // Update product meta (stock info)
     const productMeta = document.querySelector(".product-meta")
@@ -849,10 +850,10 @@ function updateProductDetailsBasic(product) {
     colorsDisplay.innerHTML = product.colors
       .map(
         (color) => `
-            <div class="color-option">
-                <span class="color-dot" style="background-color: ${color.toLowerCase()}"></span>
-                <span class="color-name">${color}</span>
-            </div>
+          <div class="color-option">
+           
+            <span class="color-name">${color}</span>
+          </div>
         `,
       )
       .join("")
@@ -924,55 +925,74 @@ function showVariationsSection(product) {
     const variationsSection = document.createElement("div")
     variationsSection.className = "product-variations"
     variationsSection.innerHTML = `
-            <div class="variations-header">
-                <h3>Available Variations</h3>
-                <span class="variations-count">${product.variations.length} variant${product.variations.length > 1 ? "s" : ""}</span>
-            </div>
-            <div class="variations-container">
-                ${product.variations
-                  .map(
-                    (variation, index) => `
-                    <div class="variation-item">
-                        <div class="variation-header">
-                            <span class="variation-number">#${index + 1}</span>
-                            <span class="variation-stock-badge ${variation.stocks < 5 ? "low-stock" : ""} ${variation.stocks === 0 ? "out-of-stock" : ""}">
-                                ${variation.stocks} left
-                            </span>
+      <div class="variations-header">
+        <h3>Available Variations</h3>
+        <span class="variations-count">${product.variations.length} variant${product.variations.length > 1 ? "s" : ""}</span>
+      </div>
+      <div class="variations-container">
+        ${product.variations
+          .map(
+            (variation, index) => `
+            <div class="variation-item">
+              <div class="variation-header">
+                <span class="variation-number">#${index + 1}</span>
+                <span class="variation-stock-badge ${variation.stocks < 5 ? "low-stock" : ""} ${variation.stocks === 0 ? "out-of-stock" : ""}">
+                  ${variation.stocks} left
+                </span>
+              </div>
+              <div class="variation-details">
+                ${
+                  // FIXED: Handle both single color and multiple colors in variations
+                  variation.color
+                    ? `
+                      <div class="variation-detail">
+                        <span class="detail-label">Color:</span>
+                        <div class="color-info">
+                          <span class="color-dot" style="background-color: ${variation.color.toLowerCase()}"></span>
+                          <span class="color-name">${variation.color}</span>
                         </div>
-                        <div class="variation-detail">
-                            ${
-                              variation.color
-                                ? `
-                                <div class="variation-detail">
-                                    <span class="detail-label">Color:</span>
-                                    <div class="color-info">
-                                        <span class="color-dot" style="background-color: ${variation.color.toLowerCase()}"></span>
-                                        <span class="color-name">${variation.color}</span>
-                                    </div>
+                      </div>
+                    `
+                    : variation.colors && variation.colors.length > 0
+                    ? `
+                      <div class="variation-detail">
+                        <span class="detail-label">Colors:</span>
+                        <div class="colors-list">
+                          ${variation.colors
+                            .map(
+                              (color) => `
+                                <div class="color-info">
+                                 
+                                  <span class="color-name">${color}</span>
                                 </div>
-                            `
-                                : ""
-                            }
-                            ${
-                              variation.size
-                                ? `
-                                <div class="variation-detail">
-                                    <span class="detail-label">Size:</span>
-                                    <span class="detail-value">${variation.size}</span>
-                                </div>
-                            `
-                                : ""
-                            }
+                              `
+                            )
+                            .join("")}
                         </div>
-                    </div>
-                `,
-                  )
-                  .join("")}
+                      </div>
+                    `
+                    : ""
+                }
+                ${
+                  variation.size
+                    ? `
+                      <div class="variation-detail">
+                        <span class="detail-label">Size:</span>
+                        <span class="detail-value">${variation.size}</span>
+                      </div>
+                    `
+                    : ""
+                }
+              </div>
             </div>
-            <div class="variations-footer">
-                <p class="variation-note">💡 Select a variation when adding to cart</p>
-            </div>
-        `
+          `,
+          )
+          .join("")}
+      </div>
+      <div class="variations-footer">
+        <p class="variation-note">💡 Select a variation when adding to cart</p>
+      </div>
+    `
 
     quantitySection.parentNode.insertBefore(variationsSection, quantitySection)
   }

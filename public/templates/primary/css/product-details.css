@@ -9,6 +9,40 @@
     text-transform: capitalize;
   }
   
+.colors-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.colors-list .color-info {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.5rem;
+  background: rgba(0, 123, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 123, 255, 0.1);
+  font-size: 0.75rem;
+}
+
+.product-colors {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.product-colors h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #212529);
+}
+
+
   .breadcrumbs a {
     color: var(--color-primary);
     transition: var(--transition-colors);
