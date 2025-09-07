@@ -942,8 +942,8 @@ function showVariationsSection(product) {
               </div>
               <div class="variation-details">
                 ${
-                  // FIXED: Handle both single color and multiple colors in variations
-                  variation.colors && variation.colors.length > 0
+                 
+                  variation.colors
                     ? `
                       <div class="variation-detail">
                         <span class="detail-label">Colors:</span>
