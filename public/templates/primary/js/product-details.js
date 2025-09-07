@@ -856,7 +856,7 @@ function updateProductDetailsBasic(product) {
           </div>
         `,
       )
-      .join("")
+      .join(", ")
     productColorsSection.style.display = "block"
   }
 
