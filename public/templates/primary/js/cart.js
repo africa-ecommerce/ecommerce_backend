@@ -548,18 +548,7 @@ class ShoppingCart {
               `
                   : ""
               }
-              ${
-                item.selectedColor && !item.variation
-                  ? `
-                <div class="cart-item-color">
-                  <span class="color-info">
-                    <span class="color-dot" style="background-color: ${item.selectedColor.toLowerCase()}"></span>
-                    ${item.selectedColor}
-                  </span>
-                </div>
-              `
-                  : ""
-              }
+              
               <p class="cart-item-price">₦${item.price.toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
