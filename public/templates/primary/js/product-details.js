@@ -298,7 +298,7 @@ class ProductDetailsPage {
         .map(
           (color) => `
                 <div class="color-option">
-                    <span class="color-dot" style="background-color: ${color.toLowerCase()}"></span>
+                    
                     <span class="color-name">${color}</span>
                 </div>
             `,

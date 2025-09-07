@@ -16,8 +16,8 @@
   --color-info: #3b82f6;
 
   /* Typography */
-  --font-family: Roboto, "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Oxygen, Ubuntu, Cantarell, "Open Sans",
-    "Helvetica Neue", sans-serif;
+  --font-family: Roboto, "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
   --font-size-xs: 0.65rem;
   --font-size-sm: 0.775rem;
   --font-size-base: 0.8rem;
@@ -42,8 +42,10 @@
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
 
   /* Border Radius */
   --radius-sm: 0.125rem;
@@ -56,8 +58,8 @@
 
   /* Transitions */
   --transition-all: all 0.3s ease;
-  --transition-colors: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, fill 0.3s ease, stroke 0.3s
-    ease;
+  --transition-colors: background-color 0.3s ease, border-color 0.3s ease,
+    color 0.3s ease, fill 0.3s ease, stroke 0.3s ease;
   --transition-opacity: opacity 0.3s ease;
   --transition-shadow: box-shadow 0.3s ease;
   --transition-transform: transform 0.3s ease;
@@ -796,7 +798,8 @@ p {
   max-width: 500px;
   max-height: 80vh;
   overflow: hidden;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
   transform: scale(0.95) translateY(20px);
   transition: transform 0.3s ease;
 }
@@ -1091,7 +1094,8 @@ p {
   max-width: 450px;
   max-height: 80vh;
   overflow: hidden;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
   transform: scale(0.95) translateY(20px);
   transition: transform 0.3s ease;
 }
@@ -1179,11 +1183,6 @@ p {
   line-height: 1.4;
   word-break: break-word; /* ensures wrapping for long words */
 }
-
-
-
-
-
 
 .colors-list {
   display: flex;
@@ -1290,14 +1289,11 @@ p {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 0.875rem;
+
+  font-size: 0.7rem;
   font-weight: 500;
   text-transform: capitalize;
-  background: #f9fafb;
 }
-
 
 .variation-colors-popover {
   position: relative;
@@ -1309,7 +1305,7 @@ p {
   border: 1px solid #ccc;
   padding: 6px 10px;
   border-radius: 6px;
-   text-transform: uppercase;
+  text-transform: uppercase;
   cursor: pointer;
 }
 
@@ -1342,7 +1338,6 @@ p {
 .variation-color-option.active {
   background: #f0f0f0;
 }
-
 
 /* Enhanced cart item styles for color display */
 .cart-item-color {
@@ -1432,9 +1427,6 @@ p {
   flex-direction: column;
   gap: var(--spacing-2);
 }
-
-
-
 
 .product-grid {
   display: grid;
