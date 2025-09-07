@@ -943,17 +943,7 @@ function showVariationsSection(product) {
               <div class="variation-details">
                 ${
                   // FIXED: Handle both single color and multiple colors in variations
-                  variation.color
-                    ? `
-                      <div class="variation-detail">
-                        <span class="detail-label">Color:</span>
-                        <div class="color-info">
-                          <span class="color-dot" style="background-color: ${variation.color.toLowerCase()}"></span>
-                          <span class="color-name">${variation.color}</span>
-                        </div>
-                      </div>
-                    `
-                    : variation.colors && variation.colors.length > 0
+                  variation.colors && variation.colors.length > 0
                     ? `
                       <div class="variation-detail">
                         <span class="detail-label">Colors:</span>
