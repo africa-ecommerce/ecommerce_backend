@@ -542,6 +542,8 @@ export async function confirmOrder(
         throw new Error(paymentData.message || "Payment verification failed");
       }
 
+      console.log("status", paymentData);
+
       if (paymentData.data.status !== "success") {
         throw new Error("Payment was not successful");
       }
