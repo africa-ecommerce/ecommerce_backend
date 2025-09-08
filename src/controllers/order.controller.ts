@@ -304,6 +304,18 @@ export async function stageOrder(
       // Verify products exist and stock availability
       await Promise.all(
         formattedInput.orderItems.map(async (item) => {
+
+           if (item.variantId) {
+            const variant = await tx.productVariation.findUnique({
+              where: { id: item.variantId, productId: item.productId },
+              select: { stock: true },
+            });
+            if (!variant) throw new Error(`Variant ${item.variantId} not found`);
+            if (variant.stock < item.quantity) {
+              throw new Error(`Insufficient stock for variant ${item.variantId}`);
+            }
+          }
+          else {
           const product = await tx.product.findUnique({
             where: { id: item.productId },
             select: { id: true, stock: true, name: true },
@@ -312,20 +324,8 @@ export async function stageOrder(
           if (product.stock < item.quantity) {
             throw new Error(`Insufficient stock for product ${product.name}`);
           }
-
-          if (item.variantId) {
-            const variant = await tx.productVariation.findUnique({
-              where: { id: item.variantId, productId: item.productId },
-              select: { stock: true },
-            });
-            if (!variant)
-              throw new Error(`Variant ${item.variantId} not found`);
-            if (variant.stock < item.quantity) {
-              throw new Error(
-                `Insufficient stock for variant ${item.variantId}`
-              );
-            }
-          }
+         }
+         
         })
       );
 
