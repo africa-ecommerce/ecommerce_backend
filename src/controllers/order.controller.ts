@@ -367,7 +367,9 @@ export async function confirmOrder(
           order.buyerName,
           order.plug?.businessName,
           plugStoreUrl,
-          order.orderNumber
+          order.orderNumber,
+          order.deliveryType,
+          order.terminalAddress
         );
       } catch (error) {
         console.error("Failed to send success order email:", error);
