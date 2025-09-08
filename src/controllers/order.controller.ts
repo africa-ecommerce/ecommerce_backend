@@ -501,6 +501,7 @@ export async function confirmOrder(
     }
 
     const { reference } = fieldData.data;
+    console.log("reference:", reference);
 
     const response = await prisma.$transaction(async (tx) => {
       // Find staged order by payment reference
