@@ -1,6 +1,7 @@
 // helper/mail/orders/shippedOrderMail.ts
 import { queueMail } from "../../workers/mailQueue";
 import { frontendUrl } from "../../../config";
+import { capitalizeName } from "../../helperFunc";
 
 export async function shippedOrderMail(
   to: string,
@@ -32,9 +33,11 @@ export async function shippedOrderMail(
       `
       : "";
 
+       const formattedName = capitalizeName(buyerName);
+
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #f9f9f9; font-size: 13px;">
-      <h2 style="color: #111827; font-size: 18px;">Hi ${buyerName},</h2>
+      <h2 style="color: #111827; font-size: 18px;">Hi ${formattedName},</h2>
 
       <p style="color: #374151; font-size: 13px;">🚚 Your order with ID <strong>${orderId}</strong> has been shipped!</p>
 

@@ -72,6 +72,7 @@ git checkout dev
 
 
 
+price update, accept and decline. supplier payment, returns or so, and delivered and notification, marketplace algorithm, paul should write personalized for you, look at the niching,
 format order colors or so, if user picks multiple color then it is different variation shouldnt e an array
 price change when supplier changes price, we filter out product price that has changed and approved, 
 

@@ -353,7 +353,7 @@ class EnhancedConfigurationManager {
             >    
             <h2 style="font-size: 1.5rem; margin: 10px 0; color: #495057;">Store Not Found</h2>
             <p style="font-size: 1rem; color: #6c757d; max-width: 500px;">
-                The store you're looking for doesn't exist or is temporarily unavailable.
+                Oops! something went wrong.
                 Please check the URL and try again.
             </p>
         </div>

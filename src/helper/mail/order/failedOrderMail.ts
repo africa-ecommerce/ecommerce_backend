@@ -1,6 +1,10 @@
 // import { mail } from "../../../lib/mail";
 // import { emailConfigs } from "../../../config";
+
+import { capitalizeName } from "../../helperFunc";
+
 // import { queueMail } from "../../workers/mailQueue";
+//  const formattedName = capitalizeName(buyerName);
 
 // const { orders } = emailConfigs;
 

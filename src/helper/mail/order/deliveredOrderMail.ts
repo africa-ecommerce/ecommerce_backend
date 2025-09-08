@@ -1,6 +1,7 @@
 import { mail } from "../../../lib/mail";
 import { emailConfigs, frontendUrl } from "../../../config";
 import { queueMail } from "../../workers/mailQueue";
+import { capitalizeName } from "../../helperFunc";
 
 const { orders } = emailConfigs;
 
@@ -32,9 +33,11 @@ export async function deliveredOrderMail(
       `
       : "";
 
+      const formattedName = capitalizeName(buyerName);
+
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border-radius: 8px; background-color: #ffffff; border: 1px solid #e5e7eb; font-size: 13px;">
-      <h2 style="color: #111827; font-size: 18px;">Hi ${buyerName},</h2>
+      <h2 style="color: #111827; font-size: 18px;">Hi ${formattedName},</h2>
 
       <p style="font-size: 13px; color: #374151;">
         Thank you for shopping with us on Pluggn. We're pleased to inform you that your order with ID <strong>#${orderId}</strong> has been <strong style="color: #10b981;">successfully delivered</strong>.

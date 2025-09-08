@@ -1,4 +1,5 @@
 import {  frontendUrl } from "../../../config";
+import { capitalizeName } from "../../helperFunc";
 import { queueMail, } from "../../workers/mailQueue";
 
 export async function successOrderMail(
@@ -35,9 +36,11 @@ export async function successOrderMail(
       `
       : "";
 
+      const formattedName = capitalizeName(buyerName);
+
   const html = `
     <div style="font-family: 'Segoe UI', sans-serif; max-width: 640px; margin: auto; padding: 24px; border: 1px solid #ddd; border-radius: 10px; background-color: #f9f9f9;">
-      <h2 style="color: #111827;">Hi ${buyerName},</h2>
+      <h2 style="color: #111827;">Hi ${formattedName},</h2>
 
       <p style="color: #374151; font-size: 16px;">✅ Your order has been placed successfully!</p>
 
