@@ -1,5 +1,9 @@
 import { NextFunction, Request, Response } from "express";
-import { BuyerInfoSchema, ConfirmOrderSchema, StageOrderSchema } from "../lib/zod/schema";
+import {
+  BuyerInfoSchema,
+  ConfirmOrderSchema,
+  StageOrderSchema,
+} from "../lib/zod/schema";
 import { paystackSecretKey, prisma } from "../config";
 import { AuthRequest } from "../types";
 import { formatPlugOrders, formatSupplierOrders } from "../helper/formatData";
@@ -8,260 +12,8 @@ import { customAlphabet } from "nanoid";
 import { getTerminalInfo } from "../helper/logistics";
 import { successOrderMail } from "../helper/mail/order/successOrderMail";
 
-/**
- * @dev PUBLIC ENDPOINT
- */
-// export async function placeOrder(
-//   req: Request,
-//   res: Response,
-//   next: NextFunction
-// ) {
-//   const {
-//     buyerName,
-//     buyerEmail,
-//     buyerPhone,
-//     buyerAddress,
-//     buyerState,
-//     buyerLga,
-//     buyerDirections,
-//     buyerInstructions,
-//     paymentMethod,
-//     totalAmount,
-//     deliveryType,
-//     terminalAddress,
-//     deliveryFee,
-//     plugId,
-//     subdomain,
-//     paymentReference,
-//     platform,
-//     orderItems,
-//   } = req.body;
-
-//   const formattedInput = {
-//     buyerName: buyerName?.trim(),
-//     buyerEmail: buyerEmail?.toLowerCase(),
-//     buyerPhone,
-//     buyerAddress: buyerAddress?.trim(),
-//     buyerState,
-//     buyerLga,
-//     buyerDirections: buyerDirections?.trim(),
-//     buyerInstructions,
-//     paymentMethod,
-//     totalAmount,
-//     deliveryFee,
-//     deliveryType,
-//     terminalAddress,
-//     platform: platform?.trim(),
-//     plugId,
-//     subdomain,
-//     orderItems,
-//     paymentReference,
-//   };
-
-//   console.log("formattedInput:", formattedInput);
-
-//   try {
-//     const fieldData = PlaceOrderSchema.safeParse(formattedInput);
-//     if (!fieldData.success) {
-//       res.status(400).json({ error: "Invalid field data!" });
-//       return;
-//     }
-
-//     if (!formattedInput.plugId && !formattedInput.subdomain) {
-//       res.status(400).json({ error: "Missing plug ID or subdomain" });
-//       return;
-//     }
-
-// // what check can i always use to validate true payment in paystack that is not fake payment reference used one or not related to the order
-//     // if(!paymentReference){
-//     //   res.status(400).json({
-//     //     error:
-//     //       "Payment reference is required to place orders!",
-//     //   });
-//     //   return;
-//     // }
-//     //always cross check payment reference before orders to avoid scams as it is a public endpoint  ----------------->
-   
-//       const existing = await prisma.order.findFirst({
-//         where: { paymentReference },
-//       });
-//       if (existing) {
-//         res.status(400).json({
-//           error:
-//             "Invalid payment reference, Please contact support!",
-//         });
-//         return;
-//       }
-
-//     const datePart = new Date().toISOString().slice(2, 10).replace(/-/g, "");
-//     const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-//     const nanoid6 = customAlphabet(alphabet, 6);
-//     const orderNumber = `ORD-${datePart}-${nanoid6()}`;
-// const fullAddress =
-//   formattedInput.deliveryType === "terminal" && formattedInput.terminalAddress
-//     ? getTerminalInfo(formattedInput.terminalAddress)
-//     : null;
-
-//     const response = await prisma.$transaction(async (tx) => {
-//       // Prepare update data based on delivery type
-//       const buyerUpdateData: any = {
-//         name: formattedInput.buyerName,
-//       };
-
-//       // Only update address fields if deliveryType is "home" or if they have valid values
-//       if (formattedInput.deliveryType === "home") {
-//         buyerUpdateData.streetAddress = formattedInput.buyerAddress;
-//         buyerUpdateData.state = formattedInput.buyerState;
-//         buyerUpdateData.lga = formattedInput.buyerLga;
-//         buyerUpdateData.directions = formattedInput.buyerDirections;
-       
-//       } else if (formattedInput.deliveryType === "terminal") {
-//         // For terminal delivery, update terminal address and only update street address fields if they have valid values
-//         buyerUpdateData.terminalAddress = fullAddress;
-
-      
-//       }
-
-//       const buyer = await tx.buyer.upsert({
-//         where: {
-//           email_phone: {
-//             email: formattedInput.buyerEmail,
-//             phone: formattedInput.buyerPhone,
-//           },
-//         },
-//         update: buyerUpdateData,
-//         create: {
-//           name: formattedInput.buyerName,
-//           email: formattedInput.buyerEmail,
-//           phone: formattedInput.buyerPhone,
-//           streetAddress: formattedInput.buyerAddress,
-//           terminalAddress: fullAddress,
-//           state: formattedInput.buyerState,
-//           lga: formattedInput.buyerLga,
-//           directions: formattedInput.buyerDirections,
-         
-//         },
-//       });
-
-//       const items = await Promise.all(
-//         formattedInput.orderItems.map(async (item: any) => {
-//           const product = await tx.product.findUnique({
-//             where: { id: item.productId },
-//           });
-//           if (!product) throw new Error(`Product ${item.productId} not found`);
-
-//           //update product stocks
-//           await tx.product.update({
-//             where: { id: item.productId },
-//             data: {
-//               stock: Math.max(product.stock - item.quantity, 0),
-//               // sold: { increment: item.quantity },  THE SOLD PRODUCT ITEM INCREASED  WHEN DELIVERED SO MAPPING THROUGH
-//             },
-//           });
-
-//           if (item.variantId) {
-//             const variant = await tx.productVariation.findUnique({
-//               where: { id: item.variantId, productId: item.productId },
-//             });
-//             if (!variant)
-//               throw new Error(`Variant ${item.variantId} not found`);
-//             //update product variant stocks
-//             await tx.productVariation.update({
-//               where: { id: item.variantId, productId: item.productId },
-//               data: { stock: Math.max(variant.stock - item.quantity, 0) },
-//             });
-//           }
-
-//           return {
-//             plugPrice: item.plugPrice,
-//             supplierPrice: item.supplierPrice,
-//             supplierId: item.supplierId,
-//             plugId: formattedInput.plugId,
-//             productId: item.productId,
-//             productName: product.name,
-//             variantId: item.variantId || null,
-//             quantity: item.quantity,
-//             productSize: item.productSize || null,
-//             productColor: item.productColor || null,
-//             variantSize: item.variantSize || null,
-//             variantColor: item.variantColor || null,
-//           };
-//         })
-//       );
-
-//       let where;
-//       //get plug details through plugid if plugid is sent
-//       if (formattedInput.plugId) {
-//         where = { id: formattedInput.plugId };
-//       }
-//       //get plug details if through store using subdomain
-//       else if (formattedInput.subdomain) {
-//         where = { subdomain: formattedInput.subdomain };
-//       }
-
-//       const plug = await tx.plug.findFirst({
-//         where,
-//         select: { id: true, businessName: true, subdomain: true },
-//       });
-
-//       const order = await tx.order.create({
-//         data: {
-//           orderNumber,
-//           buyerId: buyer.id,
-//           plugId: formattedInput.plugId || plug?.id,
-//           totalAmount: formattedInput.totalAmount,
-//           deliveryFee: formattedInput.deliveryFee,
-//           platform: formattedInput.platform,
-//           buyerName: formattedInput.buyerName,
-//           buyerEmail: formattedInput.buyerEmail,
-//           buyerPhone: formattedInput.buyerPhone,
-//           buyerAddress: formattedInput.buyerAddress,
-//           buyerState: formattedInput.buyerState,
-//           buyerLga: formattedInput.buyerLga,
-//           buyerDirections: formattedInput.buyerDirections,
-//           // buyerLatitude: formattedInput.buyerLatitude,
-//           // buyerLongitude: formattedInput.buyerLongitude,
-//           paymentMethod: formattedInput.paymentMethod,
-//           buyerInstructions: formattedInput.buyerInstructions,
-//           paymentReference: formattedInput.paymentReference,
-//           terminalAddress: fullAddress,
-//           deliveryType: formattedInput.deliveryType,
-//         },
-//       });
-
-//       await tx.orderItem.createMany({
-//         data: items.map((item) => ({
-//           ...item,
-//           orderId: order.id,
-//         })),
-//       });
-
-//       return {
-//         plugBusinessName: plug?.businessName,
-//         plugStore: plug?.subdomain
-//           ? `https://${plug.subdomain}.pluggn.store`
-//           : null,
-//         buyerName: formattedInput.buyerName,
-//         paymentMethod: formattedInput.paymentMethod,
-//         terminalAddress: fullAddress,
-//         deliveryType: formattedInput.deliveryType,
-//       };
-//     });
-
-//     res.status(201).json({
-//       message: "Order placed successfully!",
-//       data: response,
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// }
 
 
-
-
- // sold: { increment: item.quantity },  THE SOLD PRODUCT ITEM INCREASED  WHEN DELIVERED SO MAPPING THROUGH
-//             },
 export async function stageOrder(
   req: Request,
   res: Response,
@@ -270,66 +22,105 @@ export async function stageOrder(
   try {
     const fieldData = StageOrderSchema.safeParse(req.body);
     if (!fieldData.success) {
-      res.status(400).json({ error: "Invalid field data!" });
-      return;
+       res.status(400).json({ error: "Invalid field data!" });
+       return
     }
 
     const formattedInput = fieldData.data;
 
     if (!formattedInput.plugId && !formattedInput.subdomain) {
-      res.status(400).json({ error: "Missing plug ID or subdomain" });
-      return;
+       res.status(400).json({ error: "Missing plug ID or subdomain" });
+       return;
     }
 
-    console.log("formattedInput:", formattedInput);
-
     const response = await prisma.$transaction(async (tx) => {
-      // Get plug details
-      let where;
-      if (formattedInput.plugId) {
-        where = { id: formattedInput.plugId };
-      } else if (formattedInput.subdomain) {
-        where = { subdomain: formattedInput.subdomain };
-      }
-
+      // Get plug
       const plug = await tx.plug.findFirst({
-        where,
+        where: formattedInput.plugId
+          ? { id: formattedInput.plugId }
+          : { subdomain: formattedInput.subdomain },
         select: { id: true, businessName: true, subdomain: true },
       });
+      if (!plug) throw new Error("Plug not found");
 
-      if (!plug) {
-        throw new Error("Plug not found");
+      // ====================================
+      // 1. Calculate prices per order item
+      // ====================================
+      let subtotal = 0;
+      const orderItemsData: any[] = [];
+
+      for (const item of formattedInput.orderItems) {
+        // Plug price
+        const plugProduct = await tx.plugProduct.findUnique({
+          where: {
+            plugId_originalId: {
+              plugId: plug.id,
+              originalId: item.productId,
+            },
+          },
+          select: { price: true },
+        });
+        if (!plugProduct)
+          throw new Error(
+            `PlugProduct not found for product ${item.productId}`
+          );
+
+        // Supplier price
+        const product = await tx.product.findUnique({
+          where: { id: item.productId },
+          select: { id: true, price: true, name: true, supplierId: true },
+        });
+        if (!product) throw new Error(`Product ${item.productId} not found`);
+
+        const plugPrice = plugProduct.price;
+        const supplierPrice = product.price;
+        const itemTotal = plugPrice * item.quantity;
+        subtotal += itemTotal;
+
+        orderItemsData.push({
+          productId: item.productId,
+          variantId: item.variantId || null,
+          quantity: item.quantity,
+          productSize: item.productSize || null,
+          productColor: item.productColor || null,
+          variantSize: item.variantSize || null,
+          variantColor: item.variantColor || null,
+          productName: product.name,
+          plugPrice,
+          supplierPrice,
+          supplierId: product.supplierId,
+          plugId: plug.id,
+        });
       }
 
-      // Verify products exist and stock availability
-      await Promise.all(
-        formattedInput.orderItems.map(async (item) => {
+      // ====================================
+      // 2. Calculate delivery fee
+      // ====================================
+      let deliveryFee = 0;
+      let terminalAddress: string | null = null;
 
-           if (item.variantId) {
-            const variant = await tx.productVariation.findUnique({
-              where: { id: item.variantId, productId: item.productId },
-              select: { stock: true },
-            });
-            if (!variant) throw new Error(`Variant ${item.variantId} not found`);
-            if (variant.stock < item.quantity) {
-              throw new Error(`Insufficient stock for variant ${item.variantId}`);
-            }
-          }
-          else {
-          const product = await tx.product.findUnique({
-            where: { id: item.productId },
-            select: { id: true, stock: true, name: true },
-          });
-          if (!product) throw new Error(`Product ${item.productId} not found`);
-          if (product.stock < item.quantity) {
-            throw new Error(`Insufficient stock for product ${product.name}`);
-          }
-         }
-         
-        })
-      );
+      if (formattedInput.deliveryType === "terminal") {
+        const terminalInfo = getTerminalInfo(
+          formattedInput.terminalAddress as any
+        );
+        deliveryFee = terminalInfo.price;
+        terminalAddress = terminalInfo.address;
+      } else if (formattedInput.deliveryType === "home") {
+        // deliveryFee = calculateHomeDeliveryFee(
+        //   formattedInput.buyerAddress || "",
+        //   formattedInput.buyerState,
+        //   formattedInput.buyerLga
+        // );
+      }
 
-      // Initialize Paystack transaction
+      // ====================================
+      // 3. Total amount
+      // ====================================
+      const totalAmount = subtotal + deliveryFee;
+
+      // ====================================
+      // 4. Initialize Paystack
+      // ====================================
       const paystackResponse = await fetch(
         "https://api.paystack.co/transaction/initialize",
         {
@@ -340,47 +131,34 @@ export async function stageOrder(
           },
           body: JSON.stringify({
             email: formattedInput.buyerEmail,
-            amount: formattedInput.totalAmount * 100, // Convert to kobo
+            amount: totalAmount * 100, // in kobo
             metadata: {
               buyerName: formattedInput.buyerName,
               buyerPhone: formattedInput.buyerPhone,
-              buyerAddress: formattedInput.buyerAddress || "",
-              orderItems: formattedInput.orderItems
-                .map((item) => `${item.productId} x${item.quantity}`)
-                .join(", "),
-              plugId: formattedInput.plugId || plug.id,
-              subdomain: formattedInput.subdomain || "",
+              plugId: plug.id,
+              orderItems: orderItemsData.map(
+                (i) => `${i.productName} x${i.quantity}`
+              ),
             },
           }),
         }
       );
-
-      if (!paystackResponse.ok) {
-        throw new Error("Failed to initialize Paystack transaction");
-      }
-
       const paystackData = await paystackResponse.json();
+      if (!paystackData.status) throw new Error("Paystack init failed");
 
-      if (!paystackData.status) {
-        throw new Error(
-          paystackData.message || "Paystack initialization failed"
-        );
-      }
+      // ====================================
+      // 5. Generate order number
+      // ====================================
 
       // Generate order number
-      const datePart = new Date().toISOString().slice(2, 10).replace(/-/g, "");
       const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
       const nanoid6 = customAlphabet(alphabet, 6);
+      const datePart = new Date().toISOString().slice(2, 10).replace(/-/g, "");
       const orderNumber = `ORD-${datePart}-${nanoid6()}`;
 
-      // Get full terminal address if needed
-      const fullAddress =
-        formattedInput.deliveryType === "terminal" &&
-        formattedInput.terminalAddress
-          ? getTerminalInfo(formattedInput.terminalAddress as any)
-          : null;
-
-      // Create buyer
+      // ====================================
+      // 6. Upsert buyer
+      // ====================================
       const buyerUpdateData: any = {
         name: formattedInput.buyerName,
       };
@@ -391,7 +169,7 @@ export async function stageOrder(
         buyerUpdateData.lga = formattedInput.buyerLga;
         buyerUpdateData.directions = formattedInput.buyerDirections;
       } else if (formattedInput.deliveryType === "terminal") {
-        buyerUpdateData.terminalAddress = fullAddress;
+        buyerUpdateData.terminalAddress = terminalAddress;
       }
 
       const buyer = await tx.buyer.upsert({
@@ -407,22 +185,24 @@ export async function stageOrder(
           email: formattedInput.buyerEmail,
           phone: formattedInput.buyerPhone,
           streetAddress: formattedInput.buyerAddress,
-          terminalAddress: fullAddress,
+          terminalAddress: terminalAddress,
           state: formattedInput.buyerState,
           lga: formattedInput.buyerLga,
           directions: formattedInput.buyerDirections,
         },
       });
 
-      // Create order with STAGED status
+      // ====================================
+      // 7. Create order
+      // ====================================
       const order = await tx.order.create({
         data: {
           orderNumber,
           buyerId: buyer.id,
-          plugId: formattedInput.plugId || plug.id,
-          totalAmount: formattedInput.totalAmount,
-          deliveryFee: formattedInput.deliveryFee,
-          platform: formattedInput.platform,
+          plugId: plug.id,
+          totalAmount,
+          deliveryFee,
+          platform: formattedInput.platform || "Unknown",
           buyerName: formattedInput.buyerName,
           buyerEmail: formattedInput.buyerEmail,
           buyerPhone: formattedInput.buyerPhone,
@@ -432,39 +212,18 @@ export async function stageOrder(
           buyerDirections: formattedInput.buyerDirections,
           buyerInstructions: formattedInput.buyerInstructions,
           paymentReference: paystackData.data.reference,
-          terminalAddress: fullAddress,
+          terminalAddress,
           deliveryType: formattedInput.deliveryType,
-          status: "STAGED", // Set as staged initially
+          status: "STAGED",
         },
       });
 
-      // Create order items
-      const items = await Promise.all(
-        formattedInput.orderItems.map(async (item) => {
-          const product = await tx.product.findUnique({
-            where: { id: item.productId },
-          });
-
-          return {
-            plugPrice: item.plugPrice,
-            supplierPrice: item.supplierPrice,
-            supplierId: item.supplierId,
-            plugId: formattedInput.plugId || plug.id,
-            productId: item.productId,
-            productName: product?.name,
-            variantId: item.variantId || null,
-            quantity: item.quantity,
-            productSize: item.productSize || null,
-            productColor: item.productColor || null,
-            variantSize: item.variantSize || null,
-            variantColor: item.variantColor || null,
-          };
-        })
-      );
-
+      // ====================================
+      // 8. Create order items
+      // ====================================
       await tx.orderItem.createMany({
-        data: items.map((item) => ({
-          ...item,
+        data: orderItemsData.map((i) => ({
+          ...i,
           orderId: order.id,
         })),
       });
@@ -476,17 +235,13 @@ export async function stageOrder(
       };
     });
 
-    res.status(201).json({
-      data: response,
-    });
+    res.status(201).json({ data: response });
   } catch (error) {
     next(error);
   }
 }
 
-
-
- // sold: { increment: item.quantity },  THE SOLD PRODUCT ITEM INCREASED  WHEN DELIVERED SO MAPPING THROUGH
+// sold: { increment: item.quantity },  THE SOLD PRODUCT ITEM INCREASED  WHEN DELIVERED SO MAPPING THROUGH
 
 export async function confirmOrder(
   req: Request,
@@ -501,7 +256,6 @@ export async function confirmOrder(
     }
 
     const { reference } = fieldData.data;
-    console.log("reference:", reference);
 
     const response = await prisma.$transaction(async (tx) => {
       // Find staged order by payment reference
@@ -543,7 +297,6 @@ export async function confirmOrder(
         throw new Error(paymentData.message || "Payment verification failed");
       }
 
-      console.log("status", paymentData);
 
       if (paymentData.data.status !== "success") {
         throw new Error("Payment was not successful");
@@ -604,22 +357,21 @@ export async function confirmOrder(
         data: { status: "PENDING" },
       });
 
-
       const plugStoreUrl = order.plug?.subdomain
-          ? `https://${order.plug.subdomain}.pluggn.store`
-          : null;
+        ? `https://${order.plug.subdomain}.pluggn.store`
+        : null;
 
-          try {
-            await successOrderMail(
-              order.buyerEmail,
-              order.buyerName,
-              order.plug?.businessName,
-              plugStoreUrl,
-              order.orderNumber
-            );
-          } catch (error) {
-            console.error("Failed to send success order email:", error);
-          }
+      try {
+        await successOrderMail(
+          order.buyerEmail,
+          order.buyerName,
+          order.plug?.businessName,
+          plugStoreUrl,
+          order.orderNumber
+        );
+      } catch (error) {
+        console.error("Failed to send success order email:", error);
+      }
 
       return {
         plugBusinessName: order.plug?.businessName,

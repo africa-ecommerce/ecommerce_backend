@@ -164,31 +164,8 @@ const OrderItemSchema = z.object({
   productColor: z.string().optional(),
   variantSize: z.string().optional(),
   variantColor: z.string().optional(),
-  plugPrice: z.number().positive(),
-  supplierPrice: z.number().positive(),
   supplierId: z.string(),
 });
-
-// export const PlaceOrderSchema = z.object({
-//   buyerName: z.string().min(1),
-//   buyerEmail: z.string().email(),
-//   buyerPhone: z.string().min(1),
-//   buyerAddress: z.string().optional(),
-//   buyerState: z.string().min(1),
-//   buyerLga: z.string().optional(),
-//   buyerDirections: z.string().optional(),
-//   buyerInstructions: z.string().optional(),
-//   platform: z.string().min(1).optional(),
-//   paymentMethod: z.string().min(1),
-//   totalAmount: z.number().positive(),
-//   deliveryFee: z.number().min(0),
-//   deliveryType: z.string(),
-//   terminalAddress: z.string().optional(),
-//   paymentReference: z.string().min(1),
-//   plugId: z.string().optional(),
-//   subdomain: z.string().optional(),
-//   orderItems: z.array(OrderItemSchema).min(1),
-// });
 
 
 export const StageOrderSchema = z.object({
@@ -200,8 +177,6 @@ export const StageOrderSchema = z.object({
   buyerLga: z.string().optional(),
   buyerDirections: z.string().optional(),
   buyerInstructions: z.string().optional(),
-  totalAmount: z.number().positive(),
-  deliveryFee: z.number().min(0),
   deliveryType: z.string(),
   terminalAddress: z.string().optional(),
   platform: z.string().min(1).optional(),
