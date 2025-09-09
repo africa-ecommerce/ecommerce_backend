@@ -247,7 +247,6 @@ export const productController = {
           return;
         }
 
-        console.log("productData", productData);
 
         // Check if product exists and belongs to this supplier
         const existingProduct = await prisma.product.findFirst({
@@ -314,41 +313,50 @@ export const productController = {
           return;
         }
         // Use transaction to ensure database consistency
-        const updatedProduct = await prisma.$transaction(async (tx) => {
-          // First, delete all existing variations
-          await tx.productVariation.deleteMany({
-            where: { productId },
-          });
-          // Create new variations
-          if (validatedVariations.length > 0) {
-            await tx.productVariation.createMany({
-              data: validatedVariations.map((variation: any) => ({
-                productId,
-                size: variation.size?.trim(),
-                colors: variation.colors || [],
-                stock: variation.stock,
-              })),
-            });
-          }
-          // Update base product data with all fields, matching the create endpoint
-          const updated = await tx.product.update({
-            where: { id: productId },
-            data: {
-              name: validatedData.data.name.trim(),
-              description: validatedData.data.description,
-              price: validatedData.data.price,
-              category: validatedData.data.category,
-              size: validatedData.data.size?.trim(),
-              colors: validatedData.data.colors || [],
-              status: "PENDING", // Reset to pending on update
-              stock: validatedData.data.stock,
-              images: JSON.stringify(updatedImages),
-              updatedAt: new Date(),
-            },
-          });
-
-          return updated;
+      const updatedProduct = await prisma.$transaction(async (tx) => {
+        // First, delete all existing variations
+        await tx.productVariation.deleteMany({
+          where: { productId },
         });
+
+        // Create new variations
+        if (validatedVariations.length > 0) {
+          await tx.productVariation.createMany({
+            data: validatedVariations.map((variation: any) => ({
+              productId,
+              size: variation.size?.trim(),
+              colors: variation.colors || [],
+              stock: variation.stock,
+            })),
+          });
+        }
+
+        // Check if price changed
+        const isPriceChanged =
+          existingProduct.price !== validatedData.data.price;
+
+        // Update base product data
+        const updated = await tx.product.update({
+          where: { id: productId },
+          data: {
+            name: validatedData.data.name.trim(),
+            description: validatedData.data.description,
+            price: validatedData.data.price,
+            category: validatedData.data.category,
+            size: validatedData.data.size?.trim(),
+            colors: validatedData.data.colors || [],
+            status: "PENDING", // Reset to pending on update
+            stock: validatedData.data.stock,
+            images: JSON.stringify(updatedImages),
+            updatedAt: new Date(),
+            priceUpdatedAt: isPriceChanged
+              ? new Date()
+              : existingProduct.priceUpdatedAt,
+          },
+        });
+
+        return updated;
+      });
 
         // Only delete images after successful database transaction
         if (imagesToDelete.length > 0) {

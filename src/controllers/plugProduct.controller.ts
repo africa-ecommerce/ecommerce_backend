@@ -13,7 +13,7 @@ export const plugProductController = {
   ) => {
     try {
       const products = req.body; // --------------> ADD COMMISSION AS AT TIME OF ADDING PRODUCTS
-      console.log(products)
+      console.log(products);
       const plug = req.plug!;
       // Basic validation
       if (!Array.isArray(products) || products.length === 0) {
@@ -76,7 +76,7 @@ export const plugProductController = {
         return;
       }
 
-       await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx) => {
         // Prepare products
         const productsToCreate = products.map((product) => ({
           originalId: product.id,
@@ -102,7 +102,6 @@ export const plugProductController = {
             },
           });
         }
-       
       });
 
       res.status(201).json({
@@ -142,8 +141,14 @@ export const plugProductController = {
         orderBy: { createdAt: "desc" },
       });
 
-      // Format each product with complete details including reviews
-      const formattedProducts = plugProducts.map((product) =>
+      // Filter out outdated ones (supplier updated price after plug last updated AND has been approved)
+      const filteredProducts = plugProducts.filter(
+        (pp) =>
+          pp.originalProduct.status !== "APPROVED" || // keep if not approved yet
+          pp.originalProduct.priceUpdatedAt <= pp.updatedAt // if approved, must be up-to-date
+      );
+
+      const formattedProducts = filteredProducts.map((product) =>
         formatPlugProduct(product)
       );
 
@@ -157,13 +162,17 @@ export const plugProductController = {
   },
 
   // Update plug product price with deferred price update after 3 days
-  updatePlugProductPrice: async (req: AuthRequest, res: Response, next: NextFunction) => {
+  updatePlugProductPrice: async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
       const productId = req.params.productId;
       const plug = req.plug!;
       const { price, commissionRate } = req.body;
-     
-      // Find the product  
+
+      // Find the product
       const existingProduct = await prisma.plugProduct.findFirst({
         where: {
           id: productId,
@@ -220,8 +229,60 @@ export const plugProductController = {
     }
   },
 
+  // Get outdated plug products (supplier updated price but plug has not)
+  getOutdatedPlugProducts: async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const plug = req.plug!;
+
+      const plugProducts = await prisma.plugProduct.findMany({
+        where: {
+          plugId: plug.id,
+          originalProduct: {
+            status: "APPROVED",
+          },
+        },
+        include: {
+          originalProduct: {
+            include: {
+              variations: true,
+              reviews: {
+                where: { plugId: plug.id },
+                select: { rating: true, review: true, createdAt: true },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      // Only keep outdated ones
+      const outdatedProducts = plugProducts.filter(
+        (pp) => pp.originalProduct.priceUpdatedAt > pp.updatedAt
+      );
+
+      const formattedProducts = outdatedProducts.map((product) =>
+        formatPlugProduct(product)
+      );
+
+      res.status(200).json({
+        message: "Outdated products fetched successfully!",
+        data: formattedProducts,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   // Remove product from plug's inventory
-  removePlugProduct: async (req: AuthRequest, res: Response, next: NextFunction) => {
+  removePlugProduct: async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
       const productId = req.params.productId;
       const plug = req.plug!;
@@ -275,7 +336,11 @@ export const plugProductController = {
     }
   },
   // Get product by ID with complete details
-  getPlugProductById: async (req: AuthRequest, res: Response, next: NextFunction) => {
+  getPlugProductById: async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
       const productId = req.params.productId;
       const plug = req.plug!;
@@ -312,7 +377,11 @@ export const plugProductController = {
 
   //REVIEWS
   // Review a product
-  reviewProduct: async (req: AuthRequest, res: Response, next: NextFunction) => {
+  reviewProduct: async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
       const plug = req.plug!;
       const { productId, rating, review } = req.body;

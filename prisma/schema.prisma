@@ -223,6 +223,7 @@ model Product {
     updatedAt    DateTime           @updatedAt
     maxPrice     Float              @default(0)
     minPrice     Float              @default(0)
+    priceUpdatedAt  DateTime           @default(now()) 
     status       ProductStatus      @default(PENDING)
     plugProducts PlugProduct[]
     supplier     Supplier           @relation(fields: [supplierId], references: [id], onDelete: Cascade)

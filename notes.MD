@@ -65,14 +65,13 @@ git pull origin main
 
 # Merge dev into main
 git merge dev
-
 # Push the updated main branch to GitHub
 git push origin main
 git checkout dev
 
 
 
-price update, accept and decline. supplier payment, returns or so, and delivered and notification, marketplace algorithm, paul should write personalized for you, look at the niching,
+price update, accept and decline. supplier payment, returns or so, and delivered and notification, marketplace algorithm, paul should write personalized for you, look at the niching, look at colors for paul
 format order colors or so, if user picks multiple color then it is different variation shouldnt e an array
 price change when supplier changes price, we filter out product price that has changed and approved, 
 

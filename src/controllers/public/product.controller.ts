@@ -13,8 +13,12 @@ export const getProductById = async (
       res.status(400).json({ error: "Missing or invalid field data!" });
       return;
     }
+
     const product = await prisma.plugProduct.findFirst({
-      where: { id: productId, plugId: plugId },
+      where: {
+        id: productId,
+        plugId: plugId,
+      },
       include: {
         originalProduct: {
           include: {
@@ -39,14 +43,23 @@ export const getProductById = async (
       res.status(404).json({ error: "Product not found!" });
       return;
     }
-    // Format the product with images and variations
+
+    // Outdated check
+    if (
+      product.originalProduct.priceUpdatedAt > product.updatedAt &&
+      product.originalProduct.status == "APPROVED"
+    ) {
+      res.status(404).json({ error: "Product not found!" });
+      return;
+    }
+
     const formattedProduct = formatPlugProduct(product);
     res.status(200).json({
       message: "Product fetched successfully!",
       data: formattedProduct,
     });
   } catch (error) {
-   next(error);
+    next(error);
   }
 };
 
@@ -61,9 +74,7 @@ export const getStoreProducts = async (req: Request, res: Response, next: NextFu
   try {
     const plug = await prisma.plug.findUnique({
       where: { subdomain },
-      select: {
-        id: true,
-      },
+      select: { id: true },
     });
 
     if (!plug) {
@@ -72,19 +83,23 @@ export const getStoreProducts = async (req: Request, res: Response, next: NextFu
     }
 
     const plugProducts = await prisma.plugProduct.findMany({
-      where: { plugId: plug?.id },
+      where: { plugId: plug.id,  },
       include: {
         originalProduct: {
-          include: {
-            variations: true,
-          },
+          include: { variations: true },
         },
       },
       orderBy: { createdAt: "desc" },
     });
 
-    // Format each product with complete details including reviews
-    const formattedProducts = plugProducts.map((product) =>
+    // Filter out outdated ones (supplier updated price after plug last updated AND has been approved)
+   const filteredProducts = plugProducts.filter(
+     (pp) =>
+       pp.originalProduct.status !== "APPROVED" || // keep if not approved yet
+       pp.originalProduct.priceUpdatedAt <= pp.updatedAt // if approved, must be up-to-date
+   );
+
+    const formattedProducts = filteredProducts.map((product) =>
       formatPlugProduct(product)
     );
 
@@ -104,7 +119,6 @@ export const getStoreProductById = async (
 ) => {
   try {
     const { productId } = req.params;
-
     const subdomain = (req.query.subdomain || "")
       .toString()
       .trim()
@@ -114,19 +128,22 @@ export const getStoreProductById = async (
       res.status(400).json({ error: "Missing or invalid field data!" });
       return;
     }
+
     const plug = await prisma.plug.findUnique({
       where: { subdomain },
-      select: {
-        id: true,
-      },
+      select: { id: true },
     });
 
     if (!plug) {
       res.status(404).json({ error: "Cannot find store for this subdomain!" });
       return;
     }
+
     const product = await prisma.plugProduct.findFirst({
-      where: { id: productId, plugId: plug?.id },
+      where: {
+        id: productId,
+        plugId: plug.id,
+      },
       include: {
         originalProduct: {
           include: {
@@ -134,12 +151,7 @@ export const getStoreProductById = async (
             supplier: {
               select: {
                 id: true,
-                pickupLocation: {
-                  select: {
-                    latitude: true,
-                    longitude: true,
-                  },
-                },
+                pickupLocation: { select: { latitude: true, longitude: true } },
               },
             },
           },
@@ -151,7 +163,16 @@ export const getStoreProductById = async (
       res.status(404).json({ error: "Product not found!" });
       return;
     }
-    // Format the product with images and variations
+
+    // Check if outdated
+    if (
+      product.originalProduct.priceUpdatedAt > product.updatedAt &&
+      product.originalProduct.status == "APPROVED"
+    ) {
+      res.status(404).json({ error: "Product not found!" });
+      return;
+    }
+
     const formattedProduct = formatPlugProduct(product);
     res.status(200).json({
       message: "Product fetched successfully!",
@@ -161,4 +182,3 @@ export const getStoreProductById = async (
     next(error);
   }
 };
-

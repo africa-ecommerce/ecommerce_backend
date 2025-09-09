@@ -16,6 +16,9 @@ router.post("/", plugProductController.addProductsToPlug);
 // Route to get all products in plug
 router.get("/", plugProductController.getPlugProducts);
 
+// Route to get all outdated products in plug
+router.get("/outdated", plugProductController.getOutdatedPlugProducts);
+
 // Route to get a plug product by ID
 router.get("/:productId", plugProductController.getPlugProductById);
 
