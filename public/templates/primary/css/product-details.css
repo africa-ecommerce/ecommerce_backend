@@ -908,13 +908,12 @@
   background: #fafbfc;
   border-radius: 8px;
   border: 1px solid #f0f1f3;
-  transition: all 0.2s ease;
 }
 
 .variation-item:hover {
   background: #f5f7fa;
   border-color: var(--color-primary, #007bff);
-  transform: translateX(2px);
+
 }
 
 .variation-item:last-child {
