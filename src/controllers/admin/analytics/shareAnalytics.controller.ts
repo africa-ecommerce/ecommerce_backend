@@ -11,9 +11,6 @@ export async function trackShareAnalytics(
     const { platform } = req.body;
     const userId = req.user?.id;
 
-
-    console.log(platform)
-    console.log(userId);
     if (!userId || !platform || typeof platform !== "string") {
        res
         .status(400)

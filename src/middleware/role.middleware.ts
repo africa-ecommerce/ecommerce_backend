@@ -1,5 +1,7 @@
 import {Request, Response, NextFunction } from "express";
 import { AuthRequest } from "../types";
+import jwt from "jsonwebtoken";
+
 
 // Middleware to check if user is a plug
 export const isPlug =  (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -48,3 +50,28 @@ export const isSupplier = (
     return;
   }
 };
+
+
+export function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
+  try {
+    const token = req.cookies?.session;
+
+    if (!token) {
+       res.status(401).json({ error: "Unauthorized!" });
+       return;
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { admin?: boolean };
+
+    if (!decoded.admin) {
+       res.status(403).json({ error: "Forbidden. Admin access required!"});
+       return;
+    }
+
+    next();
+  } catch (err) {
+    console.error("Admin auth error:", err);
+     res.status(401).json({ error: "Internal server error!", });
+     return;
+  }
+}

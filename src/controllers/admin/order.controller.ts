@@ -8,8 +8,6 @@ import { formatPlugOrders } from "../../helper/formatData";
 
 
 
-
-
 export async function getOrders(req: Request, res: Response, next: NextFunction) {
   try {
     const status = (req.query.orderStatus as string | undefined)?.toUpperCase();
@@ -36,6 +34,95 @@ export async function getOrders(req: Request, res: Response, next: NextFunction)
   }
 }
 
+
+export async function getOrderById(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: { orderItems: true },
+    });
+
+    if (!order) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    // 1. Collect supplierIds, filter out nulls properly
+    const supplierIds: string[] = order.orderItems
+      .map((i) => i.supplierId)
+      .filter((id): id is string => !!id);
+
+    // 2. Fetch suppliers with pickupLocation
+    const suppliers = await prisma.supplier.findMany({
+      where: { id: { in: supplierIds } },
+      include: { pickupLocation: true }, // ✅ now pickupLocation will exist
+    });
+
+    // 3. Group items under suppliers
+    const supplierMap = order.orderItems.reduce((acc, item) => {
+      if (!item.supplierId) return acc;
+
+      if (!acc[item.supplierId]) {
+        const s = suppliers.find((sup) => sup.id === item.supplierId);
+        if (s) {
+          acc[item.supplierId] = {
+            supplierId: s.id,
+            businessName: s.businessName,
+            phone: s.phone,
+            address: s.pickupLocation?.streetAddress || null,
+            state: s.pickupLocation?.state || null,
+            lga: s.pickupLocation?.lga || null,
+            directions: s.pickupLocation?.directions || null,
+            orderItems: [],
+          };
+        }
+      }
+
+      acc[item.supplierId]?.orderItems.push({
+        id: item.id,
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        plugPrice: item.plugPrice,
+        supplierPrice: item.supplierPrice,
+        productSize: item.productSize,
+        productColor: item.productColor,
+        variantId: item.variantId,
+        variantSize: item.variantSize,
+        variantColor: item.variantColor,
+      });
+
+      return acc;
+    }, {} as Record<string, any>);
+
+    // 4. Send response
+    res.status(200).json({
+      suppliers: Object.values(supplierMap),
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      buyer: {
+        name: order.buyerName,
+        email: order.buyerEmail,
+        phone: order.buyerPhone,
+        address: order.buyerAddress,
+        state: order.buyerState,
+        lga: order.buyerLga,
+        directions: order.buyerDirections,
+      },
+      deliveryType: order.deliveryType,
+      terminalAddress: order.terminalAddress,
+      totalAmount: order.totalAmount,
+      deliveryFee: order.deliveryFee,
+      status: order.status,
+      createdAt: order.createdAt,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error!" });
+  }
+}
 
 
 export const shippedOrder = async (req: Request, res: Response) => {
