@@ -141,6 +141,8 @@ export function formatPlugOrders(orders: any[]) {
     buyerAddress: order.buyerAddress,
     buyerState: order.buyerState,
     buyerLga: order.buyerLga,
+    terminalAddress: order.terminalAddress,
+    deliveryType: order.deliveryType,
     // plugPrice: order.plugPrice,
     // supplierPrice: order.supplierPrice,
     orderItems: order.orderItems.map((item: any) => ({

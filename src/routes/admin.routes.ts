@@ -44,7 +44,7 @@ router.delete(
 
 
 router.get("/order", requireAdminAuth, getOrders);
-router.get("/orders/:id", requireAdminAuth,getOrderById);
+router.get("/order/:id", requireAdminAuth,getOrderById);
 router.post("/order/shipped", requireAdminAuth, shippedOrder);
 router.post("/order/delivered", requireAdminAuth, deliveredOrder);
 
