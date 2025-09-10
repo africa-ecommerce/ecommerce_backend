@@ -46,6 +46,7 @@ const allowedAppUrls = [
   "https://pluggn.com.ng",
   "https://www.pluggn.store",
   "https://www.pluggn.com.ng",
+  "http://127.0.0.1:5500",
   backendUrl,
 ];
 
