@@ -64,7 +64,7 @@ class ShoppingCart {
     modal.className = "color-modal"
 
     // Create modal content
-   modal.innerHTML = `
+    modal.innerHTML = `
   <div class="color-modal-header">
     <h3>Choose Color</h3>
     <button class="color-modal-close">
@@ -154,13 +154,13 @@ class ShoppingCart {
   }
 
   showVariationModal(product, isBuyNow = false) {
-  const overlay = document.createElement("div")
-  overlay.className = "variation-modal-overlay"
+    const overlay = document.createElement("div")
+    overlay.className = "variation-modal-overlay"
 
-  const modal = document.createElement("div")
-  modal.className = "variation-modal"
+    const modal = document.createElement("div")
+    modal.className = "variation-modal"
 
-  modal.innerHTML = `
+    modal.innerHTML = `
     <div class="variation-modal-header">
       <h3>Choose Variation</h3>
       <button class="variation-modal-close">
@@ -187,9 +187,8 @@ class ShoppingCart {
                 ${variation.stocks} in stock
               </span>
             </div>
-            <div class="variation-details">
-              ${variation.size ? `<span class="variation-size">Size: ${variation.size}</span>` : ""}
-            </div>
+            <div class="variation-display">
+           
 
             ${variation.colors && variation.colors.length > 0 ? `
               <div class="variation-colors-popover">
@@ -208,6 +207,10 @@ class ShoppingCart {
               </div>
             ` : ""}
 
+             <div class="variation-details">
+              ${variation.size ? `<span class="variation-size">Size: ${variation.size}</span>` : ""}
+            </div>
+                  </div>
             <button class="btn btn-primary variation-select-btn"
               ${variation.stocks < 1 ? "disabled" : ""}
               data-variation-index="${index}">
@@ -219,82 +222,82 @@ class ShoppingCart {
     </div>
   `
 
-  overlay.appendChild(modal)
-  document.body.appendChild(overlay)
-  document.body.style.overflow = "hidden"
+    overlay.appendChild(modal)
+    document.body.appendChild(overlay)
+    document.body.style.overflow = "hidden"
 
-  // ===== Event handling =====
-  const closeBtn = modal.querySelector(".variation-modal-close")
-  const selectBtns = modal.querySelectorAll(".variation-select-btn")
-  const popoverToggles = modal.querySelectorAll(".variation-color-toggle")
+    // ===== Event handling =====
+    const closeBtn = modal.querySelector(".variation-modal-close")
+    const selectBtns = modal.querySelectorAll(".variation-select-btn")
+    const popoverToggles = modal.querySelectorAll(".variation-color-toggle")
 
-  let selectedColors = {} // track color per variation
+    let selectedColors = {} // track color per variation
 
-  const closeModal = () => {
-    overlay.remove()
-    document.body.style.overflow = ""
-  }
+    const closeModal = () => {
+      overlay.remove()
+      document.body.style.overflow = ""
+    }
 
-  closeBtn.addEventListener("click", closeModal)
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) closeModal()
-  })
-
-  // Toggle color popovers
-  popoverToggles.forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation()
-      const popover = btn.nextElementSibling
-      popover.classList.toggle("active")
+    closeBtn.addEventListener("click", closeModal)
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) closeModal()
     })
-  })
 
-  // Color selection per variation
-  modal.querySelectorAll(".variation-color-option").forEach((option) => {
-    option.addEventListener("click", () => {
-      const parent = option.closest(".variation-colors-popover")
-      const toggleBtn = parent.querySelector(".variation-color-toggle")
-      const allOptions = parent.querySelectorAll(".variation-color-option")
-
-      allOptions.forEach(o => o.classList.remove("active"))
-      option.classList.add("active")
-
-      const chosenColor = option.getAttribute("data-color")
-      toggleBtn.textContent = chosenColor + " ▼"
-
-      const variationId = option.closest(".variation-item").getAttribute("data-variation-id")
-      selectedColors[variationId] = chosenColor
-
-      parent.querySelector(".variation-colors-list").classList.remove("active")
+    // Toggle color popovers
+    popoverToggles.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation()
+        const popover = btn.nextElementSibling
+        popover.classList.toggle("active")
+      })
     })
-  })
 
-  // Handle variation select
-  selectBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const variationIndex = parseInt(btn.getAttribute("data-variation-index"))
-      const selectedVariation = product.variations[variationIndex]
-      const chosenColor = selectedColors[selectedVariation.id] || selectedVariation.colors?.[0] || null
+    // Color selection per variation
+    modal.querySelectorAll(".variation-color-option").forEach((option) => {
+      option.addEventListener("click", () => {
+        const parent = option.closest(".variation-colors-popover")
+        const toggleBtn = parent.querySelector(".variation-color-toggle")
+        const allOptions = parent.querySelectorAll(".variation-color-option")
 
-      if (selectedVariation.stocks > 0) {
-        if (isBuyNow) {
-          const ref = this.getSubdomain()
-          let checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&variation=${selectedVariation.id}&ref=${ref}&platform=store`
-          if (chosenColor) checkoutUrl += `&color=${encodeURIComponent(chosenColor)}`
-          window.open(checkoutUrl, "_blank")
-          closeModal()
+        allOptions.forEach(o => o.classList.remove("active"))
+        option.classList.add("active")
+
+        const chosenColor = option.getAttribute("data-color")
+        toggleBtn.textContent = chosenColor + " ▼"
+
+        const variationId = option.closest(".variation-item").getAttribute("data-variation-id")
+        selectedColors[variationId] = chosenColor
+
+        parent.querySelector(".variation-colors-list").classList.remove("active")
+      })
+    })
+
+    // Handle variation select
+    selectBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const variationIndex = parseInt(btn.getAttribute("data-variation-index"))
+        const selectedVariation = product.variations[variationIndex]
+        const chosenColor = selectedColors[selectedVariation.id] || selectedVariation.colors?.[0] || null
+
+        if (selectedVariation.stocks > 0) {
+          if (isBuyNow) {
+            const ref = this.getSubdomain()
+            let checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&variation=${selectedVariation.id}&ref=${ref}&platform=store`
+            if (chosenColor) checkoutUrl += `&color=${encodeURIComponent(chosenColor)}`
+            window.open(checkoutUrl, "_blank")
+            closeModal()
+          } else {
+            this.addItemWithVariationAndColor(product, selectedVariation, chosenColor)
+            closeModal()
+          }
         } else {
-          this.addItemWithVariationAndColor(product, selectedVariation, chosenColor)
-          closeModal()
+          this.showNotification("This variation is out of stock", "error")
         }
-      } else {
-        this.showNotification("This variation is out of stock", "error")
-      }
+      })
     })
-  })
 
-  setTimeout(() => overlay.classList.add("active"), 10)
-}
+    setTimeout(() => overlay.classList.add("active"), 10)
+  }
 
 
   addItemWithColor(product, selectedColor) {
@@ -518,7 +521,15 @@ class ShoppingCart {
         // Show empty cart message
         cartItemsContainer.innerHTML = `
           <div class="cart-empty">
-            <p>Your cart is empty</p>
+            <div class="cart-empty-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="9" cy="21" r="1"></circle>
+                <circle cx="20" cy="21" r="1"></circle>
+                <path d="m1 1 4 4 2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+              </svg>
+            </div>
+            <h4>Your cart is empty</h4>
+            <p>Looks like you haven't added any items to your cart yet. Start shopping to fill it up!</p>
             <a href="/marketplace" class="btn btn-primary">Shop Now</a>
           </div>
         `
@@ -538,15 +549,14 @@ class ShoppingCart {
             </div>
             <div class="cart-item-details">
               <h4 class="cart-item-title">${item.displayTitle || item.title}</h4>
-              ${
-                item.variation
-                  ? `
+              ${item.variation
+                ? `
                 <div class="cart-item-variation">
                   ${item.variation.color ? `<span class="variation-info">Color: ${item.variation.color}</span>` : ""}
                   ${item.variation.size ? `<span class="variation-info">Size: ${item.variation.size}</span>` : ""}
                 </div>
               `
-                  : ""
+                : ""
               }
               
               <p class="cart-item-price">₦${item.price.toLocaleString(undefined, {
@@ -556,9 +566,8 @@ class ShoppingCart {
               <div class="cart-item-quantity">
                 <button class="quantity-btn decrease-quantity" data-id="${item.itemId}">-</button>
                 <span>${item.quantity}</span>
-                <button class="quantity-btn increase-quantity" data-id="${item.itemId}" ${
-                  item.stock !== null && item.quantity >= item.stock ? "disabled" : ""
-                }>+</button>
+                <button class="quantity-btn increase-quantity" data-id="${item.itemId}" ${item.stock !== null && item.quantity >= item.stock ? "disabled" : ""
+              }>+</button>
                 <span class="cart-item-remove" data-id="${item.itemId}">Remove</span>
               </div>
             </div>

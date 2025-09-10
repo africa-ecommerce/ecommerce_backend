@@ -291,21 +291,14 @@ class ProductDetailsPage {
       productPrice.textContent = `₦${product.price.toLocaleString()}`
     }
 
-  const productColorsSection = document.querySelector(".product-colors")
-  if (productColorsSection && product.colors && product.colors.length > 0) {
-    const colorsDisplay = productColorsSection.querySelector(".colors-display")
-    colorsDisplay.innerHTML = product.colors
-      .map(
-        (color) => `
-          <div class="color-option">
-          
-            <span class="color-name">${color}</span>
-          </div>
-        `,
-      )
-      .join("")
-    productColorsSection.style.display = "block"
-  }
+    const productColorsSection = document.querySelector(".product-colors")
+    if (productColorsSection && product.colors && product.colors.length > 0) {
+      const colorsDisplay = productColorsSection.querySelector(".colors-display")
+      colorsDisplay.innerHTML = product.colors
+        .map(color => `<span class="color-tag">${color}</span>`)
+        .join("")
+      productColorsSection.style.display = "block"
+    }
 
 
     // Update product meta (stock info)
@@ -381,8 +374,8 @@ class ProductDetailsPage {
                 </div>
                 <div class="variations-container">
                     ${product.variations
-                      .map(
-                        (variation, index) => `
+          .map(
+            (variation, index) => `
                         <div class="variation-item">
                             <div class="variation-header">
                                 <span class="variation-number">#${index + 1}</span>
@@ -391,43 +384,40 @@ class ProductDetailsPage {
                                 </span>
                             </div>
                             <div class="variation-detail">
-                                 ${
-                 
-                  variation.colors
-                    ? `
+                                 ${variation.colors
+                ? `
                       <div class="variation-detail">
                         <span class="detail-label">Colors:</span>
                         <div class="colors-list">
                           ${variation.colors
-                            .map(
-                              (color) => `
+                  .map(
+                    (color) => `
                                 <div class="color-info">
                                  
                                   <span class="color-name">${color}</span>
                                 </div>
                               `
-                            )
-                            .join("")}
+                  )
+                  .join("")}
                         </div>
                       </div>
                     `
-                    : ""
-                }
-                                ${
-                                  variation.size
-                                    ? `
+                : ""
+              }
+                                ${variation.size
+                ? `
                                     <div class="variation-detail">
                                         <span class="detail-label">Size:</span>
                                         <span class="detail-value">${variation.size}</span>
                                     </div>
                                 `
-                                    : ""
-                                }
+                : ""
+              }
                             </div>
                         </div>
                     `,
-                      )
-                      .join("")}
+          )
+          .join("")}
                 </div>
                 <div class="variations-footer">
                     <p class="variation-note">💡 Select a variation when adding to cart</p>
@@ -477,77 +467,77 @@ class ProductDetailsPage {
 
 
         if (product.hasVariations && product.variations && product.variations.length > 0) {
-            // Check if all variations are out of stock
-            const hasAvailableVariations = product.variations.some((v) => v.stocks > 0)
-            if (!hasAvailableVariations) {
-              window.cart.showNotification("This product is out of stock", "error")
-              return
-            }
-          
-            window.cart.showVariationModal(product)
-          
+          // Check if all variations are out of stock
+          const hasAvailableVariations = product.variations.some((v) => v.stocks > 0)
+          if (!hasAvailableVariations) {
+            window.cart.showNotification("This product is out of stock", "error")
+            return
+          }
+
+          window.cart.showVariationModal(product)
+
         } else if (product.colors && product.colors.length > 1) {
           // Product has multiple colors but no variations
           if (productStock < 1) {
-              this.showNotification("This product is out of stock", "error")
-              return
-            }
-            window.cart.showColorModal(product)
+            this.showNotification("This product is out of stock", "error")
+            return
+          }
+          window.cart.showColorModal(product)
         } else {
-           if (productStock < 1) {
-              window.cart.showNotification("This product is out of stock", "error")
-              return
-            }
-            window.cart.addItem(product)
-          
+          if (productStock < 1) {
+            window.cart.showNotification("This product is out of stock", "error")
+            return
+          }
+          window.cart.addItem(product)
+
         }
       })
     }
 
     // Buy now button
-   const buyNowBtn = document.getElementById("buy-now")
-if (buyNowBtn) {
-  buyNowBtn.addEventListener("click", () => {
-    if (this.loadingState.isLoading) return // Prevent clicks during loading
+    const buyNowBtn = document.getElementById("buy-now")
+    if (buyNowBtn) {
+      buyNowBtn.addEventListener("click", () => {
+        if (this.loadingState.isLoading) return // Prevent clicks during loading
 
-    const productStock = product.stocks || product.stock || 0
+        const productStock = product.stocks || product.stock || 0
 
-    if (product.hasVariations && product.variations && product.variations.length > 0) {
-      // Check if all variations are out of stock
-      const hasAvailableVariations = product.variations.some((v) => v.stocks > 0)
-      if (!hasAvailableVariations) {
-        this.showNotification("This product is out of stock", "error")
-        return
-      }
-    
-      // FIXED: Pass true for buy now flag
-      window.cart.showVariationModal(product, true)
-    
-    } else if (product.colors && product.colors.length > 1) {
-      // Product has multiple colors but no variations
-      if (productStock < 1) {
-        this.showNotification("This product is out of stock", "error")
-        return
-      }
-      
-      // FIXED: Pass true for buy now flag
-      window.cart.showColorModal(product, true)
-    } else {
-      if (productStock < 1) {
-        this.showNotification("This product is out of stock", "error")
-        return
-      }
+        if (product.hasVariations && product.variations && product.variations.length > 0) {
+          // Check if all variations are out of stock
+          const hasAvailableVariations = product.variations.some((v) => v.stocks > 0)
+          if (!hasAvailableVariations) {
+            this.showNotification("This product is out of stock", "error")
+            return
+          }
 
-      // Redirect to checkout with single color if available
-      const ref = window.cart.getSubdomain()
-      let checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&ref=${ref}&platform=store`
-      if (product.colors && product.colors.length === 1) {
-        checkoutUrl += `&color=${encodeURIComponent(product.colors[0])}`
-      }
-      window.open(checkoutUrl, "_blank")
+          // FIXED: Pass true for buy now flag
+          window.cart.showVariationModal(product, true)
+
+        } else if (product.colors && product.colors.length > 1) {
+          // Product has multiple colors but no variations
+          if (productStock < 1) {
+            this.showNotification("This product is out of stock", "error")
+            return
+          }
+
+          // FIXED: Pass true for buy now flag
+          window.cart.showColorModal(product, true)
+        } else {
+          if (productStock < 1) {
+            this.showNotification("This product is out of stock", "error")
+            return
+          }
+
+          // Redirect to checkout with single color if available
+          const ref = window.cart.getSubdomain()
+          let checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&ref=${ref}&platform=store`
+          if (product.colors && product.colors.length === 1) {
+            checkoutUrl += `&color=${encodeURIComponent(product.colors[0])}`
+          }
+          window.open(checkoutUrl, "_blank")
+        }
+      })
     }
-  })
-}
 
 
     // Tab buttons
@@ -829,9 +819,10 @@ function transformProductData(apiProduct) {
     variations: apiProduct.variations || [],
     sold: apiProduct.sold || 0,
     colors: apiProduct.colors || [],
-    
+
   }
 }
+
 
 // Basic versions of update functions for fallback
 function updateProductDetailsBasic(product) {
@@ -857,15 +848,8 @@ function updateProductDetailsBasic(product) {
   if (productColorsSection && product.colors && product.colors.length > 0) {
     const colorsDisplay = productColorsSection.querySelector(".colors-display")
     colorsDisplay.innerHTML = product.colors
-      .map(
-        (color) => `
-          <div class="color-option">
-           
-            <span class="color-name">${color}</span>
-          </div>
-        `,
-      )
-      .join(", ")
+      .map(color => `<span class="color-tag">${color}</span>`)
+      .join("")
     productColorsSection.style.display = "block"
   }
 
@@ -940,8 +924,8 @@ function showVariationsSection(product) {
       </div>
       <div class="variations-container">
         ${product.variations
-          .map(
-            (variation, index) => `
+        .map(
+          (variation, index) => `
             <div class="variation-item">
               <div class="variation-header">
                 <span class="variation-number">#${index + 1}</span>
@@ -950,43 +934,33 @@ function showVariationsSection(product) {
                 </span>
               </div>
               <div class="variation-details">
-                ${
-                 
-                  variation.colors
-                    ? `
-                      <div class="variation-detail">
-                        <span class="detail-label">Colors:</span>
-                        <div class="colors-list">
-                          ${variation.colors
-                            .map(
-                              (color) => `
-                                <div class="color-info">
-                                 
-                                  <span class="color-name">${color}</span>
-                                </div>
-                              `
-                            )
-                            .join("")}
-                        </div>
-                      </div>
-                    `
-                    : ""
-                }
-                ${
-                  variation.size
-                    ? `
+                ${variation.colors && variation.colors.length > 0
+              ? `
+      <div class="variation-detail">
+        <span class="detail-label">Colors:</span>
+        <div class="colors-list">
+          ${variation.colors
+                .map(color => `<span class="color-tag">${color}</span>`)
+                .join("")}
+        </div>
+      </div>
+    `
+              : ""
+            }
+                ${variation.size
+              ? `
                       <div class="variation-detail">
                         <span class="detail-label">Size:</span>
                         <span class="detail-value">${variation.size}</span>
                       </div>
                     `
-                    : ""
-                }
+              : ""
+            }
               </div>
             </div>
           `,
-          )
-          .join("")}
+        )
+        .join("")}
       </div>
       <div class="variations-footer">
         <p class="variation-note">💡 Select a variation when adding to cart</p>
@@ -1109,6 +1083,9 @@ function addEventListenersBasic(product) {
     })
   })
 }
+
+
+
 
 function showErrorMessageBasic(message) {
   document.body.innerHTML = `
