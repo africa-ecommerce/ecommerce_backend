@@ -72,8 +72,6 @@ git checkout dev
 
 
 price update, accept and decline. supplier payment, returns or so, and delivered and notification, marketplace algorithm, paul should write personalized for you, look at the niching, look at colors for paul
-format order colors or so, if user picks multiple color then it is different variation shouldnt e an array
-price change when supplier changes price, we filter out product price that has changed and approved, 
 
 put terminal location in mail, paul opening hours, format mails,remove email tokens or so, remove social media from website
 
@@ -126,37 +124,19 @@ the backend can invalidate tokens if the user data changes significantly (like p
 : When a user logs out or resets their password, delete their refresh token from the DB.
 
 
-WEBSITE CRUD OPERATION TWO UPGRADES OUR UPGRADES AND USER UPDATES
-CHECK PHONE NOTES, HOW DO WE WORK WITH ESCROW
 promotion -> discount and flash sales supplier
 
 if a user updates or changes his password should he be required to login again, if i keep them logged in and Optionally notify the user by email: "Your password was changed. If this wasn’t you, click here to secure your account." is this okay, if they click the email, what will the click here to secure your account do, what do we do for them
 
 how to remove a specific image in products after upload -> edit -> things to check-> handle short videos -> there should be checkss to prevent offsite sale
-PIXELS FOR TRACKING
-LOADING, EMPTY STATE
-remove try again on auth cerror callbackor or contact us there
-THREE DAYS PENDING TIME WHEN IT GETS UPDATED
+
 
 order do we update supplier inventory, when do we update, what if they returned do we still go and update again
 
-image compressing
-image resizing tip
-mime type
-dimensions one genneral unit or so
 
-pwa 
 
-IN UPLOADING PRODUCT GIVE TIP TO GIVE ENOUGH INFO
-WE NEED TO MAKE THE WEBSITE DYNAMIC ON REQUEST, BECAUSE OF UPDATE
-NO IF A PLUG ADD OR UPDATE THEIR PRODUCTS IT REBUILDS
-\|" 
 https://youtu.be/6rDBjdBjYCg?si=ryPo5B-Gx7UHSj3d
 
-SHARE LINK ON SOCIAL MEDIA TIP
-
-
-accepting cookies
 
 We use cookies to deliver and improve our services, analyze site usage, and if you agree, to customize or personalize your experience and market our services to you. You can read our Cookie Policy here.
 
@@ -168,26 +148,6 @@ algorithm for marketplace, recommended products, similar products
 
 
 
-WHAT VARIATION DOES THE PUG 
-THE BUYER CHOOSES A VARIATION TO BUY IN CHECKOUT
-
-
-
-IF USER WANTS TO PICK TO PICK UP WE USE OUR LOCATION OR OUR PARTNER FOR PICKUPS
-
-ALSO VERIFICATION
-OTHER STUFF
-PROBABLY ANALYTICS
-TOTAL SALES OF PRODUCT IN DESCRIPTION
-LOCATION LIBRARY
-LOCATION OF PRODUCT
-PICKUP LOCATIONS
-SOCIAL MEDIA LINK, INCLUDE REFFERRER and encode
-
-dimension ui
-ADJUST THE WAY PICKUP LOCATION IS STORED TO GET STATE 
-INDEX DB
-NOT SENDING DIMENSIONS
 
 
 
@@ -202,11 +162,6 @@ NOT SENDING DIMENSIONS
 
 
 
-
-
-
-
-always check payment reference to verify order before
 If you are running your Postgres Db on a VPs and you want to migrate to a managed db like neon or so, and using prisma how do you do it, or if you are running minio for s3 how do you migrate data to something like  aws S3 
 
 
