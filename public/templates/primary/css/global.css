@@ -2012,7 +2012,7 @@ p {
   position: relative;
   display: inline-flex;
   align-items: center;
-   z-index: 1000;
+   z-index: 100;
 }
 
 .variation-color-toggle {
