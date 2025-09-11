@@ -73,7 +73,7 @@ git checkout dev
 
 price update, accept and decline. supplier payment, returns or so, and delivered and notification, marketplace algorithm, paul should write personalized for you, look at the niching, look at colors for paul
 
-put terminal location in mail, paul opening hours, format mails,remove email tokens or so, remove social media from website
+remove social media from website, write my code function what they are doing understand all, paul go through policy, terms, logistics last mile price, and delivery duration
 
 
 

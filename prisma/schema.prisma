@@ -308,6 +308,7 @@ model OrderItem {
     supplierId        String?
     supplierPrice     Float?
     plugId            String?
+    recieved          Boolean                       @default(false)
     order             Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
     PausedOrderItem   PausedOrderItem?
     ReturnedOrderItem ReturnedOrderItem?
@@ -454,7 +455,7 @@ enum OrderStatus {
   STAGED     // New status for staged orders before payment
   PENDING    // After payment confirmation
 //   CONFIRMED  //supplier confirmed order for pickup
-//   CANCELLED  // supplier cancelled order
+  CANCELLED  //  order was cancelled
   SHIPPED   // order is on the way to customer
   DELIVERED  // order delivered to customer
 }

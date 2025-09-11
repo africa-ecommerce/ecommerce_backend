@@ -7,7 +7,6 @@ import { OrderStatus } from "@prisma/client";
 import { formatPlugOrders } from "../../helper/formatData";
 
 
-
 export async function getOrders(req: Request, res: Response, next: NextFunction) {
   try {
     const status = (req.query.orderStatus as string | undefined)?.toUpperCase();
@@ -57,7 +56,7 @@ export async function getOrderById(req: Request, res: Response) {
     // 2. Fetch suppliers with pickupLocation
     const suppliers = await prisma.supplier.findMany({
       where: { id: { in: supplierIds } },
-      include: { pickupLocation: true }, // ✅ now pickupLocation will exist
+      include: { pickupLocation: true }, 
     });
 
     // 3. Group items under suppliers
@@ -162,117 +161,6 @@ export const shippedOrder = async (req: Request, res: Response) => {
   }
 };
 
-// CALLED WHEN ORDER IS DELIVERED I.E LOGISTICS PARTNER HAS DELIVERED THE ORDER TO THE BUYER, REMOVE OUR PERCENT AND SHOULD WE LET PLUG WAIT FOR 3 DAYS
-// export const deliveredOrder = async (req: Request, res: Response) => {
-//   try {
-//     const { orderId } = req.body;
-
-//     if (!orderId) {
-//       res.status(400).json({ error: "Order ID is required!" });
-//       return;
-//     }
-
-//     const order = await prisma.order.findUnique({
-//       where: { id: orderId, status: "SHIPPED" },
-//       include: { orderItems: true },
-//     });
-
-//     if (!order) {
-//       res.status(404).json({ error: "Order not found!" });
-//       return;
-//     }
-
-//     const result = await prisma.$transaction(async (tx) => {
-
-
-
-      
-//       // Calculate plug profit
-//       const plugProfit = order.orderItems.reduce((sum, item) => {
-//         return sum + (item.plugPrice! - item.supplierPrice!) * item.quantity;
-//       }, 0);
-    
-//       // // Each supplier mapped to their total amount
-//       // const supplier: Record<string, number> = {};
-    
-//       // for (const item of order.orderItems) {
-//       //   const amount = item.supplierPrice! * item.quantity;
-//       //   const supplierId = item.supplierId!;
-//       //   supplier[supplierId] = (supplier[supplierId] || 0) + amount;
-//       // }
-    
-//       // Mark order as delivered
-//       await tx.order.update({
-//         where: { id: orderId },
-//         data: { status: "DELIVERED", updatedAt: new Date() },
-//       });
-    
-//       // Update sold count for products and variants
-//       for (const item of order.orderItems) {
-//         await tx.product.update({
-//           where: { id: item.productId },
-//           data: {
-//             sold: {
-//               increment: item.quantity,
-//             },
-//           },
-//         });
-//       }
-    
-//       // Create plug payment
-//       await tx.plugPayment.create({
-//         data: {
-//           orderId,
-//           plugId: order.plugId,
-//           amount: plugProfit,
-//           status: "LOCKED",
-//         },
-//       });
-    
-//       // // Create supplier payments
-//       // for (const [supplierId, amount] of Object.entries(supplier)) {
-//       //   await tx.supplierPayment.create({
-//       //     data: {
-//       //       orderId,
-//       //       supplierId,
-//       //       amount,
-//       //       status: "LOCKED",
-//       //     },
-//       //   });
-//       // }
-    
-//       return order;
-//     });
-    
-//     // Schedule payment processing for 3 days later
-//     const deliveryDate = new Date(result.updatedAt);
-//     await scheduleOrderPaymentProcessing(orderId, deliveryDate);
-
-//     res.status(200).json({
-//       message: "Order marked as delivered and payments locked for 3 days.",
-//       data: {
-//         status: "DELIVERED",
-//         paymentDate: new Date(
-//           deliveryDate.getTime() + 3 * 24 * 60 * 60 * 1000
-//         ).toISOString(),
-//       },
-//     });
-
-//     if (req.body.buyerEmail && req.body.buyerName) {
-//       setImmediate(() =>
-//         deliveredOrderMail(
-//           req.body.buyerEmail,
-//           req.body.buyerName,
-//           orderId
-//         ).catch((err) => console.error("Delivered order mail error:", err))
-//       );
-//     }
-//   } catch (err) {
-//     console.error("Error updating order status:", err);
-//     res.status(500).json({ error: "Internal server error!" });
-//   }
-// };
-
 
 export const deliveredOrder = async (req: Request, res: Response) => {
   try {
@@ -282,7 +170,6 @@ export const deliveredOrder = async (req: Request, res: Response) => {
        res.status(400).json({ error: "Order ID is required!" });
        return;
     }
-
     const order = await prisma.order.findFirst({
       where: { id: orderId, status: "SHIPPED" },
       include: { orderItems: true },
@@ -295,7 +182,7 @@ export const deliveredOrder = async (req: Request, res: Response) => {
 
     const result = await prisma.$transaction(async (tx) => {
       let plugNetAmount = 0;
-      // let supplierTotalAmount = 0;
+      let supplierTotalAmount = 0;
 
       for (const item of order.orderItems) {
         const plugProduct = await tx.plugProduct.findUnique({
@@ -316,7 +203,7 @@ export const deliveredOrder = async (req: Request, res: Response) => {
         const itemTotal = (item.plugPrice ?? 0) * item.quantity;
         const supplierAmount = (item.supplierPrice ?? 0) * item.quantity;
 
-        // supplierTotalAmount += supplierAmount;
+        supplierTotalAmount += supplierAmount;
 
         // Calculate plug margin (profit before commission)
         const plugMargin = itemTotal - supplierAmount;
@@ -353,15 +240,17 @@ export const deliveredOrder = async (req: Request, res: Response) => {
         },
       });
 
-      // Create supplier payment
-      // await tx.supplierPayment.createMany({
-      //   data: order.orderItems.map((item) => ({
-      //     orderId,
-      //     supplierId: item.supplierId!,
-      //     amount: (item.supplierPrice ?? 0) * item.quantity,
-      //     status: "LOCKED",
-      //   })),
-      // });
+      // Create supplier  payments only for received items
+      await tx.supplierPayment.createMany({
+        data: order.orderItems
+          .filter((i) => i.recieved)
+          .map((item) => ({
+            orderId,
+            supplierId: item.supplierId!,
+            amount: (item.supplierPrice ?? 0) * item.quantity,
+            status: "LOCKED",
+          })),
+      });
 
       return order;
     });
@@ -392,16 +281,7 @@ export const deliveredOrder = async (req: Request, res: Response) => {
         ).toISOString(),
       },
     });
-
-    // setImmediate(() => {
-    //   deliveredOrderMail(
-    //     order.buyerEmail,
-    //     order.buyerName,
-    //     order.orderNumber
-    //   ).catch((error) => {
-    //     console.error("Failed to send delivered order email:", error);
-    //   });
-    // });  
+  
   } catch (err) {
     console.error("Error updating order status:", err);
     res.status(500).json({ error: "Internal server error!" });
@@ -411,26 +291,35 @@ export const deliveredOrder = async (req: Request, res: Response) => {
 
 // This function pauses an order item, deducting the amounts from plug and supplier payments, AFTER A RETURN REQUEST BY THE BUYER
 export const pauseOrderItem = async (req: Request, res: Response) => {
+   console.log("BODY:", req.body)
   try {
     const { orderItemId, quantity } = req.body;
 
+   
+
     if (!orderItemId || !quantity || quantity <= 0) {
-      return res
+       res
         .status(400)
         .json({ error: "orderItemId and valid quantity required" });
+        return;
     }
 
     const orderItem = await prisma.orderItem.findUnique({
       where: { id: orderItemId },
     });
-    if (!orderItem)
-      return res.status(404).json({ error: "OrderItem not found" });
-
+    if (!orderItem){
+      res.status(404).json({ error: "OrderItem not found" });
+      return;
+    }
+      
     const existingPause = await prisma.pausedOrderItem.findUnique({
       where: { orderItemId },
     });
-    if (existingPause)
-      return res.status(400).json({ error: "OrderItem already paused" });
+    if (existingPause){
+       res.status(400).json({ error: "OrderItem already paused" });
+       return;
+    }
+     
 
     const plugAmount =
       (orderItem.plugPrice! - orderItem.supplierPrice!) * quantity;
@@ -452,6 +341,8 @@ export const pauseOrderItem = async (req: Request, res: Response) => {
         data: { amount: { decrement: plugAmount } },
       });
 
+       // ✅ Supplier logic only if item was received
+      if (orderItem.recieved) {
       const supplierPayment = await tx.supplierPayment.findFirst({
         where: {
           orderId: orderItem.orderId,
@@ -460,13 +351,16 @@ export const pauseOrderItem = async (req: Request, res: Response) => {
         },
       });
 
+      // Deduct from  supplierPayment
       await tx.supplierPayment.update({
         where: {
           id: supplierPayment!.id,
         },
         data: { amount: { decrement: supplierAmount } },
       });
+        }
     });
+
 
     res.status(200).json({ message: "Order item paused successfully" });
   } catch (err) {
@@ -478,13 +372,15 @@ export const pauseOrderItem = async (req: Request, res: Response) => {
 
 // This function unpauses an order item, restoring amounts to plug and supplier payments, AFTER A RETURN REQUEST BY THE BUYER, ORDER ITEM MUST BE PAUSED
 export const unpauseOrderItem = async (req: Request, res: Response) => {
+   console.log("BODY:", req.body)
   try {
     const { orderItemId, quantity } = req.body;
-
+    
     if (!orderItemId || !quantity || quantity <= 0) {
-      return res
+       res
         .status(400)
         .json({ error: "orderItemId and valid quantity required" });
+        return;
     }
 
     const pauseRecord = await prisma.pausedOrderItem.findUnique({
@@ -492,7 +388,8 @@ export const unpauseOrderItem = async (req: Request, res: Response) => {
     });
 
     if (!pauseRecord || pauseRecord.quantity < quantity) {
-      return res.status(400).json({ error: "Invalid unpause quantity" });
+       res.status(400).json({ error: "Invalid unpause quantity" });
+       return;
     }
 
     const orderItem = await prisma.orderItem.findUnique({
@@ -500,7 +397,8 @@ export const unpauseOrderItem = async (req: Request, res: Response) => {
     });
 
     if (!orderItem) {
-      return res.status(404).json({ error: "Order item not found" });
+       res.status(404).json({ error: "Order item not found" });
+       return;
     }
 
     const plugAmount =
@@ -539,6 +437,8 @@ export const unpauseOrderItem = async (req: Request, res: Response) => {
       }
 
       // Handle SupplierPayment
+       // ✅ Supplier logic only if item was received
+      if (orderItem.recieved) {
       const supplierPayment = await tx.supplierPayment.findFirst({
         where: {
           orderId: orderItem.orderId,
@@ -568,6 +468,7 @@ export const unpauseOrderItem = async (req: Request, res: Response) => {
         });
       }
 
+    }
       // Remove or decrement pause record
       if (pauseRecord.quantity === quantity) {
         await tx.pausedOrderItem.delete({ where: { orderItemId } });
@@ -579,35 +480,56 @@ export const unpauseOrderItem = async (req: Request, res: Response) => {
       }
     });
 
-    return res
+     res
       .status(200)
       .json({ message: "Order item unpaused and payment adjusted" });
   } catch (err) {
     console.error("Unpause error:", err);
-    return res.status(500).json({ error: "Internal server error" });
+     res.status(500).json({ error: "Internal server error" });
   }
 };
 
 
-// This function handles returning an order item, updating paused and returned records, and adjusting payments
+// This function handles returning an order item, updating paused and returned records, 
+// adjusting product sold count when items are returned
 export const returnOrderItem = async (req: Request, res: Response) => {
+  console.log("BODY:", req.body);
   try {
     const { orderItemId, quantity } = req.body;
+
+    if (!orderItemId || !quantity || quantity <= 0) {
+       res.status(400).json({ error: "orderItemId and valid quantity required" });
+       return
+    }
 
     const pause = await prisma.pausedOrderItem.findUnique({
       where: { orderItemId },
     });
+
     if (!pause || pause.quantity < quantity) {
-      return res
+       res
         .status(400)
         .json({ error: "OrderItem not paused or quantity exceeds pause" });
+        return;
+    }
+
+    const orderItem = await prisma.orderItem.findUnique({
+      where: { id: orderItemId },
+      select: { productId: true }, 
+    });
+
+    if (!orderItem) {
+       res.status(404).json({ error: "OrderItem not found" });
+       return
     }
 
     await prisma.$transaction(async (tx) => {
+      // 1. Record the returned item
       await tx.returnedOrderItem.create({
         data: { orderItemId, quantity },
       });
 
+      // 2. Update or remove pause
       if (pause.quantity === quantity) {
         await tx.pausedOrderItem.delete({ where: { orderItemId } });
       } else {
@@ -616,11 +538,80 @@ export const returnOrderItem = async (req: Request, res: Response) => {
           data: { quantity: { decrement: quantity } },
         });
       }
+
+      // 3. ✅ Decrement sold count on product
+      await tx.product.update({
+        where: { id: orderItem.productId },
+        data: { sold: { decrement: quantity } },
+      });
     });
 
     res.status(200).json({ message: "Order item returned successfully" });
   } catch (err) {
     console.error("Return error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+
+
+export const markItemsReceived = async (req: Request, res: Response) => {
+   console.log("BODY:", req.body);
+  try {
+    const { orderId } = req.params;
+    const { orderItemIds } = req.body 
+
+    if (!orderId || !orderItemIds || !Array.isArray(orderItemIds)) {
+      res
+        .status(400)
+        .json({ error: "Order ID and orderItemIds array required" });
+      return;
+    }
+
+    // Verify order exists
+    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    // Update items in batch
+    await prisma.orderItem.updateMany({
+      where: { id: { in: orderItemIds }, orderId },
+      data: { recieved: true },
+    });
+
+    res.status(200).json({
+      message: "Order items marked as received",
+      data: { orderId, orderItemIds },
+    });
+  } catch (err) {
+    console.error("Mark received error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+
+export const cancelOrder = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+
+    if (!orderId) {
+      res.status(400).json({ error: "Order ID is required" });
+      return;
+    }
+
+    const order = await prisma.order.update({
+      where: { id: orderId },
+      data: { status: "CANCELLED" },
+    });
+
+    res.status(200).json({
+      message: "Order cancelled successfully",
+      data: { orderId: order.id, status: order.status },
+    });
+  } catch (err) {
+    console.error("Cancel order error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 };
