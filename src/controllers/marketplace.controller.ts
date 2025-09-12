@@ -902,7 +902,6 @@
 
 
 
-
 import { NextFunction, Response } from "express";
 import { AuthRequest } from "../types";
 import { prisma } from "../config";
@@ -972,201 +971,202 @@ async function getPlugAlgorithmData(
 }
 
 /**
- * Build the main SQL query with algorithm-based ordering
+ * Build WHERE clause for filtering
  */
-function buildProductQuery(params: {
+function buildWhereClause(params: {
   plugId?: string;
-  limit: number;
-  cursor?: string;
   search?: string;
   category?: string;
   minPrice?: number;
   maxPrice?: number;
   minRating?: number;
-  plugData?: PlugAlgorithmData;
-  isSupplier: boolean;
-  hasFilters: boolean;
-}) {
-  const {
-    plugId,
-    limit,
-    cursor,
-    search,
-    category,
-    minPrice,
-    maxPrice,
-    minRating,
-    plugData,
-    isSupplier,
-    hasFilters,
-  } = params;
-
-  // Base WHERE conditions
-  const whereConditions: string[] = [`p.status = 'APPROVED'`];
+  cursor?: string;
+}): { whereClause: string; queryParams: any[] } {
+  const conditions: string[] = ["status = 'APPROVED'"];
   const queryParams: any[] = [];
   let paramIndex = 1;
 
   // Exclude plugged products for PLUG users
-  if (plugId && plugData) {
-    whereConditions.push(`
-      p.id NOT IN (
-        SELECT DISTINCT pp.original_id 
-        FROM plug_products pp 
-        WHERE pp.plug_id = $${paramIndex} 
-        AND pp.original_id IS NOT NULL
+  if (params.plugId) {
+    conditions.push(`
+      id NOT IN (
+        SELECT DISTINCT original_id 
+        FROM plug_products 
+        WHERE plug_id = $${paramIndex} 
+        AND original_id IS NOT NULL
       )
     `);
-    queryParams.push(plugId);
+    queryParams.push(params.plugId);
     paramIndex++;
   }
 
   // Search filter
-  if (search) {
-    whereConditions.push(`
-      (LOWER(p.name) LIKE LOWER($${paramIndex}) 
-       OR LOWER(p.description) LIKE LOWER($${paramIndex}))
+  if (params.search) {
+    conditions.push(`
+      (LOWER(name) LIKE LOWER($${paramIndex}) 
+       OR LOWER(description) LIKE LOWER($${paramIndex}))
     `);
-    queryParams.push(`%${search}%`);
+    queryParams.push(`%${params.search}%`);
     paramIndex++;
   }
 
   // Category filter
-  if (category) {
-    const categories = category
+  if (params.category) {
+    const categories = params.category
       .split(",")
       .map((cat) => cat.trim())
       .filter((cat) => cat.toLowerCase() !== "all");
     if (categories.length > 0) {
       const placeholders = categories.map(() => `$${paramIndex++}`).join(", ");
-      whereConditions.push(`p.category IN (${placeholders})`);
+      conditions.push(`category IN (${placeholders})`);
       queryParams.push(...categories);
     }
   }
 
   // Price filters
-  if (minPrice !== undefined) {
-    whereConditions.push(`p.price >= $${paramIndex}`);
-    queryParams.push(minPrice);
+  if (params.minPrice !== undefined) {
+    conditions.push(`price >= $${paramIndex}`);
+    queryParams.push(params.minPrice);
     paramIndex++;
   }
 
-  if (maxPrice !== undefined) {
-    whereConditions.push(`p.price <= $${paramIndex}`);
-    queryParams.push(maxPrice);
+  if (params.maxPrice !== undefined) {
+    conditions.push(`price <= $${paramIndex}`);
+    queryParams.push(params.maxPrice);
     paramIndex++;
   }
 
   // Rating filter
-  if (minRating !== undefined) {
-    whereConditions.push(`
-      p.id IN (
-        SELECT DISTINCT r.product_id 
-        FROM reviews r 
-        WHERE r.rating >= $${paramIndex}
+  if (params.minRating !== undefined) {
+    conditions.push(`
+      id IN (
+        SELECT DISTINCT product_id 
+        FROM reviews 
+        WHERE rating >= $${paramIndex}
       )
     `);
-    queryParams.push(minRating);
+    queryParams.push(params.minRating);
     paramIndex++;
   }
 
   // Cursor pagination
-  if (cursor) {
-    whereConditions.push(`p.id > $${paramIndex}`);
-    queryParams.push(cursor);
+  if (params.cursor) {
+    conditions.push(`id > $${paramIndex}`);
+    queryParams.push(params.cursor);
     paramIndex++;
   }
 
   const whereClause =
-    whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
+    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
-  // Build ORDER BY clause based on user type and filters
+  return { whereClause, queryParams };
+}
+
+/**
+ * Get max values for normalization
+ */
+async function getMaxValues(
+  whereClause: string,
+  queryParams: any[]
+): Promise<{ maxPlugs: number; maxSold: number }> {
+  const maxQuery = `
+    SELECT 
+      MAX(COALESCE(plugs_count, 0)) as max_plugs,
+      MAX(COALESCE(sold, 0)) as max_sold
+    FROM products 
+    ${whereClause}
+  `;
+
+  const result = await prisma.$queryRawUnsafe(maxQuery, ...queryParams);
+  const maxValues = result as any[];
+
+  return {
+    maxPlugs: parseInt(maxValues[0]?.max_plugs || "1"),
+    maxSold: parseInt(maxValues[0]?.max_sold || "1"),
+  };
+}
+
+/**
+ * Build the main product query
+ */
+function buildMainQuery(params: {
+  whereClause: string;
+  plugData?: PlugAlgorithmData;
+  isSupplier: boolean;
+  hasFilters: boolean;
+  maxPlugs: number;
+  maxSold: number;
+  limit: number;
+}): string {
+  const {
+    whereClause,
+    plugData,
+    isSupplier,
+    hasFilters,
+    maxPlugs,
+    maxSold,
+    limit,
+  } = params;
+
   let orderByClause: string;
 
   if (isSupplier) {
     // Suppliers: most recent products first
-    orderByClause = "ORDER BY p.created_at DESC, p.id ASC";
+    orderByClause = "ORDER BY created_at DESC, id ASC";
   } else if (hasFilters) {
     // PLUG with filters: only use weighted score sorting
-    orderByClause = `
-      ORDER BY 
-        (COALESCE(p.plugs_count, 0) * 0.4 / NULLIF(MAX(COALESCE(p.plugs_count, 0)) OVER(), 0) + 
-         COALESCE(p.sold, 0) * 0.6 / NULLIF(MAX(COALESCE(p.sold, 0)) OVER(), 0)) DESC,
-        p.created_at DESC,
-        p.id ASC
-    `;
+    const baseScore = `(COALESCE(plugs_count, 0)::FLOAT / ${maxPlugs} * 0.4 + COALESCE(sold, 0)::FLOAT / ${maxSold} * 0.6)`;
+    orderByClause = `ORDER BY ${baseScore} DESC, created_at DESC, id ASC`;
   } else if (plugData) {
     // PLUG without filters: apply full algorithm
     if (plugData.totalPluggedProducts > 20) {
-      // Use category distribution as a boost in the weighted score, not as separate tiers
-      const categoryBoosts = Object.entries(plugData.categoryDistribution)
+      // Use category distribution as boost
+      let categoryBoostCase = "0";
+      if (Object.keys(plugData.categoryDistribution).length > 0) {
+        const boosts = Object.entries(plugData.categoryDistribution)
+          .map(
+            ([cat, priority]) =>
+              `WHEN category = '${cat.replace(/'/g, "''")}' THEN ${
+                priority * 0.3
+              }`
+          )
+          .join(" ");
+        categoryBoostCase = `CASE ${boosts} ELSE 0 END`;
+      }
+
+      const totalScore = `(COALESCE(plugs_count, 0)::FLOAT / ${maxPlugs} * 0.4 + COALESCE(sold, 0)::FLOAT / ${maxSold} * 0.6 + ${categoryBoostCase})`;
+      orderByClause = `ORDER BY ${totalScore} DESC, created_at DESC, id ASC`;
+    } else if (!plugData.generalMerchant && plugData.niches.length > 0) {
+      // Use niche matching as boost
+      const nicheBoosts = plugData.niches
         .map(
-          ([cat, priority]) =>
-            `WHEN p.category = '${cat}' THEN ${priority * 0.3}`
+          (niche) =>
+            `WHEN LOWER(category) = LOWER('${niche.replace(
+              /'/g,
+              "''"
+            )}') THEN 0.2`
         )
         .join(" ");
+      const nicheBoostCase = `CASE ${nicheBoosts} ELSE 0 END`;
 
-      orderByClause = `
-        ORDER BY 
-          (COALESCE(p.plugs_count, 0) * 0.4 / NULLIF(MAX(COALESCE(p.plugs_count, 0)) OVER(), 0) + 
-           COALESCE(p.sold, 0) * 0.6 / NULLIF(MAX(COALESCE(p.sold, 0)) OVER(), 0) +
-           CASE ${categoryBoosts} ELSE 0 END) DESC,
-          p.created_at DESC,
-          p.id ASC
-      `;
-    } else if (!plugData.generalMerchant && plugData.niches.length > 0) {
-      // Use niche matching priority - matching products first, then ALL others
-      const nicheMatchCase = plugData.niches
-        .map((niche) => `WHEN LOWER(p.category) = LOWER('${niche}') THEN 1`)
-        .join(" ");
-
-      orderByClause = `
-        ORDER BY 
-          CASE ${nicheMatchCase} ELSE 0 END DESC,
-          (COALESCE(p.plugs_count, 0) * 0.4 / NULLIF(MAX(COALESCE(p.plugs_count, 0)) OVER(), 0) + 
-           COALESCE(p.sold, 0) * 0.6 / NULLIF(MAX(COALESCE(p.sold, 0)) OVER(), 0)) DESC,
-          p.created_at DESC,
-          p.id ASC
-      `;
+      const totalScore = `(COALESCE(plugs_count, 0)::FLOAT / ${maxPlugs} * 0.4 + COALESCE(sold, 0)::FLOAT / ${maxSold} * 0.6 + ${nicheBoostCase})`;
+      orderByClause = `ORDER BY ${totalScore} DESC, created_at DESC, id ASC`;
     } else {
-      // General merchant or no niches: only weighted score
-      orderByClause = `
-        ORDER BY 
-          (COALESCE(p.plugs_count, 0) * 0.4 / NULLIF(MAX(COALESCE(p.plugs_count, 0)) OVER(), 0) + 
-           COALESCE(p.sold, 0) * 0.6 / NULLIF(MAX(COALESCE(p.sold, 0)) OVER(), 0)) DESC,
-          p.created_at DESC,
-          p.id ASC
-      `;
+      // General merchant: only weighted score
+      const baseScore = `(COALESCE(plugs_count, 0)::FLOAT / ${maxPlugs} * 0.4 + COALESCE(sold, 0)::FLOAT / ${maxSold} * 0.6)`;
+      orderByClause = `ORDER BY ${baseScore} DESC, created_at DESC, id ASC`;
     }
   } else {
     // Fallback
-    orderByClause = "ORDER BY p.created_at DESC, p.id ASC";
+    orderByClause = "ORDER BY created_at DESC, id ASC";
   }
 
-  const query = `
-    SELECT 
-      p.*,
-      ${minRating ? "r.rating," : ""}
-      ROW_NUMBER() OVER (${orderByClause.replace("ORDER BY ", "")}) as row_num
-    FROM products p
-    ${
-      minRating
-        ? `
-      LEFT JOIN (
-        SELECT product_id, AVG(rating) as rating
-        FROM reviews 
-        GROUP BY product_id
-      ) r ON p.id = r.product_id
-    `
-        : ""
-    }
+  return `
+    SELECT * FROM products 
     ${whereClause}
     ${orderByClause}
-    LIMIT $${paramIndex}
+    LIMIT ${limit}
   `;
-
-  queryParams.push(limit + 1); // +1 to check for next page
-
-  return { query, params: queryParams };
 }
 
 /**
@@ -1180,72 +1180,12 @@ async function getTotalCount(params: {
   maxPrice?: number;
   minRating?: number;
 }): Promise<number> {
-  const whereConditions: string[] = [`status = 'APPROVED'`];
-  const queryParams: any[] = [];
-  let paramIndex = 1;
-
-  if (params.plugId) {
-    whereConditions.push(`
-      id NOT IN (
-        SELECT DISTINCT original_id 
-        FROM plug_products 
-        WHERE plug_id = $${paramIndex} 
-        AND original_id IS NOT NULL
-      )
-    `);
-    queryParams.push(params.plugId);
-    paramIndex++;
-  }
-
-  if (params.search) {
-    whereConditions.push(`
-      (LOWER(name) LIKE LOWER($${paramIndex}) 
-       OR LOWER(description) LIKE LOWER($${paramIndex}))
-    `);
-    queryParams.push(`%${params.search}%`);
-    paramIndex++;
-  }
-
-  if (params.category) {
-    const categories = params.category
-      .split(",")
-      .map((cat) => cat.trim())
-      .filter((cat) => cat.toLowerCase() !== "all");
-    if (categories.length > 0) {
-      const placeholders = categories.map(() => `$${paramIndex++}`).join(", ");
-      whereConditions.push(`category IN (${placeholders})`);
-      queryParams.push(...categories);
-    }
-  }
-
-  if (params.minPrice !== undefined) {
-    whereConditions.push(`price >= $${paramIndex}`);
-    queryParams.push(params.minPrice);
-    paramIndex++;
-  }
-
-  if (params.maxPrice !== undefined) {
-    whereConditions.push(`price <= $${paramIndex}`);
-    queryParams.push(params.maxPrice);
-    paramIndex++;
-  }
-
-  if (params.minRating !== undefined) {
-    whereConditions.push(`
-      id IN (
-        SELECT DISTINCT product_id 
-        FROM reviews 
-        WHERE rating >= $${paramIndex}
-      )
-    `);
-    queryParams.push(params.minRating);
-    paramIndex++;
-  }
+  const { whereClause, queryParams } = buildWhereClause(params);
 
   const countQuery = `
     SELECT COUNT(*) as count
     FROM products 
-    WHERE ${whereConditions.join(" AND ")}
+    ${whereClause}
   `;
 
   const result = await prisma.$queryRawUnsafe(countQuery, ...queryParams);
@@ -1295,28 +1235,40 @@ export const getAllProducts = async (
       plugData = await getPlugAlgorithmData(req.user.plug.id);
     }
 
-    // Build and execute main query
-    const { query, params } = buildProductQuery({
+    // Build WHERE clause
+    const { whereClause, queryParams } = buildWhereClause({
       plugId: isPlug ? req.user.plug?.id : undefined,
-      limit,
-      cursor,
       search,
       category,
       minPrice,
       maxPrice,
       minRating,
+      cursor,
+    });
+
+    // Get max values for normalization (only if needed for algorithm)
+    let maxValues = { maxPlugs: 1, maxSold: 1 };
+    if (!isSupplier) {
+      maxValues = await getMaxValues(whereClause, queryParams.slice(0, -1)); // Exclude cursor param
+    }
+
+    // Build and execute main query
+    const mainQuery = buildMainQuery({
+      whereClause,
       plugData,
       isSupplier,
       hasFilters,
+      maxPlugs: maxValues.maxPlugs,
+      maxSold: maxValues.maxSold,
+      limit: limit + 1, // +1 for pagination check
     });
 
-    const products = await prisma.$queryRawUnsafe(query, ...params);
+    const products = await prisma.$queryRawUnsafe(mainQuery, ...queryParams);
 
     // Handle pagination
-    const hasMore = (products as any[]).length > limit;
-    const productList = hasMore
-      ? (products as any[]).slice(0, limit)
-      : (products as any[]);
+    const productList = products as any[];
+    const hasMore = productList.length > limit;
+    const finalProducts = hasMore ? productList.slice(0, limit) : productList;
 
     // Get total count for first page only
     let totalCount: number | null = null;
@@ -1333,11 +1285,11 @@ export const getAllProducts = async (
 
     const hasNextPage = hasMore;
     const nextCursor =
-      hasNextPage && productList.length > 0
-        ? productList[productList.length - 1].id
+      hasNextPage && finalProducts.length > 0
+        ? finalProducts[finalProducts.length - 1].id
         : null;
 
-    const formattedProducts = productList.map(formatProduct);
+    const formattedProducts = finalProducts.map(formatProduct);
 
     res.status(200).json({
       message:
