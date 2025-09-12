@@ -1184,7 +1184,7 @@ async function getTotalCount(params: {
 
   const countQuery = `
     SELECT COUNT(*) as count
-    FROM products 
+    FROM "Product" 
     ${whereClause}
   `;
 
