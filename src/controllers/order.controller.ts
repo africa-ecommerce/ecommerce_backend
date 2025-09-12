@@ -59,7 +59,7 @@ export async function stageOrder(
               originalId: item.productId,
             },
           },
-          select: { price: true },
+          select: { price: true, commission: true },
         });
         if (!plugProduct)
           throw new Error(
@@ -74,6 +74,7 @@ export async function stageOrder(
         if (!product) throw new Error(`Product ${item.productId} not found`);
 
         const plugPrice = plugProduct.price;
+        const commission = plugProduct.commission;
         const supplierPrice = product.price;
         const itemTotal = plugPrice * item.quantity;
         subtotal += itemTotal;
@@ -88,6 +89,7 @@ export async function stageOrder(
           variantColor: item.variantColor || null,
           productName: product.name,
           plugPrice,
+          commission,
           supplierPrice,
           supplierId: product.supplierId,
           plugId: plug.id,

@@ -303,11 +303,12 @@ model OrderItem {
     variantColor      String?
     createdAt         DateTime           @default(now())
     updatedAt         DateTime           @updatedAt
-    productName       String?
-    plugPrice         Float?
-    supplierId        String?
-    supplierPrice     Float?
-    plugId            String?
+    productName       String
+    plugPrice         Float
+    commission        Float?        
+    supplierId        String
+    supplierPrice     Float
+    plugId            String
     recieved          Boolean                       @default(false)
     order             Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
     PausedOrderItem   PausedOrderItem?
@@ -444,12 +445,7 @@ enum PaymentStatus {
     PAID
 }
 
-// enum OrderStatus {
-//     PENDING
-//     SHIPPED
-//     DELIVERED
-//     CANCELLED
-// }
+
 
 enum OrderStatus {
   STAGED     // New status for staged orders before payment

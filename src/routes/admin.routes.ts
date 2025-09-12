@@ -2,7 +2,7 @@ import { Router } from "express";
 import { getAllSuppliers, verifySupplier } from "../controllers/admin/user.controller";
 import { adminProductController } from "../controllers/admin/product.controller";
 import { adminLogout, sendAdminOTP, verifyAdminOTP } from "../controllers/admin/auth.controller";
-import { deliveredOrder, getOrderById, getOrders, shippedOrder, markItemsReceived, cancelOrder, pauseOrderItem, returnOrderItem, unpauseOrderItem } from "../controllers/admin/order.controller";
+import { deliveredOrder, getOrderById, getOrders, shippedOrder, markItemsReceived, cancelOrder, pauseOrderItem, returnOrderItem, unpauseOrderItem, getPausedOrderItems } from "../controllers/admin/order.controller";
 import { getShareAnalytics, trackShareAnalytics } from "../controllers/admin/analytics/shareAnalytics.controller";
 import authenticateJWT from "../middleware/auth.middleware";
 import { requireAdminAuth } from "../middleware/role.middleware";
@@ -54,6 +54,7 @@ router.post("/order/received/:orderId", requireAdminAuth, markItemsReceived);
 router.post("/order/cancel/:orderId", requireAdminAuth, cancelOrder);
 
 
+router.post("/order/paused/:orderId", requireAdminAuth, getPausedOrderItems);
 router.post("/order/pause", requireAdminAuth, pauseOrderItem);
 router.post("/order/unpause", requireAdminAuth, unpauseOrderItem);
 router.post("/order/return", requireAdminAuth, returnOrderItem);

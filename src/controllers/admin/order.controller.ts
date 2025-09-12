@@ -162,6 +162,8 @@ export const shippedOrder = async (req: Request, res: Response) => {
 };
 
 
+//product or other things should be removed against throw, so first check id
+//dont use plug product
 export const deliveredOrder = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.body;
@@ -185,21 +187,7 @@ export const deliveredOrder = async (req: Request, res: Response) => {
       let supplierTotalAmount = 0;
 
       for (const item of order.orderItems) {
-        const plugProduct = await tx.plugProduct.findUnique({
-          where: {
-            plugId_originalId: {
-              plugId: order.plugId,
-              originalId: item.productId,
-            },
-          },
-        });
-
-        if (!plugProduct) {
-          throw new Error(
-            `PlugProduct not found for productId: ${item.productId}`
-          );
-        }
-
+       
         const itemTotal = (item.plugPrice ?? 0) * item.quantity;
         const supplierAmount = (item.supplierPrice ?? 0) * item.quantity;
 
@@ -210,7 +198,7 @@ export const deliveredOrder = async (req: Request, res: Response) => {
 
         // Apply commission 
         const commissionAmount =
-          (plugMargin * (plugProduct.commission ?? 0)) / 100;
+          (plugMargin * (item.commission ?? 0)) / 100;
 
         // Net amount for the plug
         plugNetAmount += plugMargin - commissionAmount;
@@ -224,10 +212,15 @@ export const deliveredOrder = async (req: Request, res: Response) => {
 
       // Update sold count
       for (const item of order.orderItems) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { sold: { increment: item.quantity } },
-        });
+        //this check product first
+        try {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { sold: { increment: item.quantity } },
+          });
+        } catch (e) {
+          console.warn(`Product ${item.productId} not found, skipping update ${e}`);
+        }
       }
 
       // Create plug payment
@@ -289,13 +282,47 @@ export const deliveredOrder = async (req: Request, res: Response) => {
 };
 
 
+export const getPausedOrderItems = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+
+    if (!orderId) {
+       res.status(400).json({ error: "Order ID is required" });
+       return;
+    }
+
+    const pausedItems = await prisma.pausedOrderItem.findMany({
+      where: { orderItem: { orderId } },
+      include: {
+        orderItem: {
+          select: {
+            id: true,
+            productId: true,
+            productName: true,
+            quantity: true,
+            plugPrice: true,
+            supplierPrice: true,
+            recieved: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json({
+      message: "Paused order items fetched successfully",
+      data: pausedItems,
+    });
+  } catch (err) {
+    console.error("Get paused order items error:", err);
+    res.status(500).json({ error: "Internal server error!" });
+  }
+};
+
 // This function pauses an order item, deducting the amounts from plug and supplier payments, AFTER A RETURN REQUEST BY THE BUYER
 export const pauseOrderItem = async (req: Request, res: Response) => {
-   console.log("BODY:", req.body)
   try {
     const { orderItemId, quantity } = req.body;
 
-   
 
     if (!orderItemId || !quantity || quantity <= 0) {
        res
@@ -320,10 +347,12 @@ export const pauseOrderItem = async (req: Request, res: Response) => {
        return;
     }
      
+    const plugPrice = Number(orderItem.plugPrice ?? 0);
+    const supplierPrice = Number(orderItem.supplierPrice ?? 0);
+    const commission = Number(orderItem.commission ?? 0);
 
-    const plugAmount =
-      (orderItem.plugPrice! - orderItem.supplierPrice!) * quantity;
-    const supplierAmount = orderItem.supplierPrice! * quantity;
+const plugAmount = (plugPrice - supplierPrice - commission) * quantity;
+const supplierAmount = supplierPrice * quantity;    
 
     await prisma.$transaction(async (tx) => {
       await tx.pausedOrderItem.create({
@@ -351,7 +380,7 @@ export const pauseOrderItem = async (req: Request, res: Response) => {
         },
       });
 
-      // Deduct from  supplierPayment
+      // Deduct from that specific order payment supplierPayment for that supplier, cause the supplier 
       await tx.supplierPayment.update({
         where: {
           id: supplierPayment!.id,
@@ -372,7 +401,6 @@ export const pauseOrderItem = async (req: Request, res: Response) => {
 
 // This function unpauses an order item, restoring amounts to plug and supplier payments, AFTER A RETURN REQUEST BY THE BUYER, ORDER ITEM MUST BE PAUSED
 export const unpauseOrderItem = async (req: Request, res: Response) => {
-   console.log("BODY:", req.body)
   try {
     const { orderItemId, quantity } = req.body;
     
@@ -493,7 +521,6 @@ export const unpauseOrderItem = async (req: Request, res: Response) => {
 // This function handles returning an order item, updating paused and returned records, 
 // adjusting product sold count when items are returned
 export const returnOrderItem = async (req: Request, res: Response) => {
-  console.log("BODY:", req.body);
   try {
     const { orderItemId, quantity } = req.body;
 
@@ -539,11 +566,16 @@ export const returnOrderItem = async (req: Request, res: Response) => {
         });
       }
 
+       //this check product first
       // 3. ✅ Decrement sold count on product
+      try{
       await tx.product.update({
         where: { id: orderItem.productId },
         data: { sold: { decrement: quantity } },
       });
+       } catch (e) {
+          console.warn(`Product not found, skipping update ${e}`);
+        }
     });
 
     res.status(200).json({ message: "Order item returned successfully" });
@@ -556,7 +588,6 @@ export const returnOrderItem = async (req: Request, res: Response) => {
 
 
 export const markItemsReceived = async (req: Request, res: Response) => {
-   console.log("BODY:", req.body);
   try {
     const { orderId } = req.params;
     const { orderItemIds } = req.body 
@@ -594,7 +625,7 @@ export const markItemsReceived = async (req: Request, res: Response) => {
 
 export const cancelOrder = async (req: Request, res: Response) => {
   try {
-    const { orderId } = req.params;
+     const { orderId} = req.body;
 
     if (!orderId) {
       res.status(400).json({ error: "Order ID is required" });
@@ -604,7 +635,22 @@ export const cancelOrder = async (req: Request, res: Response) => {
     const order = await prisma.order.update({
       where: { id: orderId },
       data: { status: "CANCELLED" },
+      include: { orderItems: true },
     });
+
+
+      // Update sold count and prob quantity
+      for (const item of order.orderItems) {
+        //this check product first
+        try{
+        await prisma.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
+        });
+         } catch (e) {
+          console.warn(`Product ${item.productId} not found, skipping update ${e}`);
+        }
+      }
 
     res.status(200).json({
       message: "Order cancelled successfully",
