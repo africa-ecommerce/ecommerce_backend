@@ -606,7 +606,6 @@
 
 
 // controllers/products.ts
-// controllers/products.ts
 import { NextFunction, Response } from "express";
 import { AuthRequest } from "../types";
 import { prisma } from "../config";
@@ -679,7 +678,9 @@ export const getAllProducts = async (
       parseInt((req.query.limit as string) || "20", 10),
       100
     );
-    const cursor = req.query.cursor as string | undefined;
+    const cursor = req.query.cursor
+      ? JSON.parse(req.query.cursor as string)
+      : null; // cursor is composite JSON
     const category = req.query.category as string | undefined;
     const minPrice = req.query.minPrice
       ? parseFloat(req.query.minPrice as string)
@@ -749,15 +750,25 @@ export const getAllProducts = async (
 
     if (plugMeta) params.push(plugMeta.id);
 
-    // cursor condition
-    let cursorSql = "";
-    if (cursor) {
-      params.push(cursor);
-      cursorSql = `AND p.id < $${params.length}`;
-    }
-
     const applyAlgorithm = isPlugUser && !anyFiltersSet && plugMeta;
     const useCategoryPriority = applyAlgorithm && plugProductCount > 20;
+
+    // cursor condition (composite key)
+    let cursorSql = "";
+    if (cursor) {
+      params.push(cursor.primary_priority);
+      params.push(cursor.weighted_score);
+      params.push(cursor.createdAt);
+      params.push(cursor.id);
+      cursorSql = `
+        AND (
+          (CASE
+             WHEN $${params.length - 3}::numeric IS NOT NULL THEN primary_priority
+             ELSE 0 END, weighted_score, "createdAt", id
+          ) < ($${params.length - 3}, $${params.length - 2}, $${params.length - 1}, $${params.length})
+        )
+      `;
+    }
 
     const sql = `
 WITH
@@ -772,7 +783,7 @@ product_base AS (
     COALESCE(pr.avg_rating, 0) AS avg_rating
   FROM "Product" p
   LEFT JOIN p_ratings pr ON pr.product_id = p.id
-  WHERE ${whereSql} ${cursor ? cursorSql : ""}
+  WHERE ${whereSql}
 ),
 stats AS (
   SELECT
@@ -800,11 +811,9 @@ plug_category_totals AS (
       : `SELECT 0 as total_cnt`
   }
 ),
-final_products AS (
+ranked AS (
   SELECT
     p.*,
-    s.max_sold,
-    s.max_plugs_count,
     (0.4 * CASE WHEN s.max_plugs_count IS NULL OR s.max_plugs_count = 0 THEN 0 ELSE (p."plugsCount"::numeric / s.max_plugs_count::numeric) END
      + 0.6 * CASE WHEN s.max_sold IS NULL OR s.max_sold = 0 THEN 0 ELSE (p.sold::numeric / s.max_sold::numeric) END) AS weighted_score,
     ${
@@ -816,34 +825,21 @@ final_products AS (
       useCategoryPriority
         ? `(COALESCE((SELECT cnt FROM plug_category_counts WHERE plug_category_counts.category = p.category), 0)::numeric / NULLIF((SELECT total_cnt FROM plug_category_totals),0))`
         : `0`
-    } AS category_priority
-  FROM product_base p, stats s
-),
-ranked AS (
-  SELECT
-    fp.*,
+    } AS category_priority,
     CASE
       WHEN $${params.length + 1}::boolean IS TRUE THEN
         CASE
-          WHEN $${params.length + 2}::boolean IS TRUE THEN fp.category_priority
-          WHEN $${params.length + 2}::boolean IS FALSE AND $${params.length + 3}::boolean IS TRUE THEN fp.niche_match
+          WHEN $${params.length + 2}::boolean IS TRUE THEN 
+            (COALESCE((SELECT cnt FROM plug_category_counts WHERE plug_category_counts.category = p.category), 0)::numeric / NULLIF((SELECT total_cnt FROM plug_category_totals),1))
+          WHEN $${params.length + 2}::boolean IS FALSE AND $${params.length + 3}::boolean IS TRUE THEN 
+            (CASE WHEN LOWER(p.category) IN (${nichePlaceholders || "NULL"}) THEN 1 ELSE 0 END)
           ELSE 0 END
       ELSE 0 END AS primary_priority
-  FROM final_products fp
-),
-priority_products AS (
-  SELECT * FROM ranked WHERE primary_priority > 0
-),
-non_priority_products AS (
-  SELECT * FROM ranked WHERE primary_priority = 0
-),
-unioned AS (
-  SELECT * FROM priority_products
-  UNION ALL
-  SELECT * FROM non_priority_products
+  FROM product_base p, stats s
 )
 SELECT *
-FROM unioned
+FROM ranked
+${cursor ? cursorSql : ""}
 ORDER BY
   primary_priority DESC,
   weighted_score DESC,
@@ -862,9 +858,16 @@ LIMIT $${params.length + 4};
 
     const hasMore = rows.length > limit;
     const productsRaw = hasMore ? rows.slice(0, limit) : rows;
+
+    // build composite cursor
     const nextCursor =
       hasMore && productsRaw.length > 0
-        ? productsRaw[productsRaw.length - 1].id
+        ? JSON.stringify({
+            primary_priority: productsRaw[productsRaw.length - 1].primary_priority,
+            weighted_score: productsRaw[productsRaw.length - 1].weighted_score,
+            createdAt: productsRaw[productsRaw.length - 1].createdAt,
+            id: productsRaw[productsRaw.length - 1].id,
+          })
         : null;
 
     const formattedProducts = productsRaw.map(formatProduct);
@@ -891,6 +894,7 @@ LIMIT $${params.length + 4};
     next(error);
   }
 };
+
 
 
 
