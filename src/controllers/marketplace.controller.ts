@@ -605,7 +605,6 @@
 // };
 
 
-
 // controllers/products.ts
 import { NextFunction, Response } from "express";
 import { AuthRequest } from "../types";
@@ -613,7 +612,7 @@ import { prisma } from "../config";
 import { formatProduct } from "../helper/formatData";
 
 /**
- * Helper: build simple SQL WHERE fragments and param list
+ * Helper: build SQL WHERE and params
  */
 function buildFiltersSql(params: {
   category?: string | undefined;
@@ -658,11 +657,10 @@ function buildFiltersSql(params: {
 
   if (params.minRating !== undefined) {
     values.push(params.minRating);
-    clauses.push(`(COALESCE(p_avg.avg_rating, 0) >= $${values.length})`);
+    clauses.push(`(COALESCE(pr.avg_rating, 0) >= $${values.length})`);
   }
 
-  const whereSql = clauses.length ? clauses.join(" AND ") : "TRUE";
-  return { whereSql, values };
+  return { whereSql: clauses.join(" AND "), values };
 }
 
 export const getAllProducts = async (
@@ -675,7 +673,7 @@ export const getAllProducts = async (
       return res.status(401).json({ error: "Unauthorized!" });
     }
 
-    // parse paging & filters
+    // paging & filters
     const limit = Math.min(
       parseInt((req.query.limit as string) || "20", 10),
       100
@@ -693,7 +691,7 @@ export const getAllProducts = async (
       ? parseFloat(req.query.rating as string)
       : undefined;
 
-    // determine user type
+    // determine plug context
     const isPlugUser = req.user.userType === "PLUG";
     const anyFiltersSet = !!(
       category ||
@@ -703,10 +701,10 @@ export const getAllProducts = async (
       minRating !== undefined
     );
 
-    // Get plug meta-data if this is a plug user
     let plugMeta: { id: string; niches: string[]; generalMerchant: boolean } | null =
       null;
     let plugProductCount = 0;
+
     if (isPlugUser && req.user.plug?.id) {
       const plugRow = await prisma.plug.findUnique({
         where: { id: req.user.plug.id },
@@ -724,7 +722,7 @@ export const getAllProducts = async (
       }
     }
 
-    // Build filters SQL and params
+    // filters
     const { whereSql, values: filterValues } = buildFiltersSql({
       category,
       search,
@@ -743,11 +741,14 @@ export const getAllProducts = async (
 
     let nichePlaceholders = "";
     if (plugMeta && plugMeta.niches.length > 0) {
-      nichePlaceholders = pushArrayAsPlaceholders(plugMeta.niches);
+      nichePlaceholders = pushArrayAsPlaceholders(
+        plugMeta.niches.map((n) => n.toLowerCase())
+      );
     }
 
     if (plugMeta) params.push(plugMeta.id);
 
+    // cursor condition
     let cursorSql = "";
     if (cursor) {
       params.push(cursor);
@@ -770,7 +771,7 @@ product_base AS (
     COALESCE(pr.avg_rating, 0) AS avg_rating
   FROM "Product" p
   LEFT JOIN p_ratings pr ON pr.product_id = p.id
-  WHERE ${whereSql} ${cursor ? ` ${cursorSql}` : ""}
+  WHERE ${whereSql} ${cursor ? cursorSql : ""}
 ),
 stats AS (
   SELECT
@@ -792,7 +793,11 @@ plug_category_counts AS (
   }
 ),
 plug_category_totals AS (
-  ${useCategoryPriority ? `SELECT SUM(cnt) as total_cnt FROM plug_category_counts` : `SELECT 0 as total_cnt`}
+  ${
+    useCategoryPriority
+      ? `SELECT SUM(cnt) as total_cnt FROM plug_category_counts`
+      : `SELECT 0 as total_cnt`
+  }
 ),
 final_products AS (
   SELECT
@@ -803,7 +808,11 @@ final_products AS (
     CASE WHEN s.max_sold IS NULL OR s.max_sold = 0 THEN 0 ELSE (p.sold::numeric / s.max_sold::numeric) END AS norm_sold,
     (0.4 * CASE WHEN s.max_plugs_count IS NULL OR s.max_plugs_count = 0 THEN 0 ELSE (p."plugsCount"::numeric / s.max_plugs_count::numeric) END
      + 0.6 * CASE WHEN s.max_sold IS NULL OR s.max_sold = 0 THEN 0 ELSE (p.sold::numeric / s.max_sold::numeric) END) AS weighted_score,
-    ${plugMeta && plugMeta.niches.length > 0 ? `CASE WHEN LOWER(p.category) IN (${nichePlaceholders}) THEN 1 ELSE 0 END` : `0`} AS niche_match,
+    ${
+      plugMeta && plugMeta.niches.length > 0
+        ? `CASE WHEN LOWER(p.category) IN (${nichePlaceholders}) THEN 1 ELSE 0 END`
+        : `0`
+    } AS niche_match,
     ${
       useCategoryPriority
         ? `(COALESCE((SELECT cnt FROM plug_category_counts WHERE plug_category_counts.category = p.category), 0)::numeric / NULLIF((SELECT total_cnt FROM plug_category_totals),0))`
@@ -822,8 +831,8 @@ SELECT
     ELSE 0 END AS primary_priority
 FROM final_products fp
 ORDER BY
-  primary_priority DESC,
-  weighted_score DESC,
+  primary_priority DESC,   -- priority products first
+  weighted_score DESC,     -- ranking among priority group
   fp."createdAt" DESC,
   fp.id DESC
 LIMIT $${params.length + 4};
@@ -868,6 +877,7 @@ LIMIT $${params.length + 4};
     next(error);
   }
 };
+
 
 
 // help me with this marketplace to the best of your genius self, help me with this marketplace, keeping it core functionalities and all, in every thing, creating a full implementation and all, with all of this, keeping all its core functionalities and logic, the only thing i want to do is change the algorithm using prisma with sql, instead of this weird calculate or build function or so, use pure sql, so we can work our way this using sql
