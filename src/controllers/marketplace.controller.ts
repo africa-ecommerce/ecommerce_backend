@@ -335,7 +335,278 @@
 
 
 
-// controllers/products.ts (or similar)
+// // controllers/products.ts (or similar)
+// import { NextFunction, Response } from "express";
+// import { AuthRequest } from "../types";
+// import { prisma } from "../config";
+// import { formatProduct } from "../helper/formatData";
+
+// /**
+//  * Helper: build simple SQL WHERE fragments and param list
+//  * (to be used inside the raw SQL query)
+//  */
+// function buildFiltersSql(params: {
+//   category?: string | undefined;
+//   search?: string | undefined;
+//   minPrice?: number | undefined;
+//   maxPrice?: number | undefined;
+//   minRating?: number | undefined;
+// }) {
+//   const clauses: string[] = ["p.status = 'APPROVED'"];
+//   const values: any[] = [];
+
+//   if (params.category) {
+//     // accept comma separated categories (frontend can pass "all" or "cat1,cat2")
+//     const cats = params.category.split(",").map((c) => c.trim()).filter(Boolean);
+//     if (cats.length > 0 && !cats.every((c) => c.toLowerCase() === "all")) {
+//       const placeholders = cats.map((_, i) => `$${values.length + i + 1}`).join(",");
+//       values.push(...cats);
+//       clauses.push(`p.category IN (${placeholders})`);
+//     }
+//   }
+
+//   if (params.search) {
+//     values.push(`%${params.search}%`);
+//     values.push(`%${params.search}%`);
+//     clauses.push(`(p.name ILIKE $${values.length - 1} OR p.description ILIKE $${values.length})`);
+//   }
+
+//   if (params.minPrice !== undefined) {
+//     values.push(params.minPrice);
+//     clauses.push(`p.price >= $${values.length}`);
+//   }
+//   if (params.maxPrice !== undefined) {
+//     values.push(params.maxPrice);
+//     clauses.push(`p.price <= $${values.length}`);
+//   }
+
+//   if (params.minRating !== undefined) {
+//     // join with aggregated ratings later in CTE; here, we'll filter by average rating >= minRating
+//     // We use a placeholder to inject into the HAVING clause of the aggregated ratings CTE
+//     values.push(params.minRating);
+//     clauses.push(`(COALESCE(p_avg.avg_rating, 0) >= $${values.length})`);
+//   }
+
+//   const whereSql = clauses.length ? clauses.join(" AND ") : "TRUE";
+//   return { whereSql, values };
+// }
+
+// export const getAllProducts = async (req: AuthRequest, res: Response, next: NextFunction) => {
+//   try {
+//     if (!req.user) {
+//       return res.status(401).json({ error: "Unauthorized!" });
+//     }
+
+//     // parse paging & filters
+//     const limit = Math.min(parseInt((req.query.limit as string) || "20", 10), 100);
+//     const cursor = req.query.cursor as string | undefined;
+//     const category = req.query.category as string | undefined;
+//     const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice as string) : undefined;
+//     const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice as string) : undefined;
+//     const search = req.query.search as string | undefined;
+//     const minRating = req.query.rating ? parseFloat(req.query.rating as string) : undefined;
+
+//     // determine user type
+//     const isPlugUser = req.user.userType === "PLUG";
+//     // When filtering is present, algorithmic nicing/priority should NOT be applied (per spec)
+//     const anyFiltersSet = !!(category || search || minPrice !== undefined || maxPrice !== undefined || minRating !== undefined);
+
+//     // Get plug meta-data if this is a plug user
+//     let plugMeta: { id: string; niches: string[]; generalMerchant: boolean } | null = null;
+//     let plugProductCount = 0;
+//     if (isPlugUser && req.user.plug?.id) {
+//       const plugRow = await prisma.plug.findUnique({
+//         where: { id: req.user.plug.id },
+//         select: { id: true, niches: true, generalMerchant: true },
+//       });
+//       if (plugRow) {
+//         plugMeta = { id: plugRow.id, niches: plugRow.niches || [], generalMerchant: !!plugRow.generalMerchant };
+//         // count number of plugged products
+//         plugProductCount = await prisma.plugProduct.count({ where: { plugId: plugRow.id } });
+//       }
+//     }
+
+//     // Build filters SQL and params
+//     const { whereSql, values: filterValues } = buildFiltersSql({ category, search, minPrice, maxPrice, minRating });
+
+//     // We'll assemble a single SQL statement with CTEs:
+//     // - p_ratings: aggregated avg rating per product (if rating filter used)
+//     // - product_base: products filtered by WHERE
+//     // - stats: max sold and max plugsCount over the filtered set (for normalization)
+//     // - if plug and not anyFiltersSet:
+//     //     - compute niche match boolean OR category_priority (if >20 plugged products)
+//     // - final select: compute weighted_score and order accordingly
+//     //
+//     // Weighted score: 0.4 * (plugsCount / max_plugsCount) + 0.6 * (sold / max_sold)
+//     //
+//     // Note: params use $1..$N placeholders. We'll push filterValues then other params (like plug id, niche list) afterwards.
+
+//     // placeholders baseline
+//     const params: any[] = [...filterValues];
+
+//     // helper to append array as placeholders
+//     const pushArrayAsPlaceholders = (arr: any[]) => {
+//       const startIndex = params.length + 1;
+//       params.push(...arr);
+//       const placeholders = arr.map((_, i) => `$${startIndex + i}`).join(",");
+//       return placeholders;
+//     };
+
+//     // build niche placeholders if needed
+//     let nichePlaceholders = "";
+//     if (plugMeta && plugMeta.niches.length > 0) {
+//       nichePlaceholders = pushArrayAsPlaceholders(plugMeta.niches);
+//     }
+
+//     // plug id placeholder if needed
+//     if (plugMeta) params.push(plugMeta.id);
+
+//     // cursor handling: we'll use id >/>= logic via OFFSET method for simplicity, but to keep cursor semantics:
+//     // We'll select products ordered by computed order then apply cursor by id comparison. Simpler: if cursor provided,
+//     // use a WHERE clause p.id < $N for paging assuming DESC ordering. To keep deterministic behavior, do:
+//     let cursorSql = "";
+//     if (cursor) {
+//       params.push(cursor);
+//       // use products with id < cursor (assuming stable ordering by id descending for cursor). This is a simplification.
+//       cursorSql = `AND p.id < $${params.length}`; // ensure this sits inside product_base where
+//     }
+
+//     // decide ordering SQL depending on conditions
+//     // when plug user and no filters -> apply nic-ing/category-priority then weighted score
+//     // else if any filters -> just weighted score
+//     // supplier or others -> createdAt desc
+//     const applyAlgorithm = isPlugUser && !anyFiltersSet && plugMeta;
+
+//     // if plugProductCount > 20, we use category_priority from plug product distribution
+//     const useCategoryPriority = applyAlgorithm && plugProductCount > 20;
+
+//     // Build final SQL with CTEs (Postgres)
+//     const sql = `
+// WITH
+// p_ratings AS (
+//   SELECT r."productId" as product_id, AVG(r.rating::numeric) AS avg_rating
+//   FROM "Review" r
+//   GROUP BY r."productId"
+// ),
+// product_base AS (
+//   SELECT
+//     p.*,
+//     COALESCE(pr.avg_rating, 0) AS avg_rating
+//   FROM "Product" p
+//   LEFT JOIN p_ratings pr ON pr.product_id = p.id
+//   WHERE ${whereSql} ${cursor ? ` ${cursorSql}` : ""}
+// ),
+// stats AS (
+//   SELECT
+//     MAX(p.sold) AS max_sold,
+//     MAX(p."plugsCount") AS max_plugs_count
+//   FROM product_base p
+// ),
+// -- compute per-category plug counts for this plug if needed
+// plug_category_counts AS (
+//   ${useCategoryPriority ? `
+//   SELECT ppc.category, COUNT(*) AS cnt
+//   FROM "PlugProduct" pp
+//   JOIN "Product" prod ON prod.id = pp."originalId"
+//   JOIN LATERAL (SELECT prod.category) ppc(category) ON TRUE
+//   WHERE pp."plugId" = $${params.length} -- plugId
+//   GROUP BY ppc.category
+//   ` : `SELECT NULL::text AS category, 0 AS cnt WHERE FALSE`}
+// ),
+// plug_category_totals AS (
+//   ${useCategoryPriority ? `
+//   SELECT SUM(cnt) as total_cnt FROM plug_category_counts
+//   ` : `SELECT 0 as total_cnt`}
+// ),
+// -- final set: compute normalized fields and ordering helpers
+// final_products AS (
+//   SELECT
+//     p.*,
+//     s.max_sold,
+//     s.max_plugs_count,
+//     CASE WHEN s.max_plugs_count IS NULL OR s.max_plugs_count = 0 THEN 0 ELSE (p."plugsCount"::numeric / s.max_plugs_count::numeric) END AS norm_plugs,
+//     CASE WHEN s.max_sold IS NULL OR s.max_sold = 0 THEN 0 ELSE (p.sold::numeric / s.max_sold::numeric) END AS norm_sold,
+//     -- weighted scoring (40% plugsCount, 60% sold)
+//     (0.4 * CASE WHEN s.max_plugs_count IS NULL OR s.max_plugs_count = 0 THEN 0 ELSE (p."plugsCount"::numeric / s.max_plugs_count::numeric) END
+//      + 0.6 * CASE WHEN s.max_sold IS NULL OR s.max_sold = 0 THEN 0 ELSE (p.sold::numeric / s.max_sold::numeric) END) AS weighted_score,
+//     -- niche match boolean
+//     ${plugMeta && plugMeta.niches.length > 0 ? `CASE WHEN LOWER(p.category) IN (${nichePlaceholders}) THEN 1 ELSE 0 END` : `0`} AS niche_match,
+//     -- category priority for plug (if applicable)
+//     ${useCategoryPriority ? `(COALESCE((SELECT cnt FROM plug_category_counts WHERE plug_category_counts.category = p.category), 0)::numeric / NULLIF((SELECT total_cnt FROM plug_category_totals),0))` : `0`} AS category_priority
+//   FROM product_base p, stats s
+// )
+// SELECT
+//   fp.*,
+//   -- we will compute final ordering rank fields and select
+//   CASE
+//     WHEN $${params.length + 1} = TRUE THEN -- applyAlgorithm
+//       CASE
+//         WHEN $${params.length + 2} = TRUE THEN -- useCategoryPriority
+//           fp.category_priority
+//         WHEN $${params.length + 2} = FALSE AND $${params.length + 3} = TRUE THEN -- hasNiches
+//           fp.niche_match
+//         ELSE 0 END
+//     ELSE 0 END AS primary_priority
+// FROM final_products fp
+// ORDER BY
+//   -- order by primary preference (niche match boolean or category priority) desc first when algorithm active
+//   primary_priority DESC,
+//   -- then by weighted score desc
+//   weighted_score DESC,
+//   -- deterministic tiebreaker
+//   fp."createdAt" DESC,
+//   fp.id DESC
+// LIMIT $${params.length + 4};
+// `;
+
+//     // append boolean flags to params:
+//     // $N = applyAlgorithm (boolean), $N+1 = useCategoryPriority (boolean), $N+2 = hasNiches (boolean), $N+3 = limit (number)
+//     params.push(applyAlgorithm); // applyAlgorithm
+//     params.push(useCategoryPriority); // useCategoryPriority
+//     params.push(!!(plugMeta && plugMeta.niches.length > 0)); // hasNiches
+//     params.push(limit + 1); // take one extra to detect next page
+
+//     // Execute
+//     const rows: any[] = await prisma.$queryRawUnsafe(sql, ...params);
+
+//     // pagination handling
+//     const hasMore = rows.length > limit;
+//     const productsRaw = hasMore ? rows.slice(0, limit) : rows;
+//     const nextCursor = hasMore && productsRaw.length > 0 ? productsRaw[productsRaw.length - 1].id : null;
+
+//     // format with your helper
+//     const formattedProducts = productsRaw.map(formatProduct);
+
+//     // get total count if needed (no cursor)
+//     let totalCount: number | null = null;
+//     if (!cursor) {
+//       // we can programmatically count using Prisma to keep it simple
+//       // reuse the whereSql built earlier but re-run through Prisma count (safer)
+//       // fallback: count with prisma -- using similar filters
+//       const countWhere: any = { status: "APPROVED" };
+//       // note: for simplicity here we won't replicate every filter in prisma count; 
+//       // in production you should build the same filter map to prisma.count
+//       totalCount = await prisma.product.count();
+//     }
+
+//     res.status(200).json({
+//       message: formattedProducts.length === 0 ? "No products found matching your criteria" : "Products fetched successfully!",
+//       data: formattedProducts,
+//       meta: {
+//         hasNextPage: hasMore,
+//         nextCursor,
+//         count: formattedProducts.length,
+//         totalCount,
+//       },
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+
+
+// controllers/products.ts
 import { NextFunction, Response } from "express";
 import { AuthRequest } from "../types";
 import { prisma } from "../config";
@@ -343,7 +614,6 @@ import { formatProduct } from "../helper/formatData";
 
 /**
  * Helper: build simple SQL WHERE fragments and param list
- * (to be used inside the raw SQL query)
  */
 function buildFiltersSql(params: {
   category?: string | undefined;
@@ -356,10 +626,14 @@ function buildFiltersSql(params: {
   const values: any[] = [];
 
   if (params.category) {
-    // accept comma separated categories (frontend can pass "all" or "cat1,cat2")
-    const cats = params.category.split(",").map((c) => c.trim()).filter(Boolean);
+    const cats = params.category
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean);
     if (cats.length > 0 && !cats.every((c) => c.toLowerCase() === "all")) {
-      const placeholders = cats.map((_, i) => `$${values.length + i + 1}`).join(",");
+      const placeholders = cats
+        .map((_, i) => `$${values.length + i + 1}`)
+        .join(",");
       values.push(...cats);
       clauses.push(`p.category IN (${placeholders})`);
     }
@@ -368,7 +642,9 @@ function buildFiltersSql(params: {
   if (params.search) {
     values.push(`%${params.search}%`);
     values.push(`%${params.search}%`);
-    clauses.push(`(p.name ILIKE $${values.length - 1} OR p.description ILIKE $${values.length})`);
+    clauses.push(
+      `(p.name ILIKE $${values.length - 1} OR p.description ILIKE $${values.length})`
+    );
   }
 
   if (params.minPrice !== undefined) {
@@ -381,8 +657,6 @@ function buildFiltersSql(params: {
   }
 
   if (params.minRating !== undefined) {
-    // join with aggregated ratings later in CTE; here, we'll filter by average rating >= minRating
-    // We use a placeholder to inject into the HAVING clause of the aggregated ratings CTE
     values.push(params.minRating);
     clauses.push(`(COALESCE(p_avg.avg_rating, 0) >= $${values.length})`);
   }
@@ -391,28 +665,47 @@ function buildFiltersSql(params: {
   return { whereSql, values };
 }
 
-export const getAllProducts = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getAllProducts = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: "Unauthorized!" });
     }
 
     // parse paging & filters
-    const limit = Math.min(parseInt((req.query.limit as string) || "20", 10), 100);
+    const limit = Math.min(
+      parseInt((req.query.limit as string) || "20", 10),
+      100
+    );
     const cursor = req.query.cursor as string | undefined;
     const category = req.query.category as string | undefined;
-    const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice as string) : undefined;
-    const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice as string) : undefined;
+    const minPrice = req.query.minPrice
+      ? parseFloat(req.query.minPrice as string)
+      : undefined;
+    const maxPrice = req.query.maxPrice
+      ? parseFloat(req.query.maxPrice as string)
+      : undefined;
     const search = req.query.search as string | undefined;
-    const minRating = req.query.rating ? parseFloat(req.query.rating as string) : undefined;
+    const minRating = req.query.rating
+      ? parseFloat(req.query.rating as string)
+      : undefined;
 
     // determine user type
     const isPlugUser = req.user.userType === "PLUG";
-    // When filtering is present, algorithmic nicing/priority should NOT be applied (per spec)
-    const anyFiltersSet = !!(category || search || minPrice !== undefined || maxPrice !== undefined || minRating !== undefined);
+    const anyFiltersSet = !!(
+      category ||
+      search ||
+      minPrice !== undefined ||
+      maxPrice !== undefined ||
+      minRating !== undefined
+    );
 
     // Get plug meta-data if this is a plug user
-    let plugMeta: { id: string; niches: string[]; generalMerchant: boolean } | null = null;
+    let plugMeta: { id: string; niches: string[]; generalMerchant: boolean } | null =
+      null;
     let plugProductCount = 0;
     if (isPlugUser && req.user.plug?.id) {
       const plugRow = await prisma.plug.findUnique({
@@ -420,67 +713,50 @@ export const getAllProducts = async (req: AuthRequest, res: Response, next: Next
         select: { id: true, niches: true, generalMerchant: true },
       });
       if (plugRow) {
-        plugMeta = { id: plugRow.id, niches: plugRow.niches || [], generalMerchant: !!plugRow.generalMerchant };
-        // count number of plugged products
-        plugProductCount = await prisma.plugProduct.count({ where: { plugId: plugRow.id } });
+        plugMeta = {
+          id: plugRow.id,
+          niches: plugRow.niches || [],
+          generalMerchant: !!plugRow.generalMerchant,
+        };
+        plugProductCount = await prisma.plugProduct.count({
+          where: { plugId: plugRow.id },
+        });
       }
     }
 
     // Build filters SQL and params
-    const { whereSql, values: filterValues } = buildFiltersSql({ category, search, minPrice, maxPrice, minRating });
+    const { whereSql, values: filterValues } = buildFiltersSql({
+      category,
+      search,
+      minPrice,
+      maxPrice,
+      minRating,
+    });
 
-    // We'll assemble a single SQL statement with CTEs:
-    // - p_ratings: aggregated avg rating per product (if rating filter used)
-    // - product_base: products filtered by WHERE
-    // - stats: max sold and max plugsCount over the filtered set (for normalization)
-    // - if plug and not anyFiltersSet:
-    //     - compute niche match boolean OR category_priority (if >20 plugged products)
-    // - final select: compute weighted_score and order accordingly
-    //
-    // Weighted score: 0.4 * (plugsCount / max_plugsCount) + 0.6 * (sold / max_sold)
-    //
-    // Note: params use $1..$N placeholders. We'll push filterValues then other params (like plug id, niche list) afterwards.
-
-    // placeholders baseline
     const params: any[] = [...filterValues];
 
-    // helper to append array as placeholders
     const pushArrayAsPlaceholders = (arr: any[]) => {
       const startIndex = params.length + 1;
       params.push(...arr);
-      const placeholders = arr.map((_, i) => `$${startIndex + i}`).join(",");
-      return placeholders;
+      return arr.map((_, i) => `$${startIndex + i}`).join(",");
     };
 
-    // build niche placeholders if needed
     let nichePlaceholders = "";
     if (plugMeta && plugMeta.niches.length > 0) {
       nichePlaceholders = pushArrayAsPlaceholders(plugMeta.niches);
     }
 
-    // plug id placeholder if needed
     if (plugMeta) params.push(plugMeta.id);
 
-    // cursor handling: we'll use id >/>= logic via OFFSET method for simplicity, but to keep cursor semantics:
-    // We'll select products ordered by computed order then apply cursor by id comparison. Simpler: if cursor provided,
-    // use a WHERE clause p.id < $N for paging assuming DESC ordering. To keep deterministic behavior, do:
     let cursorSql = "";
     if (cursor) {
       params.push(cursor);
-      // use products with id < cursor (assuming stable ordering by id descending for cursor). This is a simplification.
-      cursorSql = `AND p.id < $${params.length}`; // ensure this sits inside product_base where
+      cursorSql = `AND p.id < $${params.length}`;
     }
 
-    // decide ordering SQL depending on conditions
-    // when plug user and no filters -> apply nic-ing/category-priority then weighted score
-    // else if any filters -> just weighted score
-    // supplier or others -> createdAt desc
     const applyAlgorithm = isPlugUser && !anyFiltersSet && plugMeta;
-
-    // if plugProductCount > 20, we use category_priority from plug product distribution
     const useCategoryPriority = applyAlgorithm && plugProductCount > 20;
 
-    // Build final SQL with CTEs (Postgres)
     const sql = `
 WITH
 p_ratings AS (
@@ -502,23 +778,22 @@ stats AS (
     MAX(p."plugsCount") AS max_plugs_count
   FROM product_base p
 ),
--- compute per-category plug counts for this plug if needed
 plug_category_counts AS (
-  ${useCategoryPriority ? `
-  SELECT ppc.category, COUNT(*) AS cnt
+  ${
+    useCategoryPriority
+      ? `
+  SELECT prod.category, COUNT(*) AS cnt
   FROM "PlugProduct" pp
   JOIN "Product" prod ON prod.id = pp."originalId"
-  JOIN LATERAL (SELECT prod.category) ppc(category) ON TRUE
   WHERE pp."plugId" = $${params.length} -- plugId
-  GROUP BY ppc.category
-  ` : `SELECT NULL::text AS category, 0 AS cnt WHERE FALSE`}
+  GROUP BY prod.category
+  `
+      : `SELECT NULL::text AS category, 0 AS cnt WHERE FALSE`
+  }
 ),
 plug_category_totals AS (
-  ${useCategoryPriority ? `
-  SELECT SUM(cnt) as total_cnt FROM plug_category_counts
-  ` : `SELECT 0 as total_cnt`}
+  ${useCategoryPriority ? `SELECT SUM(cnt) as total_cnt FROM plug_category_counts` : `SELECT 0 as total_cnt`}
 ),
--- final set: compute normalized fields and ordering helpers
 final_products AS (
   SELECT
     p.*,
@@ -526,71 +801,61 @@ final_products AS (
     s.max_plugs_count,
     CASE WHEN s.max_plugs_count IS NULL OR s.max_plugs_count = 0 THEN 0 ELSE (p."plugsCount"::numeric / s.max_plugs_count::numeric) END AS norm_plugs,
     CASE WHEN s.max_sold IS NULL OR s.max_sold = 0 THEN 0 ELSE (p.sold::numeric / s.max_sold::numeric) END AS norm_sold,
-    -- weighted scoring (40% plugsCount, 60% sold)
     (0.4 * CASE WHEN s.max_plugs_count IS NULL OR s.max_plugs_count = 0 THEN 0 ELSE (p."plugsCount"::numeric / s.max_plugs_count::numeric) END
      + 0.6 * CASE WHEN s.max_sold IS NULL OR s.max_sold = 0 THEN 0 ELSE (p.sold::numeric / s.max_sold::numeric) END) AS weighted_score,
-    -- niche match boolean
     ${plugMeta && plugMeta.niches.length > 0 ? `CASE WHEN LOWER(p.category) IN (${nichePlaceholders}) THEN 1 ELSE 0 END` : `0`} AS niche_match,
-    -- category priority for plug (if applicable)
-    ${useCategoryPriority ? `(COALESCE((SELECT cnt FROM plug_category_counts WHERE plug_category_counts.category = p.category), 0)::numeric / NULLIF((SELECT total_cnt FROM plug_category_totals),0))` : `0`} AS category_priority
+    ${
+      useCategoryPriority
+        ? `(COALESCE((SELECT cnt FROM plug_category_counts WHERE plug_category_counts.category = p.category), 0)::numeric / NULLIF((SELECT total_cnt FROM plug_category_totals),0))`
+        : `0`
+    } AS category_priority
   FROM product_base p, stats s
 )
 SELECT
   fp.*,
-  -- we will compute final ordering rank fields and select
   CASE
-    WHEN $${params.length + 1} = TRUE THEN -- applyAlgorithm
+    WHEN $${params.length + 1}::boolean IS TRUE THEN
       CASE
-        WHEN $${params.length + 2} = TRUE THEN -- useCategoryPriority
-          fp.category_priority
-        WHEN $${params.length + 2} = FALSE AND $${params.length + 3} = TRUE THEN -- hasNiches
-          fp.niche_match
+        WHEN $${params.length + 2}::boolean IS TRUE THEN fp.category_priority
+        WHEN $${params.length + 2}::boolean IS FALSE AND $${params.length + 3}::boolean IS TRUE THEN fp.niche_match
         ELSE 0 END
     ELSE 0 END AS primary_priority
 FROM final_products fp
 ORDER BY
-  -- order by primary preference (niche match boolean or category priority) desc first when algorithm active
   primary_priority DESC,
-  -- then by weighted score desc
   weighted_score DESC,
-  -- deterministic tiebreaker
   fp."createdAt" DESC,
   fp.id DESC
 LIMIT $${params.length + 4};
 `;
 
-    // append boolean flags to params:
-    // $N = applyAlgorithm (boolean), $N+1 = useCategoryPriority (boolean), $N+2 = hasNiches (boolean), $N+3 = limit (number)
-    params.push(applyAlgorithm); // applyAlgorithm
-    params.push(useCategoryPriority); // useCategoryPriority
-    params.push(!!(plugMeta && plugMeta.niches.length > 0)); // hasNiches
-    params.push(limit + 1); // take one extra to detect next page
+    // append flags
+    params.push(applyAlgorithm ? true : false);
+    params.push(useCategoryPriority ? true : false);
+    params.push(!!(plugMeta && plugMeta.niches.length > 0));
+    params.push(limit + 1);
 
-    // Execute
     const rows: any[] = await prisma.$queryRawUnsafe(sql, ...params);
 
-    // pagination handling
     const hasMore = rows.length > limit;
     const productsRaw = hasMore ? rows.slice(0, limit) : rows;
-    const nextCursor = hasMore && productsRaw.length > 0 ? productsRaw[productsRaw.length - 1].id : null;
+    const nextCursor =
+      hasMore && productsRaw.length > 0
+        ? productsRaw[productsRaw.length - 1].id
+        : null;
 
-    // format with your helper
     const formattedProducts = productsRaw.map(formatProduct);
 
-    // get total count if needed (no cursor)
     let totalCount: number | null = null;
     if (!cursor) {
-      // we can programmatically count using Prisma to keep it simple
-      // reuse the whereSql built earlier but re-run through Prisma count (safer)
-      // fallback: count with prisma -- using similar filters
-      const countWhere: any = { status: "APPROVED" };
-      // note: for simplicity here we won't replicate every filter in prisma count; 
-      // in production you should build the same filter map to prisma.count
-      totalCount = await prisma.product.count();
+      totalCount = await prisma.product.count({ where: { status: "APPROVED" } });
     }
 
     res.status(200).json({
-      message: formattedProducts.length === 0 ? "No products found matching your criteria" : "Products fetched successfully!",
+      message:
+        formattedProducts.length === 0
+          ? "No products found matching your criteria"
+          : "Products fetched successfully!",
       data: formattedProducts,
       meta: {
         hasNextPage: hasMore,
