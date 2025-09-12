@@ -606,6 +606,7 @@
 
 
 // controllers/products.ts
+// controllers/products.ts
 import { NextFunction, Response } from "express";
 import { AuthRequest } from "../types";
 import { prisma } from "../config";
@@ -804,8 +805,6 @@ final_products AS (
     p.*,
     s.max_sold,
     s.max_plugs_count,
-    CASE WHEN s.max_plugs_count IS NULL OR s.max_plugs_count = 0 THEN 0 ELSE (p."plugsCount"::numeric / s.max_plugs_count::numeric) END AS norm_plugs,
-    CASE WHEN s.max_sold IS NULL OR s.max_sold = 0 THEN 0 ELSE (p.sold::numeric / s.max_sold::numeric) END AS norm_sold,
     (0.4 * CASE WHEN s.max_plugs_count IS NULL OR s.max_plugs_count = 0 THEN 0 ELSE (p."plugsCount"::numeric / s.max_plugs_count::numeric) END
      + 0.6 * CASE WHEN s.max_sold IS NULL OR s.max_sold = 0 THEN 0 ELSE (p.sold::numeric / s.max_sold::numeric) END) AS weighted_score,
     ${
@@ -819,22 +818,37 @@ final_products AS (
         : `0`
     } AS category_priority
   FROM product_base p, stats s
+),
+ranked AS (
+  SELECT
+    fp.*,
+    CASE
+      WHEN $${params.length + 1}::boolean IS TRUE THEN
+        CASE
+          WHEN $${params.length + 2}::boolean IS TRUE THEN fp.category_priority
+          WHEN $${params.length + 2}::boolean IS FALSE AND $${params.length + 3}::boolean IS TRUE THEN fp.niche_match
+          ELSE 0 END
+      ELSE 0 END AS primary_priority
+  FROM final_products fp
+),
+priority_products AS (
+  SELECT * FROM ranked WHERE primary_priority > 0
+),
+non_priority_products AS (
+  SELECT * FROM ranked WHERE primary_priority = 0
+),
+unioned AS (
+  SELECT * FROM priority_products
+  UNION ALL
+  SELECT * FROM non_priority_products
 )
-SELECT
-  fp.*,
-  CASE
-    WHEN $${params.length + 1}::boolean IS TRUE THEN
-      CASE
-        WHEN $${params.length + 2}::boolean IS TRUE THEN fp.category_priority
-        WHEN $${params.length + 2}::boolean IS FALSE AND $${params.length + 3}::boolean IS TRUE THEN fp.niche_match
-        ELSE 0 END
-    ELSE 0 END AS primary_priority
-FROM final_products fp
+SELECT *
+FROM unioned
 ORDER BY
-  primary_priority DESC,   -- priority products first
-  weighted_score DESC,     -- ranking among priority group
-  fp."createdAt" DESC,
-  fp.id DESC
+  primary_priority DESC,
+  weighted_score DESC,
+  "createdAt" DESC,
+  id DESC
 LIMIT $${params.length + 4};
 `;
 
@@ -877,6 +891,7 @@ LIMIT $${params.length + 4};
     next(error);
   }
 };
+
 
 
 
