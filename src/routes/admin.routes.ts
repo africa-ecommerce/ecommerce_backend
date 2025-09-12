@@ -54,7 +54,7 @@ router.post("/order/received/:orderId", requireAdminAuth, markItemsReceived);
 router.post("/order/cancel/:orderId", requireAdminAuth, cancelOrder);
 
 
-router.post("/order/paused/:orderId", requireAdminAuth, getPausedOrderItems);
+router.get("/order/paused/:orderId", requireAdminAuth, getPausedOrderItems);
 router.post("/order/pause", requireAdminAuth, pauseOrderItem);
 router.post("/order/unpause", requireAdminAuth, unpauseOrderItem);
 router.post("/order/return", requireAdminAuth, returnOrderItem);
