@@ -38,9 +38,15 @@ export async function getOrderById(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
-    const order = await prisma.order.findUnique({
+   const order = await prisma.order.findUnique({
       where: { id },
-      include: { orderItems: true },
+      include: {
+        orderItems: {
+          include: {
+            ReturnedOrderItem: true, 
+          },
+        },
+      },
     });
 
     if (!order) {
@@ -79,6 +85,9 @@ export async function getOrderById(req: Request, res: Response) {
         }
       }
 
+      // ✅ compute total returned quantity for this item
+      const returnedQty = item.ReturnedOrderItem?.quantity ?? 0;
+
       acc[item.supplierId]?.orderItems.push({
         id: item.id,
         productId: item.productId,
@@ -91,6 +100,7 @@ export async function getOrderById(req: Request, res: Response) {
         variantId: item.variantId,
         variantSize: item.variantSize,
         variantColor: item.variantColor,
+        returnedQuantity: returnedQty,
       });
 
       return acc;
