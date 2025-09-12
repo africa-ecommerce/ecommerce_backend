@@ -219,7 +219,7 @@ export const deliveredOrder = async (req: Request, res: Response) => {
             data: { sold: { increment: item.quantity } },
           });
         } catch (e) {
-          console.warn(`Product ${item.productId} not found, skipping update ${e}`);
+          console.error(`Product ${item.productId} not found, skipping update ${e}`);
         }
       }
 
@@ -314,6 +314,41 @@ export const getPausedOrderItems = async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("Get paused order items error:", err);
+    res.status(500).json({ error: "Internal server error!" });
+  }
+};
+export const getReturnedOrderItems = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+
+    if (!orderId) {
+       res.status(400).json({ error: "Order ID is required" });
+       return;
+    }
+
+    const returnedItems = await prisma.returnedOrderItem.findMany({
+      where: { orderItem: { orderId } },
+      include: {
+        orderItem: {
+          select: {
+            id: true,
+            productId: true,
+            productName: true,
+            quantity: true,
+            plugPrice: true,
+            supplierPrice: true,
+            recieved: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json({
+      message: "Returned order items fetched successfully",
+      data: returnedItems,
+    });
+  } catch (err) {
+    console.error("Get returned order items error:", err);
     res.status(500).json({ error: "Internal server error!" });
   }
 };
@@ -574,7 +609,7 @@ export const returnOrderItem = async (req: Request, res: Response) => {
         data: { sold: { decrement: quantity } },
       });
        } catch (e) {
-          console.warn(`Product not found, skipping update ${e}`);
+          console.error(`Product not found, skipping update ${e}`);
         }
     });
 
@@ -648,7 +683,7 @@ export const cancelOrder = async (req: Request, res: Response) => {
           data: { stock: { increment: item.quantity } },
         });
          } catch (e) {
-          console.warn(`Product ${item.productId} not found, skipping update ${e}`);
+          console.error(`Product ${item.productId} not found, skipping update ${e}`);
         }
       }
 

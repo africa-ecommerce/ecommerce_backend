@@ -20,7 +20,6 @@ export async function stageOrder(
   next: NextFunction
 ) {
   try {
-    console.log("data", req.body)
     const fieldData = StageOrderSchema.safeParse(req.body);
     if (!fieldData.success) {
        res.status(400).json({ error: "Invalid field data!" });

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { productController } from "../controllers/product.controller";
+import { productController } from "../controllers/supplierProduct.controller";
 import authenticateJWT from "../middleware/auth.middleware";
 import { isSupplier } from "../middleware/role.middleware";
 
