@@ -165,6 +165,7 @@ export const productController = {
         include: {
           supplier: {
             select: {
+              id: true,
               businessName: true,
               pickupLocation: {
                 select: {
@@ -173,6 +174,7 @@ export const productController = {
                 },
               },
               avatar: true,
+              subscribers: true, // 👈 we need this to check if plug is subscribed
             },
           },
           variations: true,
@@ -202,19 +204,25 @@ export const productController = {
       const formattedProduct = formatProduct(product);
       // Check if user is a plug and add isPlugged flag
       if (req.user && req.user.userType === "PLUG" && req.user.plug) {
+        const plugId = req.user.plug.id;
         // Check if this product is in the plug's database
         const pluggedProduct = await prisma.plugProduct.findFirst({
           where: {
-            plugId: req.user.plug.id,
+            plugId,
             originalId: productId,
           },
         });
+
+        // 👇 Check if plug is subscribed to the supplier of the product
+        const isSubscribedToSupplier =
+          product.supplier.subscribers.includes(plugId);
         // Add isPlugged flag to the response
         res.status(200).json({
           message: "Product fetched successfully!",
           data: {
             ...formattedProduct,
             isPlugged: !!pluggedProduct, // Convert to boolean
+            isSubscribedToSupplier,
           },
         });
         return;

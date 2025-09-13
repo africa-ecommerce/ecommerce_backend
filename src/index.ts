@@ -5,7 +5,7 @@ import morgan from "morgan";
 import { backendUrl, minioBaseUrl, port, sessionSecret } from "./config";
 import authRoutes from "./routes/auth.routes";
 import onboardingRoutes from "./routes/onboarding.routes";
-import productRoutes from "./routes/product.routes";
+import productRoutes from "./routes/supplierProduct.routes";
 import plugProductRoutes from "./routes/plugProduct.routes";
 import publicRoutes from "./routes/public.routes";
 import storeRoutes from "./routes/store.routes";
