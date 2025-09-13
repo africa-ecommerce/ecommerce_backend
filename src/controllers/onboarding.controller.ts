@@ -201,7 +201,6 @@ export const checkPlugBusinessNameAvailability = async (
 ) => {
   try {
     const data = req.body;
-    const plug = req.plug!;
 
     // Trim and lowercase businessName
     const businessName = data.businessName.trim().toLowerCase();
@@ -215,7 +214,6 @@ export const checkPlugBusinessNameAvailability = async (
     const existing = await prisma.plug.findFirst({
       where: {
         businessName,
-        id: { not: plug.id }, // Exclude current plug
       },
     });
 
@@ -240,7 +238,6 @@ export const checkSupplierBusinessNameAvailability = async (
 ) => {
   try {
     const data = req.body;
-    const supplier = req.supplier!;
 
     // Trim and lowercase businessName
     const businessName = data.businessName.trim().toLowerCase();
@@ -254,7 +251,6 @@ export const checkSupplierBusinessNameAvailability = async (
     const existing = await prisma.supplier.findFirst({
       where: {
         businessName,
-        id: { not: supplier.id }, // Exclude current supplier
       },
     });
 
