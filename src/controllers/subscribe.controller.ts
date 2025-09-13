@@ -224,7 +224,8 @@ export const searchSuppliers = async (
   next: NextFunction
 ) => {
   try {
-    const businessName = (req.query.businessName as string)?.trim().toLowerCase();
+    const searchTerm = req.query.businessName as string;
+    const businessName = decodeURIComponent(searchTerm)?.trim().toLowerCase();
 
     if (!businessName) {
        res.status(400).json({ error: "Please include business name!" });
