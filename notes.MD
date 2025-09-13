@@ -40,6 +40,53 @@ BASED ON SCENARIOS IF ORDER WAS PLACED AND PROBABLY THE SUPPLIER DOES NOT HAVE A
 
 
 
+model Supplier {
+    id               String            @id @default(cuid())
+    businessName     String             @unique
+    businessType     String?
+    phone            String
+    avatar           String?
+    userId           String            @unique
+    addressId        String            @unique
+    verified         Boolean           @default(false)
+    createdAt        DateTime          @default(now())
+    updatedAt        DateTime          @updatedAt
+    Product          Product[]
+    pickupLocation   SupplierAddress   @relation(fields: [addressId], references: [id], onDelete: Cascade)
+    user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+    supplierPayments SupplierPayment[]
+
+    @@index([businessName])
+}
+
+model Plug {
+    id              String        @id @default(cuid())
+    businessName    String         @unique
+    phone           String?
+    state           String?
+    aboutBusiness   String?
+    niches          String[]
+    generalMerchant Boolean
+    subdomain       String?       @unique
+    configUrl       String?
+    userId          String        @unique
+    createdAt       DateTime      @default(now())
+    updatedAt       DateTime      @updatedAt
+    avatar          String?
+    links           Link[]
+    orders          Order[]
+    user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+    plugPayments    PlugPayment[]
+    plugProduct     PlugProduct[]
+    reviews         Review[]
+
+    @@index([businessName])
+    @@index([subdomain])
+}
+
+help me with a controller endpoint that collects business name, and  finds the most likely matching supplier using this business name or so, that is the  business name would be gotten from req.query trimmed and lowercased to search and find the most likely business name in the supplier, and it returns to the client the list of possible matching supplier in each of which include the business name, supplier id, isSubscribed (if plug is subcribed to supplier) and the supplier avatar if it exists 
+
+
 
 
 
@@ -71,6 +118,7 @@ git checkout dev
 
 
 
+mail not sending
 price update, accept and decline. supplier payment, returns or so, and delivered and notification, marketplace algorithm, paul should write personalized for you, look at the niching, look at colors for paul
 
 remove social media from website, write my code function what they are doing understand all and seeding database, paul go through policy, terms, logistics last mile price, and delivery duration

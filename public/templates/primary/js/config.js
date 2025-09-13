@@ -342,19 +342,9 @@ class EnhancedConfigurationManager {
             padding: 2rem;
             text-align: center;
         ">
-            <img 
-                src="${this.baseURL}/image/404.svg" 
-                alt="Lost in space" 
-                crossorigin="anonymous"
-                style="
-                    max-width: 300px;
-                    margin-bottom: 2rem;
-                "
-            >    
-            <h2 style="font-size: 1.5rem; margin: 10px 0; color: #495057;">Store Not Found</h2>
             <p style="font-size: 1rem; color: #6c757d; max-width: 500px;">
                 Oops! something went wrong.
-                Please check the URL and try again.
+                Please check your internet connection and try again.
             </p>
         </div>
     `;

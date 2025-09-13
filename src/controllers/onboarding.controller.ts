@@ -144,7 +144,7 @@ export const onboarding = [
           await tx.supplier.create({
             data: {
               userId,
-              businessName: businessName.trim(),
+              businessName: businessName.trim().toLowerCase(),
               businessType,
               phone,
               avatar: avatarUrl,
@@ -163,7 +163,7 @@ export const onboarding = [
           await tx.plug.create({
             data: {
               userId,
-              businessName: businessName.trim(),
+              businessName: businessName.trim().toLowerCase(),
               phone,
               state,
               aboutBusiness,
@@ -187,3 +187,84 @@ export const onboarding = [
     }
   },
 ];
+
+
+
+
+/**
+ * Check if plug business name is available
+ */
+export const checkPlugBusinessNameAvailability = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const data = req.body;
+    const plug = req.plug!;
+
+    // Trim and lowercase businessName
+    const businessName = data.businessName.trim().toLowerCase();
+
+    if (!businessName) {
+      res.status(400).json({ error: "Business name is required!" });
+      return;
+    }
+
+    // Check if businessName is already in use
+    const existing = await prisma.plug.findFirst({
+      where: {
+        businessName,
+        id: { not: plug.id }, // Exclude current plug
+      },
+    });
+
+    const available = !existing;
+
+    res.status(200).json({
+      message: "Business name checked successfully!",
+      available,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Check if supplier business name is available
+ */
+export const checkSupplierBusinessNameAvailability = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const data = req.body;
+    const supplier = req.supplier!;
+
+    // Trim and lowercase businessName
+    const businessName = data.businessName.trim().toLowerCase();
+
+    if (!businessName) {
+      res.status(400).json({ error: "Business name is required!" });
+      return;
+    }
+
+    // Check if businessName is already in use
+    const existing = await prisma.supplier.findFirst({
+      where: {
+        businessName,
+        id: { not: supplier.id }, // Exclude current supplier
+      },
+    });
+
+    const available = !existing;
+
+    res.status(200).json({
+      message: "Business name checked successfully!",
+      available,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

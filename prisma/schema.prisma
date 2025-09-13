@@ -63,13 +63,14 @@ model WithdrawalVerificationToken {
 
 model Supplier {
     id               String            @id @default(cuid())
-    businessName     String            @default("")
+    businessName     String             @unique
     businessType     String?
     phone            String
     avatar           String?
     userId           String            @unique
     addressId        String            @unique
     verified         Boolean           @default(false)
+    subscribers      String[]           @default([])
     createdAt        DateTime          @default(now())
     updatedAt        DateTime          @updatedAt
     Product          Product[]
@@ -82,7 +83,7 @@ model Supplier {
 
 model Plug {
     id              String        @id @default(cuid())
-    businessName    String
+    businessName    String         @unique
     phone           String?
     state           String?
     aboutBusiness   String?
@@ -90,6 +91,7 @@ model Plug {
     generalMerchant Boolean
     subdomain       String?       @unique
     configUrl       String?
+    subscribedTo    String[]      @default([])
     userId          String        @unique
     createdAt       DateTime      @default(now())
     updatedAt       DateTime      @updatedAt
@@ -102,6 +104,7 @@ model Plug {
     reviews         Review[]
 
     @@index([businessName])
+    @@index([subdomain])
 }
 
 model Buyer {
