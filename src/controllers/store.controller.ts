@@ -356,14 +356,15 @@ export const checkSubdomainAvailability = async (
         return;
       }
     }
-
-    // Check if subdomain is already in use
-    const existing = await prisma.plug.findFirst({
-      where: {
-        subdomain,
-        id: { not: plug.id }, // Exclude current plug
-      },
-    });
+const existing = await prisma.plug.findFirst({
+  where: {
+    subdomain: {
+      equals: subdomain,
+      mode: "insensitive",
+    },
+    id: { not: plug.id }, // Exclude current plug
+  },
+});
 
     const available = !existing;
 

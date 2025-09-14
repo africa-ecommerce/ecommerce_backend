@@ -73,7 +73,7 @@ git checkout dev
 
 
 
-mail not sending
+mail not sending, seed all business name to lowercase
 price update, accept and decline. supplier payment, returns or so, and delivered and notification, marketplace algorithm, paul should write personalized for you, look at the niching, look at colors for paul
 
 remove social media from website, write my code function what they are doing understand all and seeding database, paul go through policy, terms, logistics last mile price, and delivery duration

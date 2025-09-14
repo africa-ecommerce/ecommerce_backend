@@ -26,12 +26,8 @@ export const getProductById = async (
             supplier: {
               select: {
                 id: true,
-                pickupLocation: {
-                  select: {
-                    latitude: true,
-                    longitude: true,
-                  },
-                },
+                // pickupLocation: true
+                
               },
             },
           },
@@ -151,7 +147,7 @@ export const getStoreProductById = async (
             supplier: {
               select: {
                 id: true,
-                pickupLocation: { select: { latitude: true, longitude: true } },
+                // pickupLocation: true
               },
             },
           },

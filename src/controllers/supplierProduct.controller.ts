@@ -127,18 +127,18 @@ export const productController = {
         orderBy: { createdAt: "desc" },
         include: {
           variations: true,
-          supplier: {
-            select: {
-              businessName: true,
-              pickupLocation: {
-                select: {
-                  lga: true,
-                  state: true,
-                },
-              },
-              avatar: true,
-            },
-          },
+          // supplier: {
+          //   select: {
+          //     businessName: true,
+          //     pickupLocation: {
+          //       select: {
+          //         lga: true,
+          //         state: true,
+          //       },
+          //     },
+          //     avatar: true,
+          //   },
+          // },
         },
       });
 

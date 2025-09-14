@@ -20,7 +20,7 @@ export const updateProfile = [
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     let avatarUrl: string | null = null;
     let oldAvatarUrl: string | null = null;
-    let geocodeData: { lat: number; lng: number } | null = null;
+    // let geocodeData: { lat: number; lng: number } | null = null;
 
     try {
       const userId = req.user?.id;
@@ -68,13 +68,13 @@ export const updateProfile = [
 
         supplierAddressData = addrParse.data;
         const fullAddress = `${supplierAddressData.streetAddress}, ${supplierAddressData.lga}, ${supplierAddressData.state}`;
-        const geocodeResult = await getGeocode(fullAddress);
-        if (geocodeResult.status !== "success" || !geocodeResult.data) {
-          throw new Error(
-            `Geocoding failed for supplier address: ${fullAddress}`
-          );
-        }
-        geocodeData = geocodeResult.data;
+        // const geocodeResult = await getGeocode(fullAddress);
+        // if (geocodeResult.status !== "success" || !geocodeResult.data) {
+        //   throw new Error(
+        //     `Geocoding failed for supplier address: ${fullAddress}`
+        //   );
+        // }
+        // geocodeData = geocodeResult.data;
 
         oldAvatarUrl = user.supplier.avatar || null;
 
@@ -110,8 +110,8 @@ export const updateProfile = [
               lga: supplierAddressData.lga,
               state: supplierAddressData.state,
               directions: supplierAddressData.directions?.trim(),
-              latitude: geocodeData?.lat,
-              longitude: geocodeData?.lng,
+              // latitude: geocodeData?.lat,
+              // longitude: geocodeData?.lng,
               updatedAt: new Date(),
             },
           });

@@ -45,7 +45,7 @@ export const onboarding = [
 
       let supplierData: z.infer<typeof supplierInfoSchema> | null = null;
       let supplierAddressData: z.infer<typeof addressSchema> | null = null;
-      let geocodeData: { lat: number; lng: number } | null = null;
+      // let geocodeData: { lat: number; lng: number } | null = null;
       let plugData: z.infer<typeof plugInfoSchema> | null = null;
 
       // ✅ Upload avatar if exists
@@ -77,13 +77,13 @@ export const onboarding = [
           return;
         }
 
-        // 🌍 Geocode supplier address
-        const fullAddress = `${supplierAddressData.streetAddress}, ${supplierAddressData.lga}, ${supplierAddressData.state}`;
-        const geocodeResult = await getGeocode(fullAddress);
-        if (geocodeResult.status !== "success" || !geocodeResult.data) {
-          throw new Error(`Geocoding failed for supplier address: ${fullAddress}`);
-        }
-        geocodeData = geocodeResult.data;
+        // // 🌍 Geocode supplier address
+        // const fullAddress = `${supplierAddressData.streetAddress}, ${supplierAddressData.lga}, ${supplierAddressData.state}`;
+        // const geocodeResult = await getGeocode(fullAddress);
+        // if (geocodeResult.status !== "success" || !geocodeResult.data) {
+        //   throw new Error(`Geocoding failed for supplier address: ${fullAddress}`);
+        // }
+        // geocodeData = geocodeResult.data;
       }
 
       // ------------------------- PLUG FLOW -------------------------
@@ -125,8 +125,8 @@ export const onboarding = [
         if (
           userType === UserType.SUPPLIER &&
           supplierData &&
-          supplierAddressData &&
-          geocodeData
+          supplierAddressData 
+          // geocodeData
         ) {
           const { businessName, businessType, phone } = supplierData;
 
@@ -136,8 +136,8 @@ export const onboarding = [
               lga: supplierAddressData.lga,
               state: supplierAddressData.state,
               directions: supplierAddressData.directions?.trim(),
-              latitude: geocodeData.lat,
-              longitude: geocodeData.lng,
+              // latitude: geocodeData.lat,
+              // longitude: geocodeData.lng,
             },
           });
 
@@ -190,7 +190,6 @@ export const onboarding = [
 
 
 
-
 /**
  * Check if plug business name is available
  */
@@ -200,20 +199,20 @@ export const checkPlugBusinessNameAvailability = async (
   next: NextFunction
 ) => {
   try {
-    const data = req.body;
+    const { businessName } = req.body;
 
-    // Trim and lowercase businessName
-    const businessName = data.businessName.trim().toLowerCase();
-
-    if (!businessName) {
+    if (!businessName || !businessName.trim()) {
       res.status(400).json({ error: "Business name is required!" });
       return;
     }
 
-    // Check if businessName is already in use
+    // Case-insensitive check
     const existing = await prisma.plug.findFirst({
       where: {
-        businessName,
+        businessName: {
+          equals: businessName.trim(),
+          mode: "insensitive",
+        },
       },
     });
 
@@ -237,20 +236,20 @@ export const checkSupplierBusinessNameAvailability = async (
   next: NextFunction
 ) => {
   try {
-    const data = req.body;
+    const { businessName } = req.body;
 
-    // Trim and lowercase businessName
-    const businessName = data.businessName.trim().toLowerCase();
-
-    if (!businessName) {
+    if (!businessName || !businessName.trim()) {
       res.status(400).json({ error: "Business name is required!" });
       return;
     }
 
-    // Check if businessName is already in use
+    // Case-insensitive check
     const existing = await prisma.supplier.findFirst({
       where: {
-        businessName,
+        businessName: {
+          equals: businessName.trim(),
+          mode: "insensitive",
+        },
       },
     });
 
