@@ -11,7 +11,8 @@
     "postinstall": "prisma generate --schema=./prisma/schema.prisma"
   },
   "prisma": {
-    "schema": "./prisma/schema.prisma"
+    "schema": "./prisma/schema.prisma",
+    "seed": "ts-node prisma/seed.ts"
   },
   "keywords": [],
   "author": "",
@@ -36,7 +37,7 @@
     "@types/passport-jwt": "^4.0.1",
     "@types/passport-local": "^1.0.38",
     "@types/validator": "^13.12.2",
-     "@types/string-similarity": "^4.0.2",
+    "@types/string-similarity": "^4.0.2",
     "concurrently": "^9.1.2",
     "nodemon": "^3.1.9",
     "prisma": "^5.16.1",
@@ -70,6 +71,6 @@
     "uuidv4": "^6.2.13",
     "validator": "^13.12.0",
     "zod": "^3.24.2",
-     "string-similarity": "^4.0.4"
+    "string-similarity": "^4.0.4"
   }
 }

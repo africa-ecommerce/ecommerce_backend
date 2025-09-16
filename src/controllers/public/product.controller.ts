@@ -74,7 +74,7 @@ export const getStoreProducts = async (req: Request, res: Response, next: NextFu
     });
 
     if (!plug) {
-      res.status(404).json({ error: "Cannot find store for this subdomain!" });
+      res.status(404).json({ error: "Subdomain not found!" });
       return;
     }
 

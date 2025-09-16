@@ -13,6 +13,7 @@ import {
 } from "../../lib/zod/schema";
 import { z } from "zod";
 import { getGeocode } from "../../helper/logistics";
+import { normalizeBusinessName } from "../../helper/helperFunc";
 
 
 export const updateProfile = [
@@ -87,11 +88,16 @@ export const updateProfile = [
           avatarUrl = url;
         }
 
+        const normalized = normalizeBusinessName(
+          supplierParse.data.businessName!
+        );
+
         await prisma.$transaction(async (tx) => {
           await tx.supplier.update({
             where: { userId },
             data: {
               businessName: supplierParse.data.businessName.trim(),
+              normalizedBusinessName: normalized,
               phone: supplierParse.data.phone,
               avatar: avatarUrl || oldAvatarUrl,
               updatedAt: new Date(),
@@ -149,17 +155,22 @@ export const updateProfile = [
           avatarUrl = url;
         }
 
-        await prisma.plug.update({
-          where: { userId },
-          data: {
-            businessName: plugParse.data.businessName?.trim(),
-            phone: plugParse.data.phone,
-            state: plugParse.data.state || user.plug.state,
-            aboutBusiness: profileData.aboutBusiness || user.plug.aboutBusiness,
-            avatar: avatarUrl || oldAvatarUrl,
-            updatedAt: new Date(),
-          },
-        });
+         const normalized = normalizeBusinessName(plugParse.data.businessName!);
+
+  await prisma.plug.update({
+    where: { userId },
+    data: {
+      businessName: plugParse.data.businessName?.trim(),
+      phone: plugParse.data.phone,
+      state: plugParse.data.state || user.plug.state,
+      aboutBusiness: profileData.aboutBusiness || user.plug.aboutBusiness,
+      avatar: avatarUrl || oldAvatarUrl,
+      updatedAt: new Date(),
+      normalizedBusinessName: normalized,
+      // 👇 only update subdomain if it already exists
+      subdomain: user.plug.subdomain ? normalized : user.plug.subdomain,
+    },
+  });
 
         if (oldAvatarUrl && avatarUrl && oldAvatarUrl !== avatarUrl) {
           await deleteImages([oldAvatarUrl]);

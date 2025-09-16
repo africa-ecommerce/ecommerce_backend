@@ -62,49 +62,53 @@ model WithdrawalVerificationToken {
 }
 
 model Supplier {
-  id               String            @id @default(cuid())
-  businessName     String            @unique
-  businessType     String?
-  phone            String
-  avatar           String?
-  userId           String            @unique
-  addressId        String            @unique
-  verified         Boolean           @default(false)
-  subscribers      String[]          @default([])
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  Product          Product[]
-  pickupLocation   SupplierAddress   @relation(fields: [addressId], references: [id], onDelete: Cascade)
-  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  supplierPayments SupplierPayment[]
+  id                     String            @id @default(cuid())
+  businessName           String            @unique
+  normalizedBusinessName String           @unique
+  businessType           String?
+  phone                  String
+  avatar                 String?
+  userId                 String            @unique
+  addressId              String            @unique
+  verified               Boolean           @default(false)
+  subscribers            String[]          @default([])
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  Product                Product[]
+  pickupLocation         SupplierAddress   @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  user                   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  supplierPayments       SupplierPayment[]
 
   @@index([businessName])
+  @@index([normalizedBusinessName])
 }
 
 model Plug {
-  id              String        @id @default(cuid())
-  businessName    String        @unique
-  phone           String?
-  state           String?
-  aboutBusiness   String?
-  niches          String[]
-  generalMerchant Boolean
-  subdomain       String?       @unique
-  configUrl       String?
-  subscribedTo    String[]      @default([])
-  userId          String        @unique
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  avatar          String?
-  links           Link[]
-  orders          Order[]
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plugPayments    PlugPayment[]
-  plugProduct     PlugProduct[]
-  reviews         Review[]
+  id                     String        @id @default(cuid())
+  businessName           String        @unique
+  normalizedBusinessName String        @unique
+  phone                  String?
+  state                  String?
+  aboutBusiness          String?
+  niches                 String[]
+  generalMerchant        Boolean
+  subdomain              String?       @unique
+  configUrl              String?
+  subscribedTo           String[]      @default([])
+  userId                 String        @unique
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  avatar                 String?
+  links                  Link[]
+  orders                 Order[]
+  user                   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plugPayments           PlugPayment[]
+  plugProduct            PlugProduct[]
+  reviews                Review[]
 
   @@index([businessName])
   @@index([subdomain])
+  @@index([normalizedBusinessName])
 }
 
 model Buyer {

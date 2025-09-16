@@ -15,6 +15,7 @@ import {
 } from "../helper/minioObjectStore/image";
 import { z } from "zod";
 import { getGeocode } from "../helper/logistics";
+import { normalizeBusinessName } from "../helper/helperFunc";
 
 export const onboarding = [
   uploadMiddleware.single("avatar"),
@@ -141,10 +142,13 @@ export const onboarding = [
             },
           });
 
+         
+          // Supplier
           await tx.supplier.create({
             data: {
               userId,
-              businessName: businessName.trim().toLowerCase(),
+              businessName: businessName.trim(),
+              normalizedBusinessName: normalizeBusinessName(businessName),
               businessType,
               phone,
               avatar: avatarUrl,
@@ -164,6 +168,7 @@ export const onboarding = [
             data: {
               userId,
               businessName: businessName.trim().toLowerCase(),
+              normalizedBusinessName: normalizeBusinessName(businessName),
               phone,
               state,
               aboutBusiness,
@@ -190,9 +195,7 @@ export const onboarding = [
 
 
 
-/**
- * Check if plug business name is available
- */
+/** Check if plug business name is available */
 export const checkPlugBusinessNameAvailability = async (
   req: AuthRequest,
   res: Response,
@@ -206,14 +209,10 @@ export const checkPlugBusinessNameAvailability = async (
       return;
     }
 
-    // Case-insensitive check
+    const normalized = normalizeBusinessName(businessName);
+
     const existing = await prisma.plug.findFirst({
-      where: {
-        businessName: {
-          equals: businessName.trim(),
-          mode: "insensitive",
-        },
-      },
+      where: { normalizedBusinessName: normalized },
     });
 
     const available = !existing;
@@ -227,9 +226,8 @@ export const checkPlugBusinessNameAvailability = async (
   }
 };
 
-/**
- * Check if supplier business name is available
- */
+
+/** Check if supplier business name is available */
 export const checkSupplierBusinessNameAvailability = async (
   req: AuthRequest,
   res: Response,
@@ -243,14 +241,10 @@ export const checkSupplierBusinessNameAvailability = async (
       return;
     }
 
-    // Case-insensitive check
+    const normalized = normalizeBusinessName(businessName);
+
     const existing = await prisma.supplier.findFirst({
-      where: {
-        businessName: {
-          equals: businessName.trim(),
-          mode: "insensitive",
-        },
-      },
+      where: { normalizedBusinessName: normalized },
     });
 
     const available = !existing;

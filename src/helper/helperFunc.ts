@@ -38,6 +38,11 @@ export function capitalizeName(name: string) {
 
 
 
+export function normalizeBusinessName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, ""); // strip everything not a-z, 0-9
+}
 
 
 
