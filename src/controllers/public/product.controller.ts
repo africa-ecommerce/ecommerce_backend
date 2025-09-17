@@ -117,10 +117,13 @@ export const getStoreProductById = async (
 ) => {
   try {
     const { productId } = req.params;
+    console.log("req.query.subdomain", req.query.subdomain);
     const subdomain = (req.query.subdomain || "")
       .toString()
       .trim()
       .toLowerCase();
+
+       console.log("subdomain", subdomain);
 
     if (!subdomain || !productId) {
       res.status(400).json({ error: "Missing or invalid field data!" });
