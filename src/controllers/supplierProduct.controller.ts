@@ -160,6 +160,7 @@ export const productController = {
   ) => {
     try {
       const productId = req.params.productId;
+       console.log("yes");
       const product = await prisma.product.findUnique({
         where: { id: productId },
         include: {
@@ -195,6 +196,8 @@ export const productController = {
           },
         },
       });
+
+      console.log("products", product)
 
       if (!product) {
         res.status(404).json({ error: "Product not found!" });
