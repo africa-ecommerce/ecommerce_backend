@@ -1,334 +1,334 @@
-// import { NextFunction, Response } from "express";
-// import { AuthRequest } from "../types";
-// import { prisma } from "../config";
-// import { formatProduct } from "../helper/formatData";
+import { NextFunction, Response } from "express";
+import { AuthRequest } from "../types";
+import { prisma } from "../config";
+import { formatProduct } from "../helper/formatData";
 
-// interface AlgorithmWeights {
-//   nicheMatch: number;
-//   pluggedProductsMatch: number;
-// }
+interface AlgorithmWeights {
+  nicheMatch: number;
+  pluggedProductsMatch: number;
+}
 
-// // algorithm weights 
-// const ALGORITHM_WEIGHTS: AlgorithmWeights = {
-//   nicheMatch: 0.4, // 40% - User's niche preferences
-//   pluggedProductsMatch: 0.6, // 60% - Categories they've already plugged (higher weight)
-// };
+// algorithm weights 
+const ALGORITHM_WEIGHTS: AlgorithmWeights = {
+  nicheMatch: 0.4, // 40% - User's niche preferences
+  pluggedProductsMatch: 0.6, // 60% - Categories they've already plugged (higher weight)
+};
 
-// /**
-//  *  Get plug data
-//  */
-// async function getPlugAlgorithmData(plugId: string) {
-//   // Single query to get all plug data
-//   const [plugInfo, pluggedProducts] = await Promise.all([
-//     prisma.plug.findUnique({
-//       where: { id: plugId },
-//       select: {
-//         niches: true,
-//         generalMerchant: true,
-//       },
-//     }),
-//     // get distinct categories and original IDs
-//     prisma.plugProduct.findMany({
-//       where: { plugId },
-//       select: {
-//         originalId: true,
-//         originalProduct: {
-//           select: {
-//             category: true,
-//           },
-//         },
-//       },
-//       distinct: ["originalId"], // Avoid duplicates at DB level
-//     }),
-//   ]);
+/**
+ *  Get plug data
+ */
+async function getPlugAlgorithmData(plugId: string) {
+  // Single query to get all plug data
+  const [plugInfo, pluggedProducts] = await Promise.all([
+    prisma.plug.findUnique({
+      where: { id: plugId },
+      select: {
+        niches: true,
+        generalMerchant: true,
+      },
+    }),
+    // get distinct categories and original IDs
+    prisma.plugProduct.findMany({
+      where: { plugId },
+      select: {
+        originalId: true,
+        originalProduct: {
+          select: {
+            category: true,
+          },
+        },
+      },
+      distinct: ["originalId"], // Avoid duplicates at DB level
+    }),
+  ]);
 
-//   const pluggedCategories = [
-//     ...new Set(
-//       pluggedProducts
-//         .map((pp) => pp.originalProduct.category)
-//         .filter((category): category is string => Boolean(category))
-//     ),
-//   ];
+  const pluggedCategories = [
+    ...new Set(
+      pluggedProducts
+        .map((pp) => pp.originalProduct.category)
+        .filter((category): category is string => Boolean(category))
+    ),
+  ];
 
-//   const pluggedProductIds = pluggedProducts
-//     .map((pp) => pp.originalId)
-//     .filter((id): id is string => Boolean(id));
+  const pluggedProductIds = pluggedProducts
+    .map((pp) => pp.originalId)
+    .filter((id): id is string => Boolean(id));
 
-//   return {
-//     niches: plugInfo?.niches || [],
-//     generalMerchant: plugInfo?.generalMerchant || false,
-//     pluggedCategories,
-//     pluggedProductIds,
-//   };
-// }
+  return {
+    niches: plugInfo?.niches || [],
+    generalMerchant: plugInfo?.generalMerchant || false,
+    pluggedCategories,
+    pluggedProductIds,
+  };
+}
 
-// /**
-//  * Calculate algorithm score using the ALGORITHM_WEIGHTS
-//  *
-//  */
-// function calculateAlgorithmScore(
-//   productCategory: string,
-//   plugData: {
-//     niches: string[];
-//     generalMerchant: boolean;
-//     pluggedCategories: string[];
-//   }
-// ): number {
-//   let score = 0;
+/**
+ * Calculate algorithm score using the ALGORITHM_WEIGHTS
+ *
+ */
+function calculateAlgorithmScore(
+  productCategory: string,
+  plugData: {
+    niches: string[];
+    generalMerchant: boolean;
+    pluggedCategories: string[];
+  }
+): number {
+  let score = 0;
 
-//   // 1. Niche matching (40% weight)
-//   const nicheScore = calculateNicheScore(productCategory, plugData);
-//   score += nicheScore * ALGORITHM_WEIGHTS.nicheMatch;
+  // 1. Niche matching (40% weight)
+  const nicheScore = calculateNicheScore(productCategory, plugData);
+  score += nicheScore * ALGORITHM_WEIGHTS.nicheMatch;
 
-//   // 2. Plugged categories matching (60% weight)
-//   const pluggedCategoryScore = calculatePluggedCategoryScore(
-//     productCategory,
-//     plugData.pluggedCategories
-//   );
-//   score += pluggedCategoryScore * ALGORITHM_WEIGHTS.pluggedProductsMatch;
+  // 2. Plugged categories matching (60% weight)
+  const pluggedCategoryScore = calculatePluggedCategoryScore(
+    productCategory,
+    plugData.pluggedCategories
+  );
+  score += pluggedCategoryScore * ALGORITHM_WEIGHTS.pluggedProductsMatch;
 
-//   return Math.min(score, 1); // Cap at 1.0
-// }
+  return Math.min(score, 1); // Cap at 1.0
+}
 
-// function calculateNicheScore(
-//   productCategory: string,
-//   plugData: { niches: string[]; generalMerchant: boolean }
-// ): number {
-//   if (plugData.generalMerchant) return 1;
-//   if (!productCategory || plugData.niches.length === 0) return 0;
+function calculateNicheScore(
+  productCategory: string,
+  plugData: { niches: string[]; generalMerchant: boolean }
+): number {
+  if (plugData.generalMerchant) return 1;
+  if (!productCategory || plugData.niches.length === 0) return 0;
 
-//   const categoryLower = productCategory.toLowerCase();
-//   const exactMatch = plugData.niches.some(
-//     (niche) => niche.toLowerCase() === categoryLower
-//   );
-//   const partialMatch = plugData.niches.some(
-//     (niche) =>
-//       categoryLower.includes(niche.toLowerCase()) ||
-//       niche.toLowerCase().includes(categoryLower)
-//   );
+  const categoryLower = productCategory.toLowerCase();
+  const exactMatch = plugData.niches.some(
+    (niche) => niche.toLowerCase() === categoryLower
+  );
+  const partialMatch = plugData.niches.some(
+    (niche) =>
+      categoryLower.includes(niche.toLowerCase()) ||
+      niche.toLowerCase().includes(categoryLower)
+  );
 
-//   return exactMatch ? 1 : partialMatch ? 0.7 : 0;
-// }
+  return exactMatch ? 1 : partialMatch ? 0.7 : 0;
+}
 
-// function calculatePluggedCategoryScore(
-//   productCategory: string,
-//   pluggedCategories: string[]
-// ): number {
-//   if (!productCategory || pluggedCategories.length === 0) return 0;
+function calculatePluggedCategoryScore(
+  productCategory: string,
+  pluggedCategories: string[]
+): number {
+  if (!productCategory || pluggedCategories.length === 0) return 0;
 
-//   const categoryLower = productCategory.toLowerCase();
-//   const isPluggedCategory = pluggedCategories.some(
-//     (cat) => cat.toLowerCase() === categoryLower
-//   );
+  const categoryLower = productCategory.toLowerCase();
+  const isPluggedCategory = pluggedCategories.some(
+    (cat) => cat.toLowerCase() === categoryLower
+  );
 
-//   return isPluggedCategory ? 1 : 0;
-// }
+  return isPluggedCategory ? 1 : 0;
+}
 
-// function buildRatingFilter(minRating: number) {
-//   return {
-//     reviews: {
-//       some: {
-//         rating: {
-//           gte: minRating,
-//         },
-//       },
-//     },
-//   };
-// }
+function buildRatingFilter(minRating: number) {
+  return {
+    reviews: {
+      some: {
+        rating: {
+          gte: minRating,
+        },
+      },
+    },
+  };
+}
 
-// /**
-//  * Build single comprehensive where clause
-//  */
-// function buildWhereClause(params: {
-//   userType: string;
-//   pluggedProductIds?: string[];
-//   search?: string;
-//   category?: string;
-//   minPrice?: number;
-//   maxPrice?: number;
-//   minRating?: number;
-// }) {
-//   const conditions: any[] = [];
+/**
+ * Build single comprehensive where clause
+ */
+function buildWhereClause(params: {
+  userType: string;
+  pluggedProductIds?: string[];
+  search?: string;
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minRating?: number;
+}) {
+  const conditions: any[] = [];
 
-//   // Only approved products
-//   conditions.push({ status: "APPROVED" });
+  // Only approved products
+  conditions.push({ status: "APPROVED" });
 
-//   // Exclude plugged products for PLUG users
-//   if (
-//     params.userType === "PLUG" &&
-//     params.pluggedProductIds &&
-//     params.pluggedProductIds.length > 0
-//   ) {
-//     conditions.push({
-//       id: { notIn: params.pluggedProductIds },
-//     });
-//   }
+  // Exclude plugged products for PLUG users
+  if (
+    params.userType === "PLUG" &&
+    params.pluggedProductIds &&
+    params.pluggedProductIds.length > 0
+  ) {
+    conditions.push({
+      id: { notIn: params.pluggedProductIds },
+    });
+  }
 
-//   // Text search
-//   if (params.search) {
-//     conditions.push({
-//       OR: [
-//         { name: { contains: params.search, mode: "insensitive" } },
-//         { description: { contains: params.search, mode: "insensitive" } },
-//       ],
-//     });
-//   }
+  // Text search
+  if (params.search) {
+    conditions.push({
+      OR: [
+        { name: { contains: params.search, mode: "insensitive" } },
+        { description: { contains: params.search, mode: "insensitive" } },
+      ],
+    });
+  }
 
-//   // Category filter
-//   if (params.category) {
-//     const categories = params.category.split(",").map((cat) => cat.trim());
-//     const filteredCategories = categories.filter(
-//       (cat) => cat.toLowerCase() !== "all"
-//     );
+  // Category filter
+  if (params.category) {
+    const categories = params.category.split(",").map((cat) => cat.trim());
+    const filteredCategories = categories.filter(
+      (cat) => cat.toLowerCase() !== "all"
+    );
 
-//     if (filteredCategories.length > 0) {
-//       conditions.push({
-//         category: { in: filteredCategories },
-//       });
-//     }
-//   }
+    if (filteredCategories.length > 0) {
+      conditions.push({
+        category: { in: filteredCategories },
+      });
+    }
+  }
 
-//   // Price range filter
-//   if (params.minPrice !== undefined || params.maxPrice !== undefined) {
-//     const priceCondition: any = {};
-//     if (params.minPrice !== undefined) priceCondition.gte = params.minPrice;
-//     if (params.maxPrice !== undefined) priceCondition.lte = params.maxPrice;
-//     conditions.push({ price: priceCondition });
-//   }
+  // Price range filter
+  if (params.minPrice !== undefined || params.maxPrice !== undefined) {
+    const priceCondition: any = {};
+    if (params.minPrice !== undefined) priceCondition.gte = params.minPrice;
+    if (params.maxPrice !== undefined) priceCondition.lte = params.maxPrice;
+    conditions.push({ price: priceCondition });
+  }
 
-//   // Rating filter using aggregation in WHERE clause
-//   if (params.minRating !== undefined) {
-//     conditions.push(buildRatingFilter(params.minRating));
-//   }
+  // Rating filter using aggregation in WHERE clause
+  if (params.minRating !== undefined) {
+    conditions.push(buildRatingFilter(params.minRating));
+  }
 
-//   return conditions.length > 0 ? { AND: conditions } : {};
-// }
+  return conditions.length > 0 ? { AND: conditions } : {};
+}
 
-// export const getAllProducts = async (req: AuthRequest, res: Response, next: NextFunction) => {
-//   try {
-//     // Parse pagination parameters
-//     const limit = Math.min(parseInt(req.query.limit as string) || 20, 100); // Cap at 100
-//     const cursor = req.query.cursor as string;
+export const getAllProducts = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    // Parse pagination parameters
+    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100); // Cap at 100
+    const cursor = req.query.cursor as string;
 
-//     // Parse filtering parameters
-//     const category = req.query.category as string;
-//     const minPrice = req.query.minPrice
-//       ? parseFloat(req.query.minPrice as string)
-//       : undefined;
-//     const maxPrice = req.query.maxPrice
-//       ? parseFloat(req.query.maxPrice as string)
-//       : undefined;
-//     const search = req.query.search as string;
-//     const minRating = req.query.rating
-//       ? parseFloat(req.query.rating as string)
-//       : undefined;
+    // Parse filtering parameters
+    const category = req.query.category as string;
+    const minPrice = req.query.minPrice
+      ? parseFloat(req.query.minPrice as string)
+      : undefined;
+    const maxPrice = req.query.maxPrice
+      ? parseFloat(req.query.maxPrice as string)
+      : undefined;
+    const search = req.query.search as string;
+    const minRating = req.query.rating
+      ? parseFloat(req.query.rating as string)
+      : undefined;
 
-//     // Determine if we should use algorithm-based ordering
-//     const useAlgorithm = req.user?.userType === "PLUG";
-//     // Parse sorting parameters (only used for suppliers)
-//     const sortBy = (req.query.sortBy as string) || "createdAt";
-//     const order =
-//       (req.query.order as string)?.toLowerCase() === "asc" ? "asc" : "desc";
+    // Determine if we should use algorithm-based ordering
+    const useAlgorithm = req.user?.userType === "PLUG";
+    // Parse sorting parameters (only used for suppliers)
+    const sortBy = (req.query.sortBy as string) || "createdAt";
+    const order =
+      (req.query.order as string)?.toLowerCase() === "asc" ? "asc" : "desc";
 
-//     if (!req.user) {
-//       res.status(401).json({ error: "Unauthorized!" });
-//       return;
-//     }
+    if (!req.user) {
+      res.status(401).json({ error: "Unauthorized!" });
+      return;
+    }
 
-//     let plugAlgorithmData: any = null;
+    let plugAlgorithmData: any = null;
 
-//     if (useAlgorithm && req.user.plug?.id) {
-//       plugAlgorithmData = await getPlugAlgorithmData(req.user.plug.id);
-//     }
-//     const whereConditions = buildWhereClause({
-//       userType: req.user.userType,
-//       pluggedProductIds: plugAlgorithmData?.pluggedProductIds,
-//       search,
-//       category,
-//       minPrice,
-//       maxPrice,
-//       minRating,
-//     });
+    if (useAlgorithm && req.user.plug?.id) {
+      plugAlgorithmData = await getPlugAlgorithmData(req.user.plug.id);
+    }
+    const whereConditions = buildWhereClause({
+      userType: req.user.userType,
+      pluggedProductIds: plugAlgorithmData?.pluggedProductIds,
+      search,
+      category,
+      minPrice,
+      maxPrice,
+      minRating,
+    });
 
-//     // Build single query with proper ordering
-//     let queryOptions: any = {
-//       where: whereConditions,
-//       take: limit + 1, // Take one extra to check for next page
-//       include: {
-//         ...(minRating && {
-//           reviews: {
-//             select: {
-//               rating: true,
-//             },
-//           },
-//         }),
-//       },
-//     };
+    // Build single query with proper ordering
+    let queryOptions: any = {
+      where: whereConditions,
+      take: limit + 1, // Take one extra to check for next page
+      include: {
+        ...(minRating && {
+          reviews: {
+            select: {
+              rating: true,
+            },
+          },
+        }),
+      },
+    };
 
-//     // Regular database ordering
-//     queryOptions.orderBy = useAlgorithm
-//       ? { createdAt: "desc" } // We'll sort by algorithm after fetching
-//       : { [sortBy]: order };
+    // Regular database ordering
+    queryOptions.orderBy = useAlgorithm
+      ? { createdAt: "desc" } // We'll sort by algorithm after fetching
+      : { [sortBy]: order };
 
-//     if (cursor) {
-//       queryOptions.cursor = { id: cursor };
-//       queryOptions.skip = 1;
-//     }
+    if (cursor) {
+      queryOptions.cursor = { id: cursor };
+      queryOptions.skip = 1;
+    }
 
-//     // Single database query
-//     const result = await prisma.product.findMany(queryOptions);
-//     // Handle pagination first
-//     const hasMore = result.length > limit;
-//     let products = hasMore ? result.slice(0, limit) : result;
+    // Single database query
+    const result = await prisma.product.findMany(queryOptions);
+    // Handle pagination first
+    const hasMore = result.length > limit;
+    let products = hasMore ? result.slice(0, limit) : result;
 
-//     // Apply algorithm scoring ONLY for PLUG users
-//     if (useAlgorithm && plugAlgorithmData) {
-//       // Calculate score for each product using SAME algorithm as original
-//       const productsWithScores = products.map((product) => ({
-//         ...product,
-//         algorithmScore: calculateAlgorithmScore(
-//           product.category || "",
-//           plugAlgorithmData
-//         ),
-//       }));
+    // Apply algorithm scoring ONLY for PLUG users
+    if (useAlgorithm && plugAlgorithmData) {
+      // Calculate score for each product using SAME algorithm as original
+      const productsWithScores = products.map((product) => ({
+        ...product,
+        algorithmScore: calculateAlgorithmScore(
+          product.category || "",
+          plugAlgorithmData
+        ),
+      }));
 
-//       // Sort by algorithm score (highest first)
-//       productsWithScores.sort((a, b) => b.algorithmScore - a.algorithmScore);
-//       products = productsWithScores;
-//     }
+      // Sort by algorithm score (highest first)
+      productsWithScores.sort((a, b) => b.algorithmScore - a.algorithmScore);
+      products = productsWithScores;
+    }
 
-//     // Get total count only when needed (first page only)
-//     let totalCount: number | null = null;
-//     if (!cursor) {
-//       totalCount = await prisma.product.count({ where: whereConditions });
-//     }
+    // Get total count only when needed (first page only)
+    let totalCount: number | null = null;
+    if (!cursor) {
+      totalCount = await prisma.product.count({ where: whereConditions });
+    }
 
-//     const hasNextPage = hasMore;
-//     const nextCursor =
-//       hasNextPage && products.length > 0
-//         ? products[products.length - 1].id
-//         : null;
+    const hasNextPage = hasMore;
+    const nextCursor =
+      hasNextPage && products.length > 0
+        ? products[products.length - 1].id
+        : null;
 
-//     const formattedProducts = products.map(formatProduct);
+    const formattedProducts = products.map(formatProduct);
 
-//     // Return response
-//     res.status(200).json({
-//       message:
-//         formattedProducts.length === 0
-//           ? "No products found matching your criteria"
-//           : "Products fetched successfully!",
-//       data: formattedProducts,
-//       meta: {
-//         hasNextPage,
-//         nextCursor,
-//         count: formattedProducts.length,
-//         totalCount,
-//       },
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
+    // Return response
+    res.status(200).json({
+      message:
+        formattedProducts.length === 0
+          ? "No products found matching your criteria"
+          : "Products fetched successfully!",
+      data: formattedProducts,
+      meta: {
+        hasNextPage,
+        nextCursor,
+        count: formattedProducts.length,
+        totalCount,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 
 
@@ -901,381 +901,381 @@
 // };
 
 
-// controllers/products.ts
-import { NextFunction, Response } from "express";
-import { AuthRequest } from "../types";
-import { prisma } from "../config";
-import { formatProduct } from "../helper/formatData";
+// // controllers/products.ts
+// import { NextFunction, Response } from "express";
+// import { AuthRequest } from "../types";
+// import { prisma } from "../config";
+// import { formatProduct } from "../helper/formatData";
 
-/**
- * Build WHERE clause for filtering using correct table/column names
- */
-function buildWhereClause(params: {
-  plugId?: string;
-  search?: string;
-  category?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  minRating?: number;
-  cursor?: string;
-}): { whereClause: string; queryParams: any[] } {
-  const conditions: string[] = [`"status" = 'APPROVED'`];
-  const queryParams: any[] = [];
-  let paramIndex = 1;
+// /**
+//  * Build WHERE clause for filtering using correct table/column names
+//  */
+// function buildWhereClause(params: {
+//   plugId?: string;
+//   search?: string;
+//   category?: string;
+//   minPrice?: number;
+//   maxPrice?: number;
+//   minRating?: number;
+//   cursor?: string;
+// }): { whereClause: string; queryParams: any[] } {
+//   const conditions: string[] = [`"status" = 'APPROVED'`];
+//   const queryParams: any[] = [];
+//   let paramIndex = 1;
 
-  // Exclude plugged products (if plugId provided)
-  if (params.plugId) {
-    conditions.push(
-      `id NOT IN (
-        SELECT DISTINCT "originalId"
-        FROM "PlugProduct"
-        WHERE "plugId" = $${paramIndex} AND "originalId" IS NOT NULL
-      )`
-    );
-    queryParams.push(params.plugId);
-    paramIndex++;
-  }
+//   // Exclude plugged products (if plugId provided)
+//   if (params.plugId) {
+//     conditions.push(
+//       `id NOT IN (
+//         SELECT DISTINCT "originalId"
+//         FROM "PlugProduct"
+//         WHERE "plugId" = $${paramIndex} AND "originalId" IS NOT NULL
+//       )`
+//     );
+//     queryParams.push(params.plugId);
+//     paramIndex++;
+//   }
 
-  // Search filter
-  if (params.search) {
-    conditions.push(
-      `(LOWER("name") LIKE LOWER($${paramIndex}) OR LOWER("description") LIKE LOWER($${paramIndex}))`
-    );
-    queryParams.push(`%${params.search}%`);
-    paramIndex++;
-  }
+//   // Search filter
+//   if (params.search) {
+//     conditions.push(
+//       `(LOWER("name") LIKE LOWER($${paramIndex}) OR LOWER("description") LIKE LOWER($${paramIndex}))`
+//     );
+//     queryParams.push(`%${params.search}%`);
+//     paramIndex++;
+//   }
 
-  // Category filter (comma-separated supported)
-  if (params.category) {
-    const categories = params.category
-      .split(",")
-      .map((c) => c.trim())
-      .filter((c) => c.length > 0 && c.toLowerCase() !== "all");
-    if (categories.length > 0) {
-      const placeholders = categories.map(() => `$${paramIndex++}`).join(", ");
-      conditions.push(`LOWER("category") IN (${placeholders})`);
-      queryParams.push(...categories.map((c) => c.toLowerCase()));
-    }
-  }
+//   // Category filter (comma-separated supported)
+//   if (params.category) {
+//     const categories = params.category
+//       .split(",")
+//       .map((c) => c.trim())
+//       .filter((c) => c.length > 0 && c.toLowerCase() !== "all");
+//     if (categories.length > 0) {
+//       const placeholders = categories.map(() => `$${paramIndex++}`).join(", ");
+//       conditions.push(`LOWER("category") IN (${placeholders})`);
+//       queryParams.push(...categories.map((c) => c.toLowerCase()));
+//     }
+//   }
 
-  // Price filters
-  if (params.minPrice !== undefined) {
-    conditions.push(`"price" >= $${paramIndex}`);
-    queryParams.push(params.minPrice);
-    paramIndex++;
-  }
-  if (params.maxPrice !== undefined) {
-    conditions.push(`"price" <= $${paramIndex}`);
-    queryParams.push(params.maxPrice);
-    paramIndex++;
-  }
+//   // Price filters
+//   if (params.minPrice !== undefined) {
+//     conditions.push(`"price" >= $${paramIndex}`);
+//     queryParams.push(params.minPrice);
+//     paramIndex++;
+//   }
+//   if (params.maxPrice !== undefined) {
+//     conditions.push(`"price" <= $${paramIndex}`);
+//     queryParams.push(params.maxPrice);
+//     paramIndex++;
+//   }
 
-  // Rating filter (uses reviews table)
-  if (params.minRating !== undefined) {
-    conditions.push(`
-      id IN (
-        SELECT DISTINCT "productId"
-        FROM "Review"
-        WHERE rating >= $${paramIndex}
-      )
-    `);
-    queryParams.push(params.minRating);
-    paramIndex++;
-  }
+//   // Rating filter (uses reviews table)
+//   if (params.minRating !== undefined) {
+//     conditions.push(`
+//       id IN (
+//         SELECT DISTINCT "productId"
+//         FROM "Review"
+//         WHERE rating >= $${paramIndex}
+//       )
+//     `);
+//     queryParams.push(params.minRating);
+//     paramIndex++;
+//   }
 
-  // Cursor (simple on id). Keep at the end so param numbering is stable.
-  if (params.cursor) {
-    conditions.push(`id > $${paramIndex}`);
-    queryParams.push(params.cursor);
-    paramIndex++;
-  }
+//   // Cursor (simple on id). Keep at the end so param numbering is stable.
+//   if (params.cursor) {
+//     conditions.push(`id > $${paramIndex}`);
+//     queryParams.push(params.cursor);
+//     paramIndex++;
+//   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-  return { whereClause, queryParams };
-}
+//   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+//   return { whereClause, queryParams };
+// }
 
-/**
- * Get max values for normalization from Product table using proper name
- */
-async function getMaxValues(
-  whereClause: string,
-  queryParams: any[]
-): Promise<{ maxPlugs: number; maxSold: number }> {
-  // NOTE: whereClause already contains full 'WHERE ...' or empty string.
-  const maxQuery = `
-    SELECT
-      MAX(COALESCE("plugsCount", 0)) as max_plugs,
-      MAX(COALESCE("sold", 0)) as max_sold
-    FROM "Product"
-    ${whereClause}
-  `;
-  const result = (await prisma.$queryRawUnsafe(maxQuery, ...queryParams)) as any[];
-  const row = result[0] || {};
-  return {
-    maxPlugs: parseInt(row?.max_plugs ?? "1", 10) || 1,
-    maxSold: parseInt(row?.max_sold ?? "1", 10) || 1,
-  };
-}
+// /**
+//  * Get max values for normalization from Product table using proper name
+//  */
+// async function getMaxValues(
+//   whereClause: string,
+//   queryParams: any[]
+// ): Promise<{ maxPlugs: number; maxSold: number }> {
+//   // NOTE: whereClause already contains full 'WHERE ...' or empty string.
+//   const maxQuery = `
+//     SELECT
+//       MAX(COALESCE("plugsCount", 0)) as max_plugs,
+//       MAX(COALESCE("sold", 0)) as max_sold
+//     FROM "Product"
+//     ${whereClause}
+//   `;
+//   const result = (await prisma.$queryRawUnsafe(maxQuery, ...queryParams)) as any[];
+//   const row = result[0] || {};
+//   return {
+//     maxPlugs: parseInt(row?.max_plugs ?? "1", 10) || 1,
+//     maxSold: parseInt(row?.max_sold ?? "1", 10) || 1,
+//   };
+// }
 
-/**
- * Build main query string using correct table/column names and plugs/sold normalization.
- * We inline safe numeric normalization denominators (maxPlugs/maxSold) and generate
- * the ORDER BY according to the same rules you described.
- */
-function buildMainQuery(params: {
-  whereClause: string;
-  plugData?: {
-    niches: string[];
-    generalMerchant: boolean;
-    pluggedCategories: string[];
-    categoryDistribution: Record<string, number>;
-    totalPluggedProducts: number;
-  } | null;
-  isSupplier: boolean;
-  hasFilters: boolean;
-  maxPlugs: number;
-  maxSold: number;
-  limit: number;
-}): string {
-  const { whereClause, plugData, isSupplier, hasFilters, maxPlugs, maxSold, limit } = params;
+// /**
+//  * Build main query string using correct table/column names and plugs/sold normalization.
+//  * We inline safe numeric normalization denominators (maxPlugs/maxSold) and generate
+//  * the ORDER BY according to the same rules you described.
+//  */
+// function buildMainQuery(params: {
+//   whereClause: string;
+//   plugData?: {
+//     niches: string[];
+//     generalMerchant: boolean;
+//     pluggedCategories: string[];
+//     categoryDistribution: Record<string, number>;
+//     totalPluggedProducts: number;
+//   } | null;
+//   isSupplier: boolean;
+//   hasFilters: boolean;
+//   maxPlugs: number;
+//   maxSold: number;
+//   limit: number;
+// }): string {
+//   const { whereClause, plugData, isSupplier, hasFilters, maxPlugs, maxSold, limit } = params;
 
-  // helper: escape single quotes for inline CASE labels
-  const esc = (s: string) => s.replace(/'/g, "''");
+//   // helper: escape single quotes for inline CASE labels
+//   const esc = (s: string) => s.replace(/'/g, "''");
 
-  // base weighted score expression
-  const baseScore = `(COALESCE("plugsCount",0)::float / ${maxPlugs} * 0.4 + COALESCE("sold",0)::float / ${maxSold} * 0.6)`;
+//   // base weighted score expression
+//   const baseScore = `(COALESCE("plugsCount",0)::float / ${maxPlugs} * 0.4 + COALESCE("sold",0)::float / ${maxSold} * 0.6)`;
 
-  let orderExpr = '';
+//   let orderExpr = '';
 
-  if (isSupplier) {
-    orderExpr = `"createdAt" DESC, id ASC`;
-  } else if (hasFilters) {
-    // with filters (search/category/price/rating) — use base score only
-    orderExpr = `${baseScore} DESC, "createdAt" DESC, id ASC`;
-  } else if (plugData) {
-    // plug with algorithm
-    if (plugData.totalPluggedProducts > 20) {
-      // category distribution boost
-      let categoryBoostCase = "0";
-      const distEntries = Object.entries(plugData.categoryDistribution || {});
-      if (distEntries.length > 0) {
-        const whenClauses = distEntries
-          .map(([cat, proportion]) => `WHEN LOWER("category") = LOWER('${esc(cat)}') THEN ${proportion}`)
-          .join(" ");
-        categoryBoostCase = `(CASE ${whenClauses} ELSE 0 END)`;
-      }
-      // note: we scale category boost smaller so it doesn't overshadow base weights
-      const totalScore = `(${baseScore} + (${categoryBoostCase} * 0.3))`;
-      orderExpr = `${totalScore} DESC, "createdAt" DESC, id ASC`;
-    } else if (!plugData.generalMerchant && plugData.niches.length > 0) {
-      // niche boost: build CASE that adds 0.2 where category matches any niche (exact match)
-      const nicheWhen = plugData.niches
-        .map((n) => `WHEN LOWER("category") = LOWER('${esc(n)}') THEN 0.2`)
-        .join(" ");
-      const nicheCase = `(CASE ${nicheWhen} ELSE 0 END)`;
-      const totalScore = `(${baseScore} + ${nicheCase})`;
-      orderExpr = `${totalScore} DESC, "createdAt" DESC, id ASC`;
-    } else {
-      // general merchant or fallback: base score
-      orderExpr = `${baseScore} DESC, "createdAt" DESC, id ASC`;
-    }
-  } else {
-    orderExpr = `"createdAt" DESC, id ASC`;
-  }
+//   if (isSupplier) {
+//     orderExpr = `"createdAt" DESC, id ASC`;
+//   } else if (hasFilters) {
+//     // with filters (search/category/price/rating) — use base score only
+//     orderExpr = `${baseScore} DESC, "createdAt" DESC, id ASC`;
+//   } else if (plugData) {
+//     // plug with algorithm
+//     if (plugData.totalPluggedProducts > 20) {
+//       // category distribution boost
+//       let categoryBoostCase = "0";
+//       const distEntries = Object.entries(plugData.categoryDistribution || {});
+//       if (distEntries.length > 0) {
+//         const whenClauses = distEntries
+//           .map(([cat, proportion]) => `WHEN LOWER("category") = LOWER('${esc(cat)}') THEN ${proportion}`)
+//           .join(" ");
+//         categoryBoostCase = `(CASE ${whenClauses} ELSE 0 END)`;
+//       }
+//       // note: we scale category boost smaller so it doesn't overshadow base weights
+//       const totalScore = `(${baseScore} + (${categoryBoostCase} * 0.3))`;
+//       orderExpr = `${totalScore} DESC, "createdAt" DESC, id ASC`;
+//     } else if (!plugData.generalMerchant && plugData.niches.length > 0) {
+//       // niche boost: build CASE that adds 0.2 where category matches any niche (exact match)
+//       const nicheWhen = plugData.niches
+//         .map((n) => `WHEN LOWER("category") = LOWER('${esc(n)}') THEN 0.2`)
+//         .join(" ");
+//       const nicheCase = `(CASE ${nicheWhen} ELSE 0 END)`;
+//       const totalScore = `(${baseScore} + ${nicheCase})`;
+//       orderExpr = `${totalScore} DESC, "createdAt" DESC, id ASC`;
+//     } else {
+//       // general merchant or fallback: base score
+//       orderExpr = `${baseScore} DESC, "createdAt" DESC, id ASC`;
+//     }
+//   } else {
+//     orderExpr = `"createdAt" DESC, id ASC`;
+//   }
 
-  // final SELECT. Use quoted "Product" model name.
-  const q = `
-    SELECT * FROM "Product"
-    ${whereClause}
-    ORDER BY ${orderExpr}
-    LIMIT ${limit}
-  `;
+//   // final SELECT. Use quoted "Product" model name.
+//   const q = `
+//     SELECT * FROM "Product"
+//     ${whereClause}
+//     ORDER BY ${orderExpr}
+//     LIMIT ${limit}
+//   `;
 
-  return q;
-}
+//   return q;
+// }
 
-/**
- * Get total count for pagination metadata (uses correct table name)
- */
-async function getTotalCount(params: {
-  plugId?: string;
-  search?: string;
-  category?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  minRating?: number;
-}) {
-  const { whereClause, queryParams } = buildWhereClause(params);
-  const countQuery = `
-    SELECT COUNT(*) as count
-    FROM "Product"
-    ${whereClause}
-  `;
-  const result = (await prisma.$queryRawUnsafe(countQuery, ...queryParams)) as any[];
-  return parseInt(result?.[0]?.count ?? "0", 10);
-}
-
-
-
-/**
- * Gather data about a plug for algorithm prioritization.
- */
-/**
- * Gather data about a plug for algorithm prioritization.
- */
-async function getPlugAlgorithmData(plugId: string) {
-  // Fetch the plug
-  const plug = await prisma.plug.findUnique({
-    where: { id: plugId },
-    select: {
-      id: true,
-      niches: true,          // String[]
-      generalMerchant: true, // Boolean
-    },
-  });
-
-  if (!plug) return null;
-
-  // Collect categories from PlugProduct (since not on Plug directly)
-const plugProducts = await prisma.plugProduct.findMany({
-  where: { plugId },
-  select: {
-    originalProduct: {
-      // 👈 use the correct relation name
-      select: { category: true },
-    },
-  },
-});
-
-  const pluggedCategories = plugProducts
-    .map((pp) => pp.originalProduct?.category)
-    .filter((cat): cat is string => !!cat);
-
-  // Compute category distribution
-  const categoryCounts: Record<string, number> = {};
-  pluggedCategories.forEach((cat) => {
-    const lower = cat.toLowerCase();
-    categoryCounts[lower] = (categoryCounts[lower] || 0) + 1;
-  });
-
-  const totalPluggedProducts = pluggedCategories.length || 1;
-  const categoryDistribution: Record<string, number> = {};
-  for (const [cat, count] of Object.entries(categoryCounts)) {
-    categoryDistribution[cat] = count / totalPluggedProducts;
-  }
-
-  return {
-    niches: plug.niches || [],
-    generalMerchant: plug.generalMerchant,
-    pluggedCategories,
-    categoryDistribution,
-    totalPluggedProducts,
-  };
-}
+// /**
+//  * Get total count for pagination metadata (uses correct table name)
+//  */
+// async function getTotalCount(params: {
+//   plugId?: string;
+//   search?: string;
+//   category?: string;
+//   minPrice?: number;
+//   maxPrice?: number;
+//   minRating?: number;
+// }) {
+//   const { whereClause, queryParams } = buildWhereClause(params);
+//   const countQuery = `
+//     SELECT COUNT(*) as count
+//     FROM "Product"
+//     ${whereClause}
+//   `;
+//   const result = (await prisma.$queryRawUnsafe(countQuery, ...queryParams)) as any[];
+//   return parseInt(result?.[0]?.count ?? "0", 10);
+// }
 
 
 
-/**
- * Controller: getAllProducts (fixed identifiers & query building)
- */
-export const getAllProducts = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    // Parse params
-    const limit = Math.min(parseInt((req.query.limit as string) || "20", 10), 100);
-    const cursor = (req.query.cursor as string) || undefined; // simple id cursor
-    const category = req.query.category as string | undefined;
-    const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice as string) : undefined;
-    const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice as string) : undefined;
-    const search = req.query.search as string | undefined;
-    const minRating = req.query.rating ? parseFloat(req.query.rating as string) : undefined;
+// /**
+//  * Gather data about a plug for algorithm prioritization.
+//  */
+// /**
+//  * Gather data about a plug for algorithm prioritization.
+//  */
+// async function getPlugAlgorithmData(plugId: string) {
+//   // Fetch the plug
+//   const plug = await prisma.plug.findUnique({
+//     where: { id: plugId },
+//     select: {
+//       id: true,
+//       niches: true,          // String[]
+//       generalMerchant: true, // Boolean
+//     },
+//   });
 
-    if (!req.user) {
-      res.status(401).json({ error: "Unauthorized!" });
-      return;
-    }
+//   if (!plug) return null;
 
-    const isPlug = req.user.userType === "PLUG";
-    const isSupplier = req.user.userType === "SUPPLIER";
-    const hasFilters = !!(category || search || minPrice !== undefined || maxPrice !== undefined || minRating !== undefined);
+//   // Collect categories from PlugProduct (since not on Plug directly)
+// const plugProducts = await prisma.plugProduct.findMany({
+//   where: { plugId },
+//   select: {
+//     originalProduct: {
+//       // 👈 use the correct relation name
+//       select: { category: true },
+//     },
+//   },
+// });
 
-    // fetch plug data if needed (only when no filters and user is plug)
-    let plugData = null;
-    if (isPlug && req.user.plug?.id && !hasFilters) {
-      plugData = await getPlugAlgorithmData(req.user.plug.id);
-    }
+//   const pluggedCategories = plugProducts
+//     .map((pp) => pp.originalProduct?.category)
+//     .filter((cat): cat is string => !!cat);
 
-    // Build where + params (cursor appended inside buildWhereClause)
-    const { whereClause, queryParams } = buildWhereClause({
-      plugId: isPlug ? req.user.plug?.id : undefined,
-      search,
-      category,
-      minPrice,
-      maxPrice,
-      minRating,
-      cursor,
-    });
+//   // Compute category distribution
+//   const categoryCounts: Record<string, number> = {};
+//   pluggedCategories.forEach((cat) => {
+//     const lower = cat.toLowerCase();
+//     categoryCounts[lower] = (categoryCounts[lower] || 0) + 1;
+//   });
 
-    // compute max values for normalization (skip for suppliers)
-    let maxValues = { maxPlugs: 1, maxSold: 1 };
-    if (!isSupplier) {
-      // If cursor was included in queryParams, we pass same params; it's fine because max uses same WHERE
-      maxValues = await getMaxValues(whereClause, queryParams);
-    }
+//   const totalPluggedProducts = pluggedCategories.length || 1;
+//   const categoryDistribution: Record<string, number> = {};
+//   for (const [cat, count] of Object.entries(categoryCounts)) {
+//     categoryDistribution[cat] = count / totalPluggedProducts;
+//   }
 
-    // build main query and execute
-    const mainQuery = buildMainQuery({
-      whereClause,
-      plugData,
-      isSupplier,
-      hasFilters,
-      maxPlugs: Math.max(1, maxValues.maxPlugs),
-      maxSold: Math.max(1, maxValues.maxSold),
-      limit: limit + 1, // +1 for pagination check
-    });
+//   return {
+//     niches: plug.niches || [],
+//     generalMerchant: plug.generalMerchant,
+//     pluggedCategories,
+//     categoryDistribution,
+//     totalPluggedProducts,
+//   };
+// }
 
-    const rows = (await prisma.$queryRawUnsafe(mainQuery, ...queryParams)) as any[];
 
-    // pagination handling
-    const hasMore = rows.length > limit;
-    const productsRaw = hasMore ? rows.slice(0, limit) : rows;
 
-    // total count for first page only
-    let totalCount: number | null = null;
-    if (!cursor) {
-      totalCount = await getTotalCount({
-        plugId: isPlug ? req.user.plug?.id : undefined,
-        search,
-        category,
-        minPrice,
-        maxPrice,
-        minRating,
-      });
-    }
+// /**
+//  * Controller: getAllProducts (fixed identifiers & query building)
+//  */
+// export const getAllProducts = async (
+//   req: AuthRequest,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+//     // Parse params
+//     const limit = Math.min(parseInt((req.query.limit as string) || "20", 10), 100);
+//     const cursor = (req.query.cursor as string) || undefined; // simple id cursor
+//     const category = req.query.category as string | undefined;
+//     const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice as string) : undefined;
+//     const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice as string) : undefined;
+//     const search = req.query.search as string | undefined;
+//     const minRating = req.query.rating ? parseFloat(req.query.rating as string) : undefined;
 
-    // next cursor (simple id-based)
-    const nextCursor = hasMore && productsRaw.length > 0 ? productsRaw[productsRaw.length - 1].id : null;
+//     if (!req.user) {
+//       res.status(401).json({ error: "Unauthorized!" });
+//       return;
+//     }
 
-    const formattedProducts = productsRaw.map(formatProduct);
+//     const isPlug = req.user.userType === "PLUG";
+//     const isSupplier = req.user.userType === "SUPPLIER";
+//     const hasFilters = !!(category || search || minPrice !== undefined || maxPrice !== undefined || minRating !== undefined);
 
-    res.status(200).json({
-      message: formattedProducts.length === 0 ? "No products found matching your criteria" : "Products fetched successfully!",
-      data: formattedProducts,
-      meta: {
-        hasNextPage: hasMore,
-        nextCursor,
-        count: formattedProducts.length,
-        totalCount,
-      },
-    });
-  } catch (error) {
-    console.error("Error in getAllProducts:", error);
-    next(error);
-  }
-};
+//     // fetch plug data if needed (only when no filters and user is plug)
+//     let plugData = null;
+//     if (isPlug && req.user.plug?.id && !hasFilters) {
+//       plugData = await getPlugAlgorithmData(req.user.plug.id);
+//     }
+
+//     // Build where + params (cursor appended inside buildWhereClause)
+//     const { whereClause, queryParams } = buildWhereClause({
+//       plugId: isPlug ? req.user.plug?.id : undefined,
+//       search,
+//       category,
+//       minPrice,
+//       maxPrice,
+//       minRating,
+//       cursor,
+//     });
+
+//     // compute max values for normalization (skip for suppliers)
+//     let maxValues = { maxPlugs: 1, maxSold: 1 };
+//     if (!isSupplier) {
+//       // If cursor was included in queryParams, we pass same params; it's fine because max uses same WHERE
+//       maxValues = await getMaxValues(whereClause, queryParams);
+//     }
+
+//     // build main query and execute
+//     const mainQuery = buildMainQuery({
+//       whereClause,
+//       plugData,
+//       isSupplier,
+//       hasFilters,
+//       maxPlugs: Math.max(1, maxValues.maxPlugs),
+//       maxSold: Math.max(1, maxValues.maxSold),
+//       limit: limit + 1, // +1 for pagination check
+//     });
+
+//     const rows = (await prisma.$queryRawUnsafe(mainQuery, ...queryParams)) as any[];
+
+//     // pagination handling
+//     const hasMore = rows.length > limit;
+//     const productsRaw = hasMore ? rows.slice(0, limit) : rows;
+
+//     // total count for first page only
+//     let totalCount: number | null = null;
+//     if (!cursor) {
+//       totalCount = await getTotalCount({
+//         plugId: isPlug ? req.user.plug?.id : undefined,
+//         search,
+//         category,
+//         minPrice,
+//         maxPrice,
+//         minRating,
+//       });
+//     }
+
+//     // next cursor (simple id-based)
+//     const nextCursor = hasMore && productsRaw.length > 0 ? productsRaw[productsRaw.length - 1].id : null;
+
+//     const formattedProducts = productsRaw.map(formatProduct);
+
+//     res.status(200).json({
+//       message: formattedProducts.length === 0 ? "No products found matching your criteria" : "Products fetched successfully!",
+//       data: formattedProducts,
+//       meta: {
+//         hasNextPage: hasMore,
+//         nextCursor,
+//         count: formattedProducts.length,
+//         totalCount,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error in getAllProducts:", error);
+//     next(error);
+//   }
+// };
 
 
 

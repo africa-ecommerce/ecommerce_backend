@@ -40,8 +40,8 @@ export const databaseUrl = process.env.DATABASE_URL || "************";
 export const backendUrl = process.env.BACKEND_URL || "http://localhost:5000";
 export const frontendUrl = process.env.APP_URL || "http://localhost:3000";
 export const logisticsBaseUrl = process.env.LOGISTICS_BASE_URL || "https://65c3-102-216-203-228.ngrok-free.app";
-// export const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY || "sk_test_fbb37fbdd6a0763e535ba9a1f1d8551d42f641da";
-export const paystackSecretKey = "sk_test_d122660fa27fb2c7df66284432992eced5d50b78";
+export const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY || "sk_test_fbb37fbdd6a0763e535ba9a1f1d8551d42f641da";
+// export const paystackSecretKey = "sk_test_d122660fa27fb2c7df66284432992eced5d50b78";
 export const domain = process.env.DOMAIN || "localhost";
 export const adminAccount = process.env.ADMIN_ACCOUNT || "*************";
 
