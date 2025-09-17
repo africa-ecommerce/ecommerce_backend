@@ -39,12 +39,17 @@ export const getProductById = async (
       res.status(404).json({ error: "Product not found!" });
       return;
     }
+    console.log("product", product);
+    console.log("product.originalProduct.priceUpdatedAt", product.originalProduct.priceUpdatedAt);
+    console.log("product.updatedAt", product.updatedAt);
+    console.log("product.originalProduct.status", product.originalProduct.status);
 
     // Outdated check
     if (
       product.originalProduct.priceUpdatedAt > product.updatedAt &&
       product.originalProduct.status == "APPROVED"
     ) {
+
       res.status(404).json({ error: "Product not found!" });
       return;
     }
