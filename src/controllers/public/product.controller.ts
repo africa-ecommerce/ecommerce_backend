@@ -39,10 +39,7 @@ export const getProductById = async (
       res.status(404).json({ error: "Product not found!" });
       return;
     }
-    console.log("product", product);
-    console.log("product.originalProduct.priceUpdatedAt", product.originalProduct.priceUpdatedAt);
-    console.log("product.updatedAt", product.updatedAt);
-    console.log("product.originalProduct.status", product.originalProduct.status);
+   
 
     // Outdated check
     if (
@@ -135,6 +132,8 @@ export const getStoreProductById = async (
       select: { id: true },
     });
 
+     console.log("plug", plug);
+
     if (!plug) {
       res.status(404).json({ error: "Cannot find store for this subdomain!" });
       return;
@@ -160,10 +159,22 @@ export const getStoreProductById = async (
       },
     });
 
+    console.log("product", product);
     if (!product) {
       res.status(404).json({ error: "Product not found!" });
       return;
     }
+
+    
+    console.log(
+      "product.originalProduct.priceUpdatedAt",
+      product.originalProduct.priceUpdatedAt
+    );
+    console.log("product.updatedAt", product.updatedAt);
+    console.log(
+      "product.originalProduct.status",
+      product.originalProduct.status
+    );
 
     // Check if outdated
     if (
