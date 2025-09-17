@@ -3,7 +3,7 @@
 class EnhancedProductDetailsCache {
     constructor() {
         this.baseURL = 'https://api.pluggn.com.ng/public/products';
-        this.subdomain = "arike";
+        this.subdomain = this.getSubdomain();
         
         // Memory cache for immediate access (per product)
         this.memoryCache = new Map();
