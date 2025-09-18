@@ -51,7 +51,7 @@ router.post("/order/delivered", requireAdminAuth, deliveredOrder);
 router.post("/order/received/:orderId", requireAdminAuth, markItemsReceived);
 
 // Cancel an order
-router.post("/order/cancel/:orderId", requireAdminAuth, cancelOrder);
+router.post("/order/cancel", requireAdminAuth, cancelOrder);
 
 
 router.get("/order/paused/:orderId", requireAdminAuth, getPausedOrderItems);
