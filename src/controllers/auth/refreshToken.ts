@@ -245,11 +245,12 @@ export const refreshToken = async (
     // Step 1: Validate cookie exists and looks like JWT
     if (!refreshToken || typeof refreshToken !== "string" || refreshToken.split(".").length !== 3) {
       clearAuthCookies(res);
-      return res.status(401).json({
+       res.status(401).json({
         success: false,
         error: "No valid refresh token!",
         code: "REFRESH_TOKEN_MISSING",
       });
+      return
     }
 
     // Step 2: Refresh session (allow DB fallback if cookie is stale)
@@ -257,40 +258,44 @@ export const refreshToken = async (
 
     if (!result.success || !result.newTokens) {
       clearAuthCookies(res);
-      return res.status(401).json({
+       res.status(401).json({
         success: false,
         error: result.error || "Failed to refresh session!",
         code: "REFRESH_FAILED",
       });
+      return
     }
 
     // Step 3: Set new cookies for access & refresh tokens
     setAuthCookies(res, result.newTokens);
 
     // Step 4: Respond with new tokens
-    return res.status(200).json({
+     res.status(200).json({
       success: true,
       accessToken: result.newTokens.accessToken,
       refreshToken: result.newTokens.refreshToken,
     });
+    return;
   } catch (error: any) {
     console.error("Refresh token error:", error);
 
     // Step 5: Handle JWT-specific errors
     if (error instanceof jwt.TokenExpiredError) {
       clearAuthCookies(res);
-      return res.status(401).json({
+       res.status(401).json({
         success: false,
         error: "Refresh token expired!",
         code: "TOKEN_EXPIRED",
       });
+      return;
     } else if (error instanceof jwt.JsonWebTokenError) {
       clearAuthCookies(res);
-      return res.status(401).json({
+       res.status(401).json({
         success: false,
         error: "Invalid refresh token!",
         code: "INVALID_TOKEN",
       });
+      return;
     }
 
     // Step 6: Catch-all for unexpected errors

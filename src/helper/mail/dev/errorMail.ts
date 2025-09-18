@@ -55,7 +55,5 @@ ${error?.stack || ""}
       subject,
       html,
       senderKey: "devTeam",
-      mailType: "error",
-      priority: "normal", 
     });
 }

@@ -78,8 +78,8 @@ const authenticateJWT = async (
       return; //
     }
 
-    // At this point we have a successful refresh
-    req.user = result.user;
+    // // At this point we have a successful refresh
+    // req.user = result.user;
 
     // Set new tokens in cookies
     setAuthCookies(res, result.newTokens!);
