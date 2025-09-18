@@ -392,12 +392,21 @@ export const pauseOrderItem = async (req: Request, res: Response) => {
        return;
     }
      
-    const plugPrice = Number(orderItem.plugPrice ?? 0);
-    const supplierPrice = Number(orderItem.supplierPrice ?? 0);
-    const commission = Number(orderItem.commission ?? 0);
+    const plugPrice = Number(orderItem.plugPrice);
+    const supplierPrice = Number(orderItem.supplierPrice);
+    const commission = Number(orderItem.commission);
 
-const plugAmount = (plugPrice - supplierPrice - commission) * quantity;
-const supplierAmount = supplierPrice * quantity;    
+       const plugItemTotal = (plugPrice) * quantity;
+       // Calculate plug margin (profit before commission)
+        const plugMargin = plugItemTotal - supplierPrice;
+
+        // Apply commission 
+      const commissionAmount = (plugMargin * (commission)) / 100;
+
+        // Net amount for the plug
+       const plugNetAmount = plugMargin - commissionAmount;
+        // Net amount for the supplier
+       const supplierNetAmount = supplierPrice * quantity;    
 
     await prisma.$transaction(async (tx) => {
       await tx.pausedOrderItem.create({
@@ -412,7 +421,7 @@ const supplierAmount = supplierPrice * quantity;
           plugId: orderItem.plugId!,
           status: "LOCKED",
         },
-        data: { amount: { decrement: plugAmount } },
+        data: { amount: { decrement: plugNetAmount } },
       });
 
        // ✅ Supplier logic only if item was received
@@ -428,9 +437,9 @@ const supplierAmount = supplierPrice * quantity;
       // Deduct from that specific order payment supplierPayment for that supplier, cause the supplier 
       await tx.supplierPayment.update({
         where: {
-          id: supplierPayment!.id,
+          id: supplierPayment?.id,
         },
-        data: { amount: { decrement: supplierAmount } },
+        data: { amount: { decrement: supplierNetAmount } },
       });
         }
     });
@@ -474,9 +483,21 @@ export const unpauseOrderItem = async (req: Request, res: Response) => {
        return;
     }
 
-    const plugAmount =
-      (orderItem.plugPrice! - orderItem.supplierPrice!) * quantity;
-    const supplierAmount = orderItem.supplierPrice! * quantity;
+     const plugPrice = Number(orderItem.plugPrice);
+    const supplierPrice = Number(orderItem.supplierPrice);
+    const commission = Number(orderItem.commission);
+
+       const plugItemTotal = (plugPrice) * quantity;
+       // Calculate plug margin (profit before commission)
+        const plugMargin = plugItemTotal - supplierPrice;
+
+        // Apply commission 
+      const commissionAmount = (plugMargin * (commission)) / 100;
+
+        // Net amount for the plug
+       const plugNetAmount = plugMargin - commissionAmount;
+        // Net amount for the supplier
+       const supplierNetAmount = supplierPrice * quantity;    
 
     await prisma.$transaction(async (tx) => {
       // Handle PlugPayment
@@ -493,7 +514,7 @@ export const unpauseOrderItem = async (req: Request, res: Response) => {
             orderItemId,
             orderId: orderItem.orderId,
             plugId: orderItem.plugId!,
-            amount: plugAmount,
+            amount: plugNetAmount,
           },
         });
       } else {
@@ -503,7 +524,7 @@ export const unpauseOrderItem = async (req: Request, res: Response) => {
           },
           data: {
             amount: {
-              increment: plugAmount,
+              increment: plugNetAmount,
             },
           },
         });
@@ -525,7 +546,7 @@ export const unpauseOrderItem = async (req: Request, res: Response) => {
             orderItemId,
             orderId: orderItem.orderId,
             supplierId: orderItem.supplierId!,
-            amount: supplierAmount,
+            amount: supplierNetAmount,
           },
         });
       } else {
@@ -535,7 +556,7 @@ export const unpauseOrderItem = async (req: Request, res: Response) => {
           },
           data: {
             amount: {
-              increment: supplierAmount,
+              increment: supplierNetAmount,
             },
           },
         });
