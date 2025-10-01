@@ -123,6 +123,8 @@ export const renameStoreConfigInMinio = async (
     const oldKey = generateConfigKey(oldSubdomain);
     const newKey = generateConfigKey(newSubdomain);
 
+    console.log("oldkey", oldKey);
+    console.log("newKey", newKey);
     // Copy to new key (creates it if not existing)
     await minioClient.copyObject(
       STORE_CONFIG_BUCKET,
@@ -132,6 +134,7 @@ export const renameStoreConfigInMinio = async (
 
     // Delete old key
     await minioClient.removeObject(STORE_CONFIG_BUCKET, oldKey);
+    console.log("done")
 
     return getMinioUrl(STORE_CONFIG_BUCKET, newKey);
   } catch (error) {
