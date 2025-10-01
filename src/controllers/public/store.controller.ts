@@ -57,12 +57,21 @@ export async function pixelStoreVisitTracker(req: Request, res: Response, next: 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+        const plug = await prisma.plug.findUnique({
+          where: { subdomain },
+          select: { id: true },
+        });
+
+        if (!plug) {
+          res.status(404).json({ error: "Cannot find store for this subdomain!" });
+          return;
+        }
     // Try to update if exists or create a new record
     await prisma.storeAnalytics.upsert({
-      where: { subdomain },
+      where: { plugId: plug.id },
       update: { count: { increment: 1 } },
       create: {
-        subdomain,
+        plugId: plug.id,
         count: 1,
       },
     });

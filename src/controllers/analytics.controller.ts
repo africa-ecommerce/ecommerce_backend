@@ -107,17 +107,17 @@ export async function getPlugStoreAnalytics(req: AuthRequest, res: Response, nex
   try {
     const plug = req.plug;
 
-    if (!plug?.subdomain) {
+    if (!plug?.id) {
       res.status(404).json({ error: "User store not found!" });
       return;
     }
     const analytics = await prisma.storeAnalytics.findUnique({
-      where: { subdomain: plug?.subdomain },
+      where: { plugId: plug.id },
       select: { count: true },
     });
     const visits = analytics?.count || 0;
 
-    // Get store-specific orders
+    // Get plugstore-specific orders
     const orders =
       (await prisma.order.count({
         where: {

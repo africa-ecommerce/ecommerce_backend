@@ -117,13 +117,11 @@ export const getStoreProductById = async (
 ) => {
   try {
     const { productId } = req.params;
-    console.log("req.query.subdomain", req.query.subdomain);
     const subdomain = (req.query.subdomain || "")
       .toString()
       .trim()
       .toLowerCase();
 
-       console.log("subdomain", subdomain);
 
     if (!subdomain || !productId) {
       res.status(400).json({ error: "Missing or invalid field data!" });
@@ -135,7 +133,6 @@ export const getStoreProductById = async (
       select: { id: true },
     });
 
-     console.log("plug", plug);
 
     if (!plug) {
       res.status(404).json({ error: "Cannot find store for this subdomain!" });
@@ -162,23 +159,12 @@ export const getStoreProductById = async (
       },
     });
 
-    console.log("product", product);
     if (!product) {
       res.status(404).json({ error: "Product not found!" });
       return;
     }
 
     
-    console.log(
-      "product.originalProduct.priceUpdatedAt",
-      product.originalProduct.priceUpdatedAt
-    );
-    console.log("product.updatedAt", product.updatedAt);
-    console.log(
-      "product.originalProduct.status",
-      product.originalProduct.status
-    );
-
     // Check if outdated
     if (
       product.originalProduct.priceUpdatedAt > product.updatedAt &&

@@ -165,16 +165,13 @@ export const updateProfile = [
       let configUrl: string | null = user.plug.configUrl || null;
 
       try {
-        console.log("oldSubdomain", oldSubdomain);;
-        console.log("newSubdomain", newSubdomain);;
+       
         // Step 1: Rename in MinIO if needed
         if (oldSubdomain && oldSubdomain !== newSubdomain) {
-          console.log("yes");
           configUrl = await renameStoreConfigInMinio(
             oldSubdomain,
             newSubdomain
           );
-           console.log("configUrl", configUrl);
         }
 
         // Step 2: Update DB in transaction

@@ -387,7 +387,7 @@ model LinkAnalytics {
 
 model StoreAnalytics {
   id        String @id @default(cuid())
-  subdomain String @unique
+  plugId    String? @unique
   count     Int    @default(0)
 }
 
