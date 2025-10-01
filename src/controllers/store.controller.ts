@@ -5,7 +5,6 @@ import {
   saveStoreConfigToMinio,
   getStoreConfigFromMinio,
   deleteStoreConfigFromMinio,
-  updateStoreConfigInMinio,
 } from "../helper/minioObjectStore/storeConfig";
 import { subdomainSchema } from "../lib/zod/schema";
 import { AuthRequest } from "../types";
@@ -130,7 +129,7 @@ export const updateStore = async (
         newConfigUrl = plug.configUrl;
       } else {
         // If config is provided, save it to MinIO
-        newConfigUrl = await updateStoreConfigInMinio(subdomain, config);
+        newConfigUrl = await saveStoreConfigToMinio(subdomain, config);
         minioUpdateSucceeded = true;
       }
 

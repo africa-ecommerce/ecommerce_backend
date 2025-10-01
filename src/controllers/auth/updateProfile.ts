@@ -14,6 +14,7 @@ import {
 import { z } from "zod";
 import { getGeocode } from "../../helper/logistics";
 import { normalizeBusinessName } from "../../helper/helperFunc";
+import { renameStoreConfigInMinio } from "../../helper/minioObjectStore/storeConfig";
 
 
 export const updateProfile = [
@@ -82,9 +83,12 @@ export const updateProfile = [
         if (req.file) {
           // const [url] = await uploadImages([req.file] as Express.Multer.File[]);
 
-              const [url] = await uploadImages([req.file] as Express.Multer.File[], {
-                    avatar: true,
-                  });
+          const [url] = await uploadImages(
+            [req.file] as Express.Multer.File[],
+            {
+              avatar: true,
+            }
+          );
           avatarUrl = url;
         }
 
@@ -131,54 +135,81 @@ export const updateProfile = [
         return;
       }
 
-      // ------------------------ PLUG UPDATE ------------------------
-      if (user.userType === "PLUG" && user.plug) {
-        const plugParse = updatePlugInfoSchema.safeParse({
-          businessName: profileData.businessName,
-          phone: profileData.phone,
-          state: profileData.state,
-        });
+      //------------PLUG UPDATE ------------- 
+    if (user.userType === "PLUG" && user.plug) {
+      const plugParse = updatePlugInfoSchema.safeParse({
+        businessName: profileData.businessName,
+        phone: profileData.phone,
+        state: profileData.state,
+      });
 
-        if (!plugParse.success) {
-          res.status(400).json({ error: "All fields are required!" });
-          return;
-        }
-
-        oldAvatarUrl = user.plug.avatar || null;
-
-        if (req.file) {
-          // const [url] = await uploadImages([req.file] as Express.Multer.File[]);
-
-              const [url] = await uploadImages([req.file] as Express.Multer.File[], {
-                    avatar: true,
-                  });
-          avatarUrl = url;
-        }
-
-         const normalized = normalizeBusinessName(plugParse.data.businessName!);
-
-  await prisma.plug.update({
-    where: { userId },
-    data: {
-      businessName: plugParse.data.businessName?.trim(),
-      phone: plugParse.data.phone,
-      state: plugParse.data.state || user.plug.state,
-      aboutBusiness: profileData.aboutBusiness || user.plug.aboutBusiness,
-      avatar: avatarUrl || oldAvatarUrl,
-      updatedAt: new Date(),
-      normalizedBusinessName: normalized,
-      // 👇 only update subdomain if it already exists
-      subdomain: user.plug.subdomain ? normalized : user.plug.subdomain,
-    },
-  });
-
-        if (oldAvatarUrl && avatarUrl && oldAvatarUrl !== avatarUrl) {
-          await deleteImages([oldAvatarUrl]);
-        }
-
-        res.status(200).json({ message: "Profile updated successfully!" });
+      if (!plugParse.success) {
+        res.status(400).json({ error: "All fields are required!" });
         return;
       }
+
+      oldAvatarUrl = user.plug.avatar || null;
+
+      if (req.file) {
+        const [url] = await uploadImages([req.file] as Express.Multer.File[], {
+          avatar: true,
+        });
+        avatarUrl = url;
+      }
+
+      const normalized = normalizeBusinessName(plugParse.data.businessName!);
+
+      const oldSubdomain = user.plug.subdomain;
+      const newSubdomain = normalized;
+
+      let configUrl: string | null = user.plug.configUrl || null;
+
+      try {
+        // Step 1: Rename in MinIO if needed
+        if (oldSubdomain && oldSubdomain !== newSubdomain) {
+          configUrl = await renameStoreConfigInMinio(
+            oldSubdomain,
+            newSubdomain
+          );
+        }
+
+        // Step 2: Update DB in transaction
+        await prisma.$transaction(async (tx) => {
+          await tx.plug.update({
+            where: { userId },
+            data: {
+              businessName: plugParse.data.businessName?.trim(),
+              phone: plugParse.data.phone,
+              state: plugParse.data.state || user.plug?.state,
+              aboutBusiness:
+                profileData.aboutBusiness || user.plug?.aboutBusiness,
+              avatar: avatarUrl || oldAvatarUrl,
+              updatedAt: new Date(),
+              normalizedBusinessName: normalized,
+              subdomain: newSubdomain,
+              configUrl, // 👈 consistent with rename result
+            },
+          });
+        });
+      } catch (err) {
+        // Step 3: Rollback MinIO if DB failed AFTER rename
+        if (oldSubdomain && oldSubdomain !== newSubdomain && configUrl) {
+          try {
+            await renameStoreConfigInMinio(newSubdomain, oldSubdomain);
+          } catch (rollbackErr) {
+            console.error("Rollback failed, manual fix required:", rollbackErr);
+          }
+        }
+        throw err;
+      }
+
+      if (oldAvatarUrl && avatarUrl && oldAvatarUrl !== avatarUrl) {
+        await deleteImages([oldAvatarUrl]);
+      }
+
+      res.status(200).json({ message: "Profile updated successfully!" });
+      return;
+    }
 
       res.status(400).json({ error: "Please refresh and try again!" });
     } catch (error) {

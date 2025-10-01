@@ -106,9 +106,39 @@ import {
 
   // Update store configuration in MinIO
 export const updateStoreConfigInMinio = async (
+  
   subdomain: string,
   config: any
 ): Promise<string> => {
   // We can reuse the save function since MinIO will overwrite existing objects
   return saveStoreConfigToMinio(subdomain, config);
+};
+
+
+export const renameStoreConfigInMinio = async (
+  oldSubdomain: string,
+  newSubdomain: string
+): Promise<string> => {
+  try {
+    const oldKey = generateConfigKey(oldSubdomain);
+    const newKey = generateConfigKey(newSubdomain);
+
+    // Copy to new key (creates it if not existing)
+    await minioClient.copyObject(
+      STORE_CONFIG_BUCKET,
+      newKey,
+      `/${STORE_CONFIG_BUCKET}/${oldKey}`
+    );
+
+    // Delete old key
+    await minioClient.removeObject(STORE_CONFIG_BUCKET, oldKey);
+
+    return getMinioUrl(STORE_CONFIG_BUCKET, newKey);
+  } catch (error) {
+    console.error(
+      `Failed to rename store config from ${oldSubdomain} to ${newSubdomain}:`,
+      error
+    );
+    throw error;
+  }
 };
