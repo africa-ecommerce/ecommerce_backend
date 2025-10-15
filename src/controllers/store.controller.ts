@@ -10,76 +10,72 @@ import { subdomainSchema } from "../lib/zod/schema";
 import { AuthRequest } from "../types";
 
 
+
 /**
- * Create a new store for a user
- * Ensures atomicity between MinIO and database operations
+ * Create a new store for a user.
+ * Ensures atomic behavior between MinIO and DB using a two-phase commit pattern.
  */
 export const createStore = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const plug = req.plug!;
+  const data = req.body;
+
+  if (plug.subdomain || plug.configUrl) {
+     res.status(409).json({ error: "You already have an existing store!" });
+     return;
+  }
+
+  const subdomain = plug.normalizedBusinessName;
+  if (!subdomain) {
+     res.status(400).json({ error: "No normalized business name found!" });
+     return;
+  }
+
+  const { config } = data;
+  if (!config) {
+    res.status(400).json({ error: "Config data is required!" });
+    return;
+  } 
+
   let configUrl: string | undefined;
-  let minioOperationSucceeded = false;
-  
+
   try {
-    const plug = req.plug!;
-    const data = req.body;
+    // 🔹 1. Save config to MinIO (phase 1)
+    configUrl = await saveStoreConfigToMinio(subdomain, config);
 
-    // If subdomain or configUrl is already set, it means the user already has a site
-    if (plug.subdomain || plug.configUrl) {
-      res.status(409).json({
-        error: "You already have an existing store!",
+    // 🔹 2. Try to write to DB (phase 2)
+    await prisma.$transaction(async (tx) => {
+      await tx.plug.update({
+        where: { id: plug.id },
+        data: {
+          subdomain,
+          configUrl,
+        },
       });
-      return;
-    }
+    });
 
-    // ✅ Use normalizedBusinessName as subdomain
-    const subdomain = plug.normalizedBusinessName;
-    if (!subdomain) {
-      res.status(400).json({ error: "No normalized business name found!" });
-      return;
-    }
-
-    // Get config from request body
-    const { config } = data;
-    if (!config) {
-      res.status(400).json({ error: "Config data is required!" });
-      return;
-    }
-    try {
-      // 1. Save config to MinIO first
-      configUrl = await saveStoreConfigToMinio(subdomain, config);
-      minioOperationSucceeded = true;
-      // 2. Update database with transaction
-      await prisma.$transaction(async (tx) => {
-        await tx.plug.update({
-          where: { id: plug.id },
-          data: {
-            subdomain,
-            configUrl,
-          },
-        });
-      });
-
-      // Generate store URL based on subdomain
-      const siteUrl = `https://${subdomain}.pluggn.store`;
-      res.status(201).json({
-        message: "Store created successfully!",
-        siteUrl,
-      });
-    } catch (innerError) {
-      // Rollback MinIO operation if it succeeded but database failed
-      if (minioOperationSucceeded) {
-        try {
-          await deleteStoreConfigFromMinio(subdomain);
-        } catch (rollbackError) {
-          console.error(
-            `Failed to roll back MinIO operation for subdomain ${subdomain}:`,
-            rollbackError
-          );
-          // Log this for admin intervention
-        }
-      }
-      throw innerError; // Re-throw to be caught by outer catch
-    }
+    // 🔹 3. Both succeeded → return success
+    const siteUrl = `https://${subdomain}.pluggn.store`;
+     res.status(201).json({
+      message: "Store created successfully!",
+      siteUrl,
+    });
   } catch (error) {
+    console.error("❌ Store creation failed, initiating rollback:", error);
+
+    // 🔹 Rollback logic
+    try {
+      // If DB failed after MinIO success, delete MinIO config
+      if (configUrl) await deleteStoreConfigFromMinio(subdomain);
+
+      // If DB partially wrote, ensure cleanup
+      await prisma.plug.updateMany({
+        where: { id: plug.id, subdomain },
+        data: { subdomain: null, configUrl: null },
+      });
+    } catch (rollbackError) {
+      console.error("⚠️ Rollback failed:", rollbackError);
+    }
+
     next(error);
   }
 };
@@ -111,67 +107,45 @@ export const updateStore = async (
     const { config } = data;
 
     try {
-      // If config provided, backup old config for rollback purposes
+      // Step 1: Backup old config
       if (config) {
-        try {
-          oldConfigBackup = await getStoreConfigFromMinio(oldSubdomain);
-        } catch (backupError) {
-          console.error(
-            `Cannot backup existing config for ${oldSubdomain}:`,
-            backupError
-          );
-          // Continue even if backup fails - this is just for rollback
-        }
+        oldConfigBackup = await getStoreConfigFromMinio(oldSubdomain).catch(
+          () => null
+        );
       }
 
-      // Update config in MinIO if needed
-      if (!config) {
-        newConfigUrl = plug.configUrl;
-      } else {
-        // If config is provided, save it to MinIO
+      // Step 2: Save new config to MinIO
+      if (config) {
         newConfigUrl = await saveStoreConfigToMinio(subdomain, config);
         minioUpdateSucceeded = true;
+      } else {
+        newConfigUrl = plug.configUrl;
       }
 
-      // If subdomain changed (e.g. businessName changed and normalized value updated)
-      if (subdomain !== oldSubdomain) {
-        try {
-          await deleteStoreConfigFromMinio(oldSubdomain);
-        } catch (deleteError) {
-          console.error(
-            `Failed to delete old config from MinIO for ${oldSubdomain}:`,
-            deleteError
-          );
-        }
-      }
-
-      // Update database with transaction
+      // Step 3: Update DB in transaction
       await prisma.$transaction(async (tx) => {
         await tx.plug.update({
           where: { id: plug.id },
-          data: {
-            subdomain,
-            configUrl: newConfigUrl,
-          },
+          data: { subdomain, configUrl: newConfigUrl },
         });
       });
 
-      // Generate site URL based on subdomain
-      const siteUrl = `https://${subdomain}.pluggn.store`;
+      // Step 4: Only now, delete old MinIO file if subdomain changed
+      if (subdomain !== oldSubdomain) {
+        await deleteStoreConfigFromMinio(oldSubdomain).catch(console.error);
+      }
 
-      res.status(200).json({
-        message: "Store updated successfully!",
-        siteUrl,
-      });
+      res
+        .status(200)
+        .json({
+          message: "Store updated successfully!",
+          siteUrl: `https://${subdomain}.pluggn.store`,
+        });
     } catch (innerError) {
-      try {
-        if (minioUpdateSucceeded && oldConfigBackup) {
-          await saveStoreConfigToMinio(subdomain, oldConfigBackup);
-        }
-      } catch (rollbackError) {
-        console.error(
-          `Failed to rollback MinIO operations for ${oldSubdomain}:`,
-          rollbackError
+      // Rollback if MinIO succeeded but DB failed
+      if (minioUpdateSucceeded && oldConfigBackup) {
+        await saveStoreConfigToMinio(oldSubdomain, oldConfigBackup).catch(
+          console.error
         );
       }
       throw innerError;
