@@ -12,6 +12,8 @@ router.use(plugAuth);
 
 // Routes for adding products to plug
 router.post("/", plugProductController.addProductsToPlug);
+// Routes for adding  a single product to plug
+router.post("/single", plugProductController.addProductToPlug);
 
 // Route to get all products in plug
 router.get("/", plugProductController.getPlugProducts);

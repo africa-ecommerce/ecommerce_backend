@@ -2,6 +2,7 @@ import { NextFunction, Response } from "express";
 import { prisma } from "../config";
 import { AuthRequest } from "../types";
 import { formatPlugProduct } from "../helper/formatData";
+import { discoverCache, DiscoverStack } from "../helper/cache/discoverCache";
 // import { scheduleProductUpdate } from "../helper/workers/priceUpdater";
 
 export const plugProductController = {
@@ -13,7 +14,6 @@ export const plugProductController = {
   ) => {
     try {
       const products = req.body; // --------------> ADD COMMISSION AS AT TIME OF ADDING PRODUCTS
-      console.log(products);
       const plug = req.plug!;
       // Basic validation
       if (!Array.isArray(products) || products.length === 0) {
@@ -104,6 +104,16 @@ export const plugProductController = {
         }
       });
 
+      // Remove added products from cache stack if it exists
+      const cacheKey = `discover_stack_${plug.id}`;
+     const cached = discoverCache.get(cacheKey) as DiscoverStack | undefined;
+      if (cached) {
+        cached.products = cached.products.filter(
+          (p) => !uniqueProductIds.includes(p.id)
+        );
+        discoverCache.set(cacheKey, cached);
+      }
+
       res.status(201).json({
         message: `Added products to your store!`,
       });
@@ -111,6 +121,93 @@ export const plugProductController = {
       next(error);
     }
   },
+
+
+  addProductToPlug: async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id, price, commissionRate } = req.body;
+    const plug = req.plug!;
+
+    // Basic validation
+    if (!id || !price) {
+      res.status(400).json({
+        error: "Please provide product ID and price!",
+      });
+      return;
+    }
+
+    const parsedPrice = parseFloat(price);
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      res.status(400).json({
+        error: "Provide a valid product price!",
+      });
+      return;
+    }
+
+    // Fetch the original supplier product
+    const originalProduct = await prisma.product.findUnique({
+      where: { id },
+    });
+
+    if (!originalProduct) {
+      res.status(404).json({
+        error: "Product not found!",
+      });
+      return;
+    }
+
+    // Prevent setting a price below supplier price
+    if (parsedPrice < originalProduct.price) {
+      res.status(400).json({
+        error: "Price cannot be below supplier price!",
+        supplierPrice: originalProduct.price,
+        proposedPrice: parsedPrice,
+      });
+      return;
+    }
+
+    // Transaction: create plug product + increment supplier plugsCount
+    const createdPlugProduct = await prisma.$transaction(async (tx) => {
+      const plugProduct = await tx.plugProduct.create({
+        data: {
+          originalId: id,
+          plugId: plug.id,
+          price: parsedPrice,
+          commission: commissionRate,
+        },
+      });
+
+      await tx.product.update({
+        where: { id },
+        data: {
+          plugsCount: { increment: 1 },
+        },
+      });
+
+      return plugProduct;
+    });
+
+    // 🧠 Remove from cache if present
+    const cacheKey = `discover_stack_${plug.id}`;
+    const cached = discoverCache.get(cacheKey) as DiscoverStack | undefined;
+    if (cached) {
+      cached.products = cached.products.filter((p) => p.id !== id);
+      discoverCache.set(cacheKey, cached);
+    }
+
+    // ✅ Return the created plug product’s ID
+    res.status(201).json({
+      message: "Product added to your store!",
+      id: createdPlugProduct.id,
+    });
+  } catch (error) {
+    next(error);
+  }
+},
   // Get all plug products with complete details including reviews
   getPlugProducts: async (
     req: AuthRequest,
