@@ -2,49 +2,52 @@ import { NextFunction, Response } from "express";
 import { AuthRequest } from "../types";
 import { prisma } from "../config";
 
-
-//work and improve this algorithm 
+// constants
 export const DEFAULT_CATEGORY_RATING = 1.0;
-
-// scoring weights — tuning knobs
 const WEIGHT_PLUGSCOUNT = 0.1;
 const WEIGHT_SOLD = 0.2;
 const WEIGHT_RECENT = 0.06;
 const WEIGHT_REVIEW = 0.05;
+export const REJECT_PENALTY_MULTIPLIER = 0.3;
 
-
-
-// penalize factor for rejected products (multiplier < 1)
-export const REJECT_PENALTY_MULTIPLIER = 0.3; // 70% penalty on score if rejected
-
-export function daysSince(date: Date | string) {
+// --- utils ---
+function daysSince(date: Date | string) {
   return (Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24);
 }
 
-export function computeProductBaseScore(product: any, categoryRating = DEFAULT_CATEGORY_RATING) {
-  // product: plugsCount, sold, createdAt, reviewsCount
+function computeProductBaseScore(product: any, categoryRating = DEFAULT_CATEGORY_RATING) {
   let score = 1.0;
-  if (product.plugsCount && product.plugsCount > 0) {
+  if (product.plugsCount && product.plugsCount > 0)
     score += Math.log10(product.plugsCount + 1) * WEIGHT_PLUGSCOUNT;
-  }
-  if (product.sold && product.sold > 0) {
+  if (product.sold && product.sold > 0)
     score += Math.log10(product.sold + 1) * WEIGHT_SOLD;
-  }
-  const days = daysSince(product.createdAt);
-  if (days <= 7) score += WEIGHT_RECENT;
-  if (product.reviewsCount && product.reviewsCount > 0) {
+  if (daysSince(product.createdAt) <= 7) score += WEIGHT_RECENT;
+  if (product.reviewsCount && product.reviewsCount > 0)
     score += Math.log10(product.reviewsCount + 1) * WEIGHT_REVIEW;
-  }
-  // final multiplier
   return score * categoryRating;
 }
 
-export function shuffle<T>(arr: T[]) {
+function shuffle<T>(arr: T[]) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
+}
+
+// fixes BigInt serialization
+function normalizeBigInt(obj: any): any {
+  if (Array.isArray(obj)) return obj.map(normalizeBigInt);
+  if (obj && typeof obj === "object") {
+    const normalized: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (typeof value === "bigint") normalized[key] = Number(value);
+      else if (typeof value === "object") normalized[key] = normalizeBigInt(value);
+      else normalized[key] = value;
+    }
+    return normalized;
+  }
+  return obj;
 }
 
 
@@ -69,31 +72,31 @@ export const discoverProducts = async (
   try {
     const plug = req.plug!;
     const plugId = plug.id;
-    const limit = Math.min(1000, parseInt(String(req.query.limit || "20"))); // safe default
-    const poolSize = Math.min(5000, parseInt(String(req.query.pool || "1000"))); // candidate pool size
+    const limit = Math.min(1000, parseInt(String(req.query.limit || "20")));
+    const poolSize = Math.min(5000, parseInt(String(req.query.pool || "1000")));
 
-    // 1) excluded: plug's plugProducts (inventory)
+    // 1️⃣ excluded: plug's own products
     const plugProducts = await prisma.plugProduct.findMany({
       where: { plugId },
       select: { originalId: true },
     });
-    const excludedInventory = new Set(plugProducts.map((p) => p.originalId));
+    const excludedInventory = plugProducts.map((p) => p.originalId);
 
-    // 2) excluded accepted productIds
+    // 2️⃣ excluded: accepted
     const acceptedRows = await prisma.acceptedProduct.findMany({
       where: { plugId },
       select: { productId: true },
     });
-    const acceptedSet = new Set(acceptedRows.map((r) => r.productId));
+    const acceptedIds = acceptedRows.map((r) => r.productId);
 
-    // 3) rejected products for this plug (map productId -> count)
+    // 3️⃣ rejected: map productId -> count
     const rejectedRows = await prisma.rejectedProduct.findMany({
       where: { plugId },
     });
     const rejectedMap = new Map<string, number>();
     for (const r of rejectedRows) rejectedMap.set(r.productId, r.count);
 
-    // 4) fetch plug's category ratings in bulk
+    // 4️⃣ category ratings
     const ratingsRows = await prisma.plugCategoryRating.findMany({
       where: { plugId },
     });
@@ -101,67 +104,52 @@ export const discoverProducts = async (
       ratingsRows.map((r) => [r.category, r.rating])
     );
 
-    // 5) fetch candidate pool of products from DB
-    // Use a reasonable filter: status = APPROVED, stock > 0, not in inventory, not in accepted
-    // We'll fetch `poolSize` newest products (could be changed to other ordering)
-    const excludedIds = Array.from(
-      new Set([...Array.from(excludedInventory), ...Array.from(acceptedSet)])
-    );
+    // 5️⃣ candidate pool query (with casted review count)
+    const excludedIds = [...excludedInventory, ...acceptedIds];
+    const exclusionSql =
+      excludedIds.length > 0
+        ? `AND p."id" NOT IN (${excludedIds.map((id) => `'${id}'`).join(",")})`
+        : "";
 
-    // raw query for decent performance with reviews count
     const candidates = await prisma.$queryRawUnsafe<any[]>(`
-      SELECT p.*, (SELECT COUNT(*) FROM "Review" r WHERE r."productId" = p.id) AS "reviewsCount"
+      SELECT 
+        p.*, 
+        CAST((SELECT COUNT(*) FROM "Review" r WHERE r."productId" = p.id) AS INT) AS "reviewsCount"
       FROM "Product" p
       WHERE p."status" = 'APPROVED'
         AND COALESCE(p."stock",0) > 0
-        ${
-          excludedIds.length
-            ? `AND p."id" NOT IN (${excludedIds
-                .map((id) => `'${id}'`)
-                .join(",")})`
-            : ""
-        }
+        ${exclusionSql}
       ORDER BY p."createdAt" DESC
       LIMIT ${poolSize};
     `);
 
-    // 6) compute scores, apply rejection penalty if present
+    // 6️⃣ score computation
     const annotated = candidates.map((p) => {
       const catRating = ratingMap.get(p.category) ?? DEFAULT_CATEGORY_RATING;
       let score = computeProductBaseScore(p, catRating);
 
       const rejCount = rejectedMap.get(p.id) ?? 0;
       if (rejCount > 0) {
-        // penalty: stronger penalty as count increases
-        const penaltyMultiplier = Math.pow(
-          REJECT_PENALTY_MULTIPLIER,
-          Math.min(rejCount, 4)
-        ); // cap exponent to avoid underflow
+        const penaltyMultiplier = Math.pow(REJECT_PENALTY_MULTIPLIER, Math.min(rejCount, 4));
         score *= penaltyMultiplier;
       }
 
-      return { product: p, score, rejectedCount: rejCount };
+      return { ...p, _score: score, _rejectedCount: rejCount };
     });
 
-    // 7) sort by score descending, take top `limit`, then shuffle to avoid fixed position bias
-    annotated.sort((a, b) => b.score - a.score);
-    const top = annotated
-      .slice(0, limit)
-      .map((a) => ({
-        ...a.product,
-        _score: a.score,
-        _rejectedCount: a.rejectedCount,
-      }));
+    // 7️⃣ sort & shuffle
+    annotated.sort((a, b) => b._score - a._score);
+    const top = shuffle(annotated.slice(0, limit));
 
-    // shuffle positions so order isn't predictable (still maintains high-score items in pool)
-    const result = shuffle(top);
-
-     res.status(200).json({ count: result.length, products: result });
+    // 8️⃣ normalize BigInt -> send response
+    res.status(200).json({
+      count: top.length,
+      products: normalizeBigInt(top),
+    });
   } catch (err) {
     next(err);
   }
 };
-
 
 
 
