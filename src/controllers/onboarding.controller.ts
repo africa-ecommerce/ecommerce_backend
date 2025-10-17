@@ -164,19 +164,35 @@ export const onboarding = [
             profile: { businessName, phone, state, aboutBusiness },
           } = plugData;
 
-          await tx.plug.create({
-            data: {
-              userId,
-              businessName: businessName.trim().toLowerCase(),
-              normalizedBusinessName: normalizeBusinessName(businessName),
-              phone,
-              state,
-              aboutBusiness,
-              niches,
-              generalMerchant,
-              avatar: avatarUrl,
-            },
-          });
+        const plug = await tx.plug.create({
+          data: {
+            userId,
+            businessName: businessName.trim().toLowerCase(),
+            normalizedBusinessName: normalizeBusinessName(businessName),
+            phone,
+            state,
+            aboutBusiness,
+            niches,
+            generalMerchant,
+            avatar: avatarUrl,
+          },
+        });
+
+          // Only create if NOT general merchant
+          if (!generalMerchant && Array.isArray(niches) && niches.length > 0) {
+            const categoryRecords = niches.map((category: string) => ({
+              plugId: plug.id,
+              category,
+              rating: 1.0,
+            }));
+
+            await tx.plugCategoryRating.createMany({
+              data: categoryRecords,
+              skipDuplicates: true, // safety in case rerun
+            });
+          }
+
+          // Optionally: if general merchant, you can initialize later lazily
         }
       });
 

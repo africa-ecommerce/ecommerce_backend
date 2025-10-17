@@ -472,3 +472,58 @@ enum ProductStatus {
   APPROVED
   QUERIED
 }
+
+
+model PlugCategoryRating {
+  id        String   @id @default(cuid())
+  plugId    String
+  category  String
+  rating    Float    @default(1.0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([plugId, category])
+  @@index([plugId])
+  @@index([category])
+}
+
+/// Aggregate/summary of interactions per plug (updated on each sync)
+model TrackDiscovery {
+  id          String   @id @default(cuid())
+  plugId      String   @unique
+  totalSwipes Int      @default(0)
+  lastAction  String?  // "accepted" | "rejected" 
+  lastAt      DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([plugId])
+}
+
+/// Stores products the plug has rejected (counts for penalty/logic)
+model RejectedProduct {
+  id         String   @id @default(cuid())
+  plugId     String
+  productId  String
+  count      Int      @default(1)        // how many times user rejected
+  lastAt     DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@unique([plugId, productId])
+  @@index([plugId])
+  @@index([productId])
+}
+
+/// Stores products the plug accepted (carted/added). Use "status" to indicate carted/priced/purchased.
+model AcceptedProduct {
+  id         String   @id @default(cuid())
+  plugId     String
+  productId  String
+  count      Int      @default(1)
+  lastAt     DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@unique([plugId, productId])
+  @@index([plugId])
+  @@index([productId])
+}

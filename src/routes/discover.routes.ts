@@ -1,15 +1,23 @@
 import { Router } from "express";
 import authenticateJWT from "../middleware/auth.middleware";
-import { discoverProducts } from "../controllers/discover.controller";
+import { discoverProducts, getAcceptedProducts, syncDiscovery } from "../controllers/discover.controller";
+import { isPlug } from "../middleware/role.middleware";
 
 
 const router = Router();
 
-router.use(authenticateJWT);
+// Middleware to ensure user is authenticated and is a plug
+const plugAuth = [authenticateJWT, isPlug];
+
+router.use(plugAuth);
+
 
 
 // Route to get all products
 router.get("/products", discoverProducts);
+router.post("/sync", syncDiscovery);
+router.get("/products/accepted", getAcceptedProducts);
+
 
 
 

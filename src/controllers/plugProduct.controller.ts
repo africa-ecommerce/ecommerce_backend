@@ -2,7 +2,7 @@ import { NextFunction, Response } from "express";
 import { prisma } from "../config";
 import { AuthRequest } from "../types";
 import { formatPlugProduct } from "../helper/formatData";
-import { discoverCache, DiscoverStack } from "../helper/cache/discoverCache";
+import { DEFAULT_CATEGORY_RATING } from "./discover.controller";
 // import { scheduleProductUpdate } from "../helper/workers/priceUpdater";
 
 export const plugProductController = {
@@ -104,15 +104,7 @@ export const plugProductController = {
         }
       });
 
-      // Remove added products from cache stack if it exists
-      const cacheKey = `discover_stack_${plug.id}`;
-     const cached = discoverCache.get(cacheKey) as DiscoverStack | undefined;
-      if (cached) {
-        cached.products = cached.products.filter(
-          (p) => !uniqueProductIds.includes(p.id)
-        );
-        discoverCache.set(cacheKey, cached);
-      }
+    
 
       res.status(201).json({
         message: `Added products to your store!`,
@@ -123,7 +115,7 @@ export const plugProductController = {
   },
 
 
-  addProductToPlug: async (
+ addProductToPlug: async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
@@ -132,78 +124,92 @@ export const plugProductController = {
     const { id, price, commissionRate } = req.body;
     const plug = req.plug!;
 
-    console.log("body", req.body);
-    // Basic validation
     if (!id || !price || !commissionRate) {
-      res.status(400).json({
-        error: "Please provide required fields!",
-      });
-      return;
+       res.status(400).json({ error: "Please provide required fields!" });
+       return
     }
 
     const parsedPrice = parseFloat(price);
     if (isNaN(parsedPrice) || parsedPrice < 0) {
-      res.status(400).json({
-        error: "Provide a valid product price!",
-      });
-      return;
+       res.status(400).json({ error: "Provide a valid product price!" });
+       return;
     }
 
-    // Fetch the original supplier product
-    const originalProduct = await prisma.product.findUnique({
+    // Fetch supplier product
+    const product = await prisma.product.findUnique({
       where: { id },
+      select: { id: true, price: true, category: true },
     });
 
-    if (!originalProduct) {
-      res.status(404).json({
-        error: "Product not found!",
-      });
-      return;
+    if (!product) {
+       res.status(404).json({ error: "Product not found!" });
+       return;
     }
 
-    // Prevent setting a price below supplier price
-    if (parsedPrice < originalProduct.price) {
-      res.status(400).json({
+    // Validation: don’t allow plugging below supplier’s price
+    if (parsedPrice < product.price) {
+       res.status(400).json({
         error: "Price cannot be below supplier price!",
-        supplierPrice: originalProduct.price,
+        supplierPrice: product.price,
         proposedPrice: parsedPrice,
       });
-      return;
+      return
     }
 
-    // Transaction: create plug product + increment supplier plugsCount
-    const createdPlugProduct = await prisma.$transaction(async (tx) => {
+    const PLUG_CATEGORY_DELTA = 0.08; // strong reinforcement for added products
+    const now = new Date();
+
+    // === Transactional operation
+    const created = await prisma.$transaction(async (tx) => {
+      // 1️⃣ Create plug product
       const plugProduct = await tx.plugProduct.create({
         data: {
-          originalId: id,
+          originalId: product.id,
           plugId: plug.id,
           price: parsedPrice,
           commission: commissionRate,
         },
       });
 
+      // 2️⃣ Increment original product's plug count
       await tx.product.update({
-        where: { id },
-        data: {
-          plugsCount: { increment: 1 },
-        },
+        where: { id: product.id },
+        data: { plugsCount: { increment: 1 } },
       });
+
+      // 3️⃣ Remove from accepted list (if it exists)
+      await tx.acceptedProduct.deleteMany({
+        where: { plugId: plug.id, productId: product.id },
+      });
+
+      // 4️⃣ Update or create PlugCategoryRating (stronger delta)
+      const category = product.category;
+      const existing = await tx.plugCategoryRating.findUnique({
+        where: { plugId_category: { plugId: plug.id, category } },
+      });
+
+      if (existing) {
+        const newRating = existing.rating + PLUG_CATEGORY_DELTA;
+        await tx.plugCategoryRating.update({
+          where: { id: existing.id },
+          data: { rating: newRating },
+        });
+      } else {
+        await tx.plugCategoryRating.create({
+          data: {
+            plugId: plug.id,
+            category,
+            rating: DEFAULT_CATEGORY_RATING + PLUG_CATEGORY_DELTA,
+          },
+        });
+      }
 
       return plugProduct;
     });
 
-    // 🧠 Remove from cache if present
-    const cacheKey = `discover_stack_${plug.id}`;
-    const cached = discoverCache.get(cacheKey) as DiscoverStack | undefined;
-    if (cached) {
-      cached.products = cached.products.filter((p) => p.id !== id);
-      discoverCache.set(cacheKey, cached);
-    }
-
-    // ✅ Return the created plug product’s ID
     res.status(201).json({
-      message: "Product added to your store!",
-      id: createdPlugProduct.id,
+      message: "Product added to your store successfully!",
+      id: created.id,
     });
   } catch (error) {
     next(error);
