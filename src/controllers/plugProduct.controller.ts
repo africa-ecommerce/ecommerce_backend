@@ -132,10 +132,11 @@ export const plugProductController = {
     const { id, price, commissionRate } = req.body;
     const plug = req.plug!;
 
+    console.log("body", req.body);
     // Basic validation
-    if (!id || !price) {
+    if (!id || !price || !commissionRate) {
       res.status(400).json({
-        error: "Please provide product ID and price!",
+        error: "Please provide required fields!",
       });
       return;
     }
