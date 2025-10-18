@@ -262,6 +262,8 @@ export const discoverProducts = async (
       where: { plugId },
       select: { originalId: true },
     });
+
+    console.log("plugProducts", plugProducts.length)
     const excludedInventory = plugProducts.map((p) => p.originalId);
 
     // 2️⃣ Exclude accepted products
