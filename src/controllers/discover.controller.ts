@@ -1,62 +1,62 @@
-import { NextFunction, Response } from "express";
-import { AuthRequest } from "../types";
-import { prisma } from "../config";
+// import { NextFunction, Response } from "express";
+// import { AuthRequest } from "../types";
+// import { prisma } from "../config";
 
-// constants
-export const DEFAULT_CATEGORY_RATING = 1.0;
-const WEIGHT_PLUGSCOUNT = 0.1;
-const WEIGHT_SOLD = 0.2;
-const WEIGHT_RECENT = 0.06;
-const WEIGHT_REVIEW = 0.05;
-export const REJECT_PENALTY_MULTIPLIER = 0.3;
+// // constants
+// export const DEFAULT_CATEGORY_RATING = 1.0;
+// const WEIGHT_PLUGSCOUNT = 0.1;
+// const WEIGHT_SOLD = 0.2;
+// const WEIGHT_RECENT = 0.06;
+// const WEIGHT_REVIEW = 0.05;
+// export const REJECT_PENALTY_MULTIPLIER = 0.3;
 
-// --- utils ---
-function daysSince(date: Date | string) {
-  return (Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24);
-}
+// // --- utils ---
+// function daysSince(date: Date | string) {
+//   return (Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24);
+// }
 
-function computeProductBaseScore(
-  product: any,
-  categoryRating = DEFAULT_CATEGORY_RATING
-) {
-  let score = 1.0;
-  if (product.plugsCount && product.plugsCount > 0)
-    score += Math.log10(product.plugsCount + 1) * WEIGHT_PLUGSCOUNT;
-  if (product.sold && product.sold > 0)
-    score += Math.log10(product.sold + 1) * WEIGHT_SOLD;
-  if (daysSince(product.createdAt) <= 7) score += WEIGHT_RECENT;
-  if (product.reviewsCount && product.reviewsCount > 0)
-    score += Math.log10(product.reviewsCount + 1) * WEIGHT_REVIEW;
-  return score * categoryRating;
-}
+// function computeProductBaseScore(
+//   product: any,
+//   categoryRating = DEFAULT_CATEGORY_RATING
+// ) {
+//   let score = 1.0;
+//   if (product.plugsCount && product.plugsCount > 0)
+//     score += Math.log10(product.plugsCount + 1) * WEIGHT_PLUGSCOUNT;
+//   if (product.sold && product.sold > 0)
+//     score += Math.log10(product.sold + 1) * WEIGHT_SOLD;
+//   if (daysSince(product.createdAt) <= 7) score += WEIGHT_RECENT;
+//   if (product.reviewsCount && product.reviewsCount > 0)
+//     score += Math.log10(product.reviewsCount + 1) * WEIGHT_REVIEW;
+//   return score * categoryRating;
+// }
 
-function shuffle<T>(arr: T[]) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
+// function shuffle<T>(arr: T[]) {
+//   for (let i = arr.length - 1; i > 0; i--) {
+//     const j = Math.floor(Math.random() * (i + 1));
+//     [arr[i], arr[j]] = [arr[j], arr[i]];
+//   }
+//   return arr;
+// }
 
-function normalizeBigInt(obj: any): any {
-  if (Array.isArray(obj)) return obj.map(normalizeBigInt);
-  if (obj && typeof obj === "object") {
-    const normalized: any = {};
-    for (const [key, value] of Object.entries(obj)) {
-      if (typeof value === "bigint") normalized[key] = Number(value);
-      else if (typeof value === "object")
-        normalized[key] = normalizeBigInt(value);
-      else normalized[key] = value;
-    }
-    return normalized;
-  }
-  return obj;
-}
+// function normalizeBigInt(obj: any): any {
+//   if (Array.isArray(obj)) return obj.map(normalizeBigInt);
+//   if (obj && typeof obj === "object") {
+//     const normalized: any = {};
+//     for (const [key, value] of Object.entries(obj)) {
+//       if (typeof value === "bigint") normalized[key] = Number(value);
+//       else if (typeof value === "object")
+//         normalized[key] = normalizeBigInt(value);
+//       else normalized[key] = value;
+//     }
+//     return normalized;
+//   }
+//   return obj;
+// }
 
-// /**
-//  * GET /api/discover/products?page=1&limit=20
-//  * Paginated discovery endpoint.
-//  */
+// // /**
+// //  * GET /api/discover/products?page=1&limit=20
+// //  * Paginated discovery endpoint.
+// //  */
 // export const discoverProducts = async (
 //   req: AuthRequest,
 //   res: Response,
@@ -75,6 +75,8 @@ function normalizeBigInt(obj: any): any {
 //       where: { plugId },
 //       select: { originalId: true },
 //     });
+
+//     console.log("plugProducts", plugProducts.length);
 //     const excludedInventory = plugProducts.map((p) => p.originalId);
 
 //     // 2️⃣ Exclude accepted products
@@ -191,10 +193,59 @@ function normalizeBigInt(obj: any): any {
 
 
 
-/**
- * GET /api/discover/products?page=1&limit=20
- * Paginated discovery endpoint.
- */
+import { NextFunction, Response } from "express";
+import { AuthRequest } from "../types";
+import { prisma } from "../config";
+
+// constants
+export const DEFAULT_CATEGORY_RATING = 1.0;
+const WEIGHT_PLUGSCOUNT = 0.1;
+const WEIGHT_SOLD = 0.2;
+const WEIGHT_RECENT = 0.06;
+const WEIGHT_REVIEW = 0.05;
+export const REJECT_PENALTY_MULTIPLIER = 0.3;
+
+// --- utils ---
+function daysSince(date: Date | string) {
+  return (Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24);
+}
+
+function computeProductBaseScore(product: any, categoryRating = DEFAULT_CATEGORY_RATING) {
+  let score = 1.0;
+  if (product.plugsCount && product.plugsCount > 0)
+    score += Math.log10(product.plugsCount + 1) * WEIGHT_PLUGSCOUNT;
+  if (product.sold && product.sold > 0)
+    score += Math.log10(product.sold + 1) * WEIGHT_SOLD;
+  if (daysSince(product.createdAt) <= 7) score += WEIGHT_RECENT;
+  if (product.reviewsCount && product.reviewsCount > 0)
+    score += Math.log10(product.reviewsCount + 1) * WEIGHT_REVIEW;
+  return score * categoryRating;
+}
+
+function shuffle<T>(arr: T[]) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function normalizeBigInt(obj: any): any {
+  if (Array.isArray(obj)) return obj.map(normalizeBigInt);
+  if (obj && typeof obj === "object") {
+    const normalized: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (typeof value === "bigint") normalized[key] = Number(value);
+      else if (typeof value === "object")
+        normalized[key] = normalizeBigInt(value);
+      else normalized[key] = value;
+    }
+    return normalized;
+  }
+  return obj;
+}
+
+// 🚀 MAIN ENDPOINT
 export const discoverProducts = async (
   req: AuthRequest,
   res: Response,
@@ -205,8 +256,6 @@ export const discoverProducts = async (
     const plugId = plug.id;
 
     const limit = Math.min(100, parseInt(String(req.query.limit || "20")));
-    const page = Math.max(1, parseInt(String(req.query.page || "1")));
-    const offset = (page - 1) * limit;
 
     // 1️⃣ Exclude plug's own products
     const plugProducts = await prisma.plugProduct.findMany({
@@ -222,7 +271,7 @@ export const discoverProducts = async (
     });
     const acceptedIds = acceptedRows.map((r) => r.productId);
 
-    // 3️⃣ Rejected product penalties
+    // 3️⃣ Rejected penalties
     const rejectedRows = await prisma.rejectedProduct.findMany({
       where: { plugId },
     });
@@ -237,61 +286,44 @@ export const discoverProducts = async (
       ratingsRows.map((r) => [r.category, r.rating])
     );
 
-    // 5️⃣ Final exclusion list
-    const excludedIds = [...excludedInventory, ...acceptedIds].filter(Boolean);
+    // 5️⃣ Exclusion list
+    const excludedIds = [...excludedInventory, ...acceptedIds];
+    const exclusionSql =
+      excludedIds.length > 0
+        ? `AND p."id" NOT IN (${excludedIds.map((id) => `'${id}'`).join(",")})`
+        : "";
 
-    console.log("excludedIds length:", excludedIds.length);
-
-    // Build dynamic query safely
-    const whereClauses = [
-      `p."status" = 'APPROVED'`,
-      `COALESCE(p."stock",0) > 0`,
-    ];
-    if (excludedIds.length > 0) {
-      whereClauses.push(
-        `p."id" NOT IN (${excludedIds.map((_, i) => `$${i + 1}`).join(",")})`
-      );
-    }
-
-    const whereSql = whereClauses.length
-      ? "WHERE " + whereClauses.join(" AND ")
-      : "";
-
-    // 6️⃣ Total count
-    const totalCountQuery = `
+    // 6️⃣ Total count (to dynamically size the pool)
+    const totalCountResult = await prisma.$queryRawUnsafe<{ count: number }[]>(`
       SELECT COUNT(*)::int AS count
       FROM "Product" p
-      ${whereSql};
-    `;
-    const totalCountParams = excludedIds;
+      WHERE p."status" = 'APPROVED'
+        AND COALESCE(p."stock",0) > 0
+        ${exclusionSql};
+    `);
+    const totalCount = totalCountResult[0]?.count ?? 0;
 
-    // 👇 Cast totalCountResult type
-    const totalCountResult = (await prisma.$queryRawUnsafe(
-      totalCountQuery,
-      ...totalCountParams
-    )) as { count: number }[];
+    // ⚙️ Dynamic + Random Pool Size
+    let poolSize = 250 + Math.floor(Math.random() * 100); // 250–350 baseline
+    if (totalCount > 1000) poolSize = 400 + Math.floor(Math.random() * 100); // up to 500
+    else if (totalCount < 300) poolSize = Math.min(200, totalCount); // smaller DBs
 
-    const totalCount = totalCountResult?.[0]?.count ?? 0;
-    console.log("totalCount:", totalCount);
+    console.log("Dynamic poolSize:", poolSize, "totalCount:", totalCount);
 
-    // 7️⃣ Fetch candidates
-    const candidatesQuery = `
+    // 7️⃣ Fetch a semi-random pool of products
+    const candidates = await prisma.$queryRawUnsafe<any[]>(`
       SELECT 
         p.*, 
         CAST((SELECT COUNT(*) FROM "Review" r WHERE r."productId" = p.id) AS INT) AS "reviewsCount"
       FROM "Product" p
-      ${whereSql}
-      ORDER BY p."createdAt" DESC
-      LIMIT ${limit} OFFSET ${offset};
-    `;
+      WHERE p."status" = 'APPROVED'
+        AND COALESCE(p."stock",0) > 0
+        ${exclusionSql}
+      ORDER BY p."createdAt" DESC, RANDOM()
+      LIMIT ${poolSize};
+    `);
 
-    // 👇 Cast candidates type
-    const candidates = (await prisma.$queryRawUnsafe(
-      candidatesQuery,
-      ...excludedIds
-    )) as any[];
-
-    // 8️⃣ Compute product scores
+    // 8️⃣ Compute scores
     const annotated = candidates.map((p) => {
       const catRating = ratingMap.get(p.category) ?? DEFAULT_CATEGORY_RATING;
       let score = computeProductBaseScore(p, catRating);
@@ -308,7 +340,7 @@ export const discoverProducts = async (
       return { ...p, _score: score, _rejectedCount: rejCount };
     });
 
-    // 9️⃣ Sort & shuffle
+    // 9️⃣ Sort & shuffle top results
     annotated.sort((a, b) => b._score - a._score);
     const top = shuffle(annotated.slice(0, limit));
 
@@ -323,17 +355,13 @@ export const discoverProducts = async (
       }
     }
 
-    // 11️⃣ Pagination
-    const totalPages = Math.ceil(totalCount / limit);
-    const hasNextPage = page < totalPages;
-
-    // 12️⃣ Response (same shape)
+    // 11️⃣ Response (meta for pagination/UI)
     res.status(200).json({
       meta: {
-        page,
-        totalPages,
         totalCount,
-        hasNextPage,
+        poolSize,
+        limit,
+        hasNextPage: totalCount > limit,
       },
       data: normalizeBigInt(top),
     });
@@ -342,6 +370,162 @@ export const discoverProducts = async (
     next(err);
   }
 };
+
+
+
+
+
+/**
+ * GET /api/discover/products?page=1&limit=20
+ * Paginated discovery endpoint.
+ */
+// export const discoverProducts = async (
+//   req: AuthRequest,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+//     const plug = req.plug!;
+//     const plugId = plug.id;
+
+//     const limit = Math.min(100, parseInt(String(req.query.limit || "20")));
+//     const page = Math.max(1, parseInt(String(req.query.page || "1")));
+//     const offset = (page - 1) * limit;
+
+//     // 1️⃣ Exclude plug's own products
+//     const plugProducts = await prisma.plugProduct.findMany({
+//       where: { plugId },
+//       select: { originalId: true },
+//     });
+//     const excludedInventory = plugProducts.map((p) => p.originalId);
+
+//     // 2️⃣ Exclude accepted products
+//     const acceptedRows = await prisma.acceptedProduct.findMany({
+//       where: { plugId },
+//       select: { productId: true },
+//     });
+//     const acceptedIds = acceptedRows.map((r) => r.productId);
+
+//     // 3️⃣ Rejected product penalties
+//     const rejectedRows = await prisma.rejectedProduct.findMany({
+//       where: { plugId },
+//     });
+//     const rejectedMap = new Map<string, number>();
+//     for (const r of rejectedRows) rejectedMap.set(r.productId, r.count);
+
+//     // 4️⃣ Category ratings
+//     const ratingsRows = await prisma.plugCategoryRating.findMany({
+//       where: { plugId },
+//     });
+//     const ratingMap = new Map<string, number>(
+//       ratingsRows.map((r) => [r.category, r.rating])
+//     );
+
+//     // 5️⃣ Final exclusion list
+//     const excludedIds = [...excludedInventory, ...acceptedIds].filter(Boolean);
+
+//     console.log("excludedIds length:", excludedIds.length);
+
+//     // Build dynamic query safely
+//     const whereClauses = [
+//       `p."status" = 'APPROVED'`,
+//       `COALESCE(p."stock",0) > 0`,
+//     ];
+//     if (excludedIds.length > 0) {
+//       whereClauses.push(
+//         `p."id" NOT IN (${excludedIds.map((_, i) => `$${i + 1}`).join(",")})`
+//       );
+//     }
+
+//     const whereSql = whereClauses.length
+//       ? "WHERE " + whereClauses.join(" AND ")
+//       : "";
+
+//     // 6️⃣ Total count
+//     const totalCountQuery = `
+//       SELECT COUNT(*)::int AS count
+//       FROM "Product" p
+//       ${whereSql};
+//     `;
+//     const totalCountParams = excludedIds;
+
+//     // 👇 Cast totalCountResult type
+//     const totalCountResult = (await prisma.$queryRawUnsafe(
+//       totalCountQuery,
+//       ...totalCountParams
+//     )) as { count: number }[];
+
+//     const totalCount = totalCountResult?.[0]?.count ?? 0;
+//     console.log("totalCount:", totalCount);
+
+//     // 7️⃣ Fetch candidates
+//     const candidatesQuery = `
+//       SELECT 
+//         p.*, 
+//         CAST((SELECT COUNT(*) FROM "Review" r WHERE r."productId" = p.id) AS INT) AS "reviewsCount"
+//       FROM "Product" p
+//       ${whereSql}
+//       ORDER BY p."createdAt" DESC
+//       LIMIT ${limit} OFFSET ${offset};
+//     `;
+
+//     // 👇 Cast candidates type
+//     const candidates = (await prisma.$queryRawUnsafe(
+//       candidatesQuery,
+//       ...excludedIds
+//     )) as any[];
+
+//     // 8️⃣ Compute product scores
+//     const annotated = candidates.map((p) => {
+//       const catRating = ratingMap.get(p.category) ?? DEFAULT_CATEGORY_RATING;
+//       let score = computeProductBaseScore(p, catRating);
+
+//       const rejCount = rejectedMap.get(p.id) ?? 0;
+//       if (rejCount > 0) {
+//         const penaltyMultiplier = Math.pow(
+//           REJECT_PENALTY_MULTIPLIER,
+//           Math.min(rejCount, 4)
+//         );
+//         score *= penaltyMultiplier;
+//       }
+
+//       return { ...p, _score: score, _rejectedCount: rejCount };
+//     });
+
+//     // 9️⃣ Sort & shuffle
+//     annotated.sort((a, b) => b._score - a._score);
+//     const top = shuffle(annotated.slice(0, limit));
+
+//     // 🔟 Parse images safely
+//     for (const p of top) {
+//       if (typeof p.images === "string") {
+//         try {
+//           p.images = JSON.parse(p.images);
+//         } catch {
+//           p.images = [];
+//         }
+//       }
+//     }
+
+//     // 11️⃣ Pagination
+//     const totalPages = Math.ceil(totalCount / limit);
+//     const hasNextPage = page < totalPages;
+
+//     // 12️⃣ Response (same shape)
+//     res.status(200).json({
+//       meta: {
+//         page,
+//         totalPages,
+//         totalCount,
+//         hasNextPage,
+//       },
+//       data: normalizeBigInt(top),
+//     });
+//   } catch (err) {
+//     console.error("discoverProducts error:", err);
+//     next(err);
+//   }
+// };
 
 
 
