@@ -116,6 +116,9 @@ export const discoverProducts = async (
     `);
     const totalCount = totalCountResult[0]?.count ?? 0;
 
+    console.log("totalCountResult", totalCountResult);
+    console.log("totalCount", totalCount);
+
     // 7️⃣ Fetch candidates for this page
     const candidates = await prisma.$queryRawUnsafe<any[]>(`
       SELECT 
@@ -163,6 +166,8 @@ export const discoverProducts = async (
 
     // 11️⃣ Pagination metadata
     const totalPages = Math.ceil(totalCount / limit);
+      console.log("totalPages", totalPages);
+    
     const hasNextPage = page < totalPages;
 
     // 12️⃣ Send response
