@@ -15,7 +15,10 @@ function daysSince(date: Date | string) {
   return (Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24);
 }
 
-function computeProductBaseScore(product: any, categoryRating = DEFAULT_CATEGORY_RATING) {
+function computeProductBaseScore(
+  product: any,
+  categoryRating = DEFAULT_CATEGORY_RATING
+) {
   let score = 1.0;
   if (product.plugsCount && product.plugsCount > 0)
     score += Math.log10(product.plugsCount + 1) * WEIGHT_PLUGSCOUNT;
@@ -42,7 +45,8 @@ function normalizeBigInt(obj: any): any {
     const normalized: any = {};
     for (const [key, value] of Object.entries(obj)) {
       if (typeof value === "bigint") normalized[key] = Number(value);
-      else if (typeof value === "object") normalized[key] = normalizeBigInt(value);
+      else if (typeof value === "object")
+        normalized[key] = normalizeBigInt(value);
       else normalized[key] = value;
     }
     return normalized;
@@ -50,19 +54,9 @@ function normalizeBigInt(obj: any): any {
   return obj;
 }
 
-
 /**
  * GET /discover
- * Query params:
- *   - limit (optional): number of products to return (default 20)
- *   - pool (optional): how many candidate products to sample from before ranking (default 1000)
- *
- * Behavior:
- *  - Exclude plug's own PlugProduct inventory
- *  - Exclude accepted products (AcceptedProduct)
- *  - For rejected products, apply penalty multiplier (reduce their score). They remain candidates but less likely.
- *  - Uses PlugCategoryRating for category multiplier (fall back to DEFAULT_CATEGORY_RATING).
- *  - Returns ranked + shuffled results limited to `limit`.
+ * Paginated discovery algorithm.
  */
 export const discoverProducts = async (
   req: AuthRequest,
@@ -104,7 +98,7 @@ export const discoverProducts = async (
       ratingsRows.map((r) => [r.category, r.rating])
     );
 
-    // 5️⃣ candidate pool query (with casted review count)
+    // 5️⃣ candidate pool query
     const excludedIds = [...excludedInventory, ...acceptedIds];
     const exclusionSql =
       excludedIds.length > 0
@@ -130,7 +124,10 @@ export const discoverProducts = async (
 
       const rejCount = rejectedMap.get(p.id) ?? 0;
       if (rejCount > 0) {
-        const penaltyMultiplier = Math.pow(REJECT_PENALTY_MULTIPLIER, Math.min(rejCount, 4));
+        const penaltyMultiplier = Math.pow(
+          REJECT_PENALTY_MULTIPLIER,
+          Math.min(rejCount, 4)
+        );
         score *= penaltyMultiplier;
       }
 
@@ -141,20 +138,18 @@ export const discoverProducts = async (
     annotated.sort((a, b) => b._score - a._score);
     const top = shuffle(annotated.slice(0, limit));
 
-    // 8️⃣ normalize BigInt -> send response
+    // 8️⃣ hasNextPage detection (true if there are more than limit items available)
+    const hasNextPage = annotated.length > limit;
+
+    // 9️⃣ response
     res.status(200).json({
-      count: top.length,
-      products: normalizeBigInt(top),
+      meta: { hasNextPage },
+      data: normalizeBigInt(top),
     });
   } catch (err) {
     next(err);
   }
 };
-
-
-
-
-
 
 /**
  * POST /discover/sync
@@ -267,20 +262,15 @@ export const syncDiscovery = async (
       }
     });
 
-    res
-      .status(200)
-      .json({
-        message: "Synced",
-        acceptedCount: accepted.length,
-        rejectedCount: rejected.length,
-      });
+    res.status(200).json({
+      message: "Synced",
+      acceptedCount: accepted.length,
+      rejectedCount: rejected.length,
+    });
   } catch (err) {
     next(err);
   }
 };
-
-
-
 
 export const getAcceptedProducts = async (
   req: AuthRequest,
@@ -300,9 +290,9 @@ export const getAcceptedProducts = async (
     });
     const ids = accepted.map((a) => a.productId);
     if (!ids.length) {
-     res.status(200).json({ count: 0, products: [] });
-     return;
-    } 
+      res.status(200).json({ count: 0, products: [] });
+      return;
+    }
 
     const products = await prisma.product.findMany({
       where: { id: { in: ids } },
