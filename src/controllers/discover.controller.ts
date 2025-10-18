@@ -116,7 +116,6 @@ export const discoverProducts = async (
       ORDER BY p."createdAt" DESC
       LIMIT ${poolSize};
     `);
-    console.log("candidates", candidates)
 
     // 6️⃣ score computation
     const annotated = candidates.map((p) => {
@@ -135,22 +134,28 @@ export const discoverProducts = async (
       return { ...p, _score: score, _rejectedCount: rejCount };
     });
 
-    console.log("annotated", annotated);
 
     // 7️⃣ sort & shuffle
     annotated.sort((a, b) => b._score - a._score);
     const top = shuffle(annotated.slice(0, limit));
 
-     console.log("top", top);
-
 
     // 8️⃣ hasNextPage detection (true if there are more than limit items available)
     const hasNextPage = annotated.length > limit;
 
-     console.log("hasNextPage", hasNextPage);
 
+    // 9️⃣ response — normalize and fix image arrays
+    for (const p of top) {
+      if (typeof p.images === "string") {
+        try {
+          p.images = JSON.parse(p.images);
+        } catch {
+          p.images = [];
+          
+        }
+      }
+    }
 
-    // 9️⃣ response
     res.status(200).json({
       meta: { hasNextPage },
       data: normalizeBigInt(top),
