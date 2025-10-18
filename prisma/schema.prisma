@@ -492,7 +492,6 @@ model TrackDiscovery {
   id          String   @id @default(cuid())
   plugId      String   @unique
   totalSwipes Int      @default(0)
-  lastAction  String?  // "accepted" | "rejected" 
   lastAt      DateTime @default(now())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

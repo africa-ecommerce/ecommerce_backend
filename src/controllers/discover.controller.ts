@@ -263,7 +263,6 @@ export const discoverProducts = async (
       select: { originalId: true },
     });
 
-    console.log("plugProducts", plugProducts.length)
     const excludedInventory = plugProducts.map((p) => p.originalId);
 
     // 2️⃣ Exclude accepted products
@@ -310,7 +309,6 @@ export const discoverProducts = async (
     if (totalCount > 1000) poolSize = 400 + Math.floor(Math.random() * 100); // up to 500
     else if (totalCount < 300) poolSize = Math.min(200, totalCount); // smaller DBs
 
-    console.log("Dynamic poolSize:", poolSize, "totalCount:", totalCount);
 
     // 7️⃣ Fetch a semi-random pool of products
     const candidates = await prisma.$queryRawUnsafe<any[]>(`
@@ -546,6 +544,104 @@ export const discoverProducts = async (
  * - Upsert RejectedProduct for rejected (increment count).
  * - Update PlugCategoryRating small deltas
  */
+// export const syncDiscovery = async (
+//   req: AuthRequest,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+//     const plug = req.plug!;
+//     const plugId = plug.id;
+//     const { accepted = [], rejected = [], swipesCount = 0 } = req.body;
+
+//     const now = new Date();
+
+//     await prisma.$transaction(async (tx) => {
+//       // === 1. TrackDiscovery
+//       await tx.trackDiscovery.upsert({
+//         where: { plugId },
+//         create: {
+//           plugId,
+//           totalSwipes: swipesCount,
+//           lastAt: now,
+//         },
+//         update: {
+//           totalSwipes: { increment: swipesCount },
+//           lastAt: now,
+//         },
+//       });
+
+//       // === 2. Gather products' categories
+//       const allIds = Array.from(new Set([...accepted, ...rejected]));
+//       const productData = await tx.product.findMany({
+//         where: { id: { in: allIds } },
+//         select: { id: true, category: true },
+//       });
+//       const categoryMap = new Map(productData.map((p) => [p.id, p.category]));
+
+//       // constants
+//       const ACCEPT_DELTA = 0.03;
+//       const REJECT_DELTA = -0.02;
+
+//       // === 3. Accepted
+//       for (const pid of accepted) {
+//         const category = categoryMap.get(pid) || "unknown";
+//         await tx.acceptedProduct.upsert({
+//           where: { plugId_productId: { plugId, productId: pid } },
+//           create: { plugId, productId: pid, count: 1, lastAt: now },
+//           update: { count: { increment: 1 }, lastAt: now },
+//         });
+//         await tx.rejectedProduct.deleteMany({
+//           where: { plugId, productId: pid },
+//         });
+//         await tx.plugCategoryRating.upsert({
+//           where: { plugId_category: { plugId, category } },
+//           create: {
+//             plugId,
+//             category,
+//             rating: DEFAULT_CATEGORY_RATING + ACCEPT_DELTA,
+//           },
+//           update: { rating: { increment: ACCEPT_DELTA } },
+//         });
+//       }
+
+//       // === 4. Rejected
+//       for (const pid of rejected) {
+//         const category = categoryMap.get(pid) || "unknown";
+//         await tx.rejectedProduct.upsert({
+//           where: { plugId_productId: { plugId, productId: pid } },
+//           create: { plugId, productId: pid, count: 1, lastAt: now },
+//           update: { count: { increment: 1 }, lastAt: now },
+//         });
+
+//         const existing = await tx.plugCategoryRating.findUnique({
+//           where: { plugId_category: { plugId, category } },
+//         });
+
+//         const newRating = existing
+//           ? Math.max(0.2, existing.rating + REJECT_DELTA)
+//           : Math.max(0.2, DEFAULT_CATEGORY_RATING + REJECT_DELTA);
+
+//         await tx.plugCategoryRating.upsert({
+//           where: { plugId_category: { plugId, category } },
+//           create: { plugId, category, rating: newRating },
+//           update: { rating: newRating },
+//         });
+//       }
+//     });
+
+//     res.status(200).json({
+//       message: "Synced",
+//       acceptedCount: accepted.length,
+//       rejectedCount: rejected.length,
+//     });
+//   } catch (err) {
+//     next(err);
+//   }
+// };
+
+
+
 export const syncDiscovery = async (
   req: AuthRequest,
   res: Response,
@@ -555,57 +651,47 @@ export const syncDiscovery = async (
     const plug = req.plug!;
     const plugId = plug.id;
     const { accepted = [], rejected = [], swipesCount = 0 } = req.body;
+    console.log(req.body);
 
     const now = new Date();
 
+    // === 1. Fetch categories outside transaction
+    const allIds = Array.from(new Set([...accepted, ...rejected]));
+    const productData = allIds.length
+      ? await prisma.product.findMany({
+          where: { id: { in: allIds } },
+          select: { id: true, category: true },
+        })
+      : [];
+    const categoryMap = new Map(productData.map((p) => [p.id, p.category]));
+
+    // constants
+    const ACCEPT_DELTA = 0.03;
+    const REJECT_DELTA = -0.02;
+
+    // === 2. Now do atomic updates in one compact transaction
     await prisma.$transaction(async (tx) => {
-      // === 1. TrackDiscovery
+      // Track discovery stats
       await tx.trackDiscovery.upsert({
         where: { plugId },
-        create: {
-          plugId,
-          totalSwipes: swipesCount,
-          lastAction: accepted.length
-            ? "accepted"
-            : rejected.length
-            ? "rejected"
-            : null,
-          lastAt: now,
-        },
-        update: {
-          totalSwipes: { increment: swipesCount },
-          lastAction: accepted.length
-            ? "accepted"
-            : rejected.length
-            ? "rejected"
-            : null,
-          lastAt: now,
-        },
+        create: { plugId, totalSwipes: swipesCount, lastAt: now },
+        update: { totalSwipes: { increment: swipesCount }, lastAt: now },
       });
 
-      // === 2. Gather products' categories
-      const allIds = Array.from(new Set([...accepted, ...rejected]));
-      const productData = await tx.product.findMany({
-        where: { id: { in: allIds } },
-        select: { id: true, category: true },
-      });
-      const categoryMap = new Map(productData.map((p) => [p.id, p.category]));
-
-      // constants
-      const ACCEPT_DELTA = 0.03;
-      const REJECT_DELTA = -0.02;
-
-      // === 3. Accepted
+      // Accepted
       for (const pid of accepted) {
         const category = categoryMap.get(pid) || "unknown";
+
         await tx.acceptedProduct.upsert({
           where: { plugId_productId: { plugId, productId: pid } },
           create: { plugId, productId: pid, count: 1, lastAt: now },
           update: { count: { increment: 1 }, lastAt: now },
         });
+
         await tx.rejectedProduct.deleteMany({
           where: { plugId, productId: pid },
         });
+
         await tx.plugCategoryRating.upsert({
           where: { plugId_category: { plugId, category } },
           create: {
@@ -617,15 +703,21 @@ export const syncDiscovery = async (
         });
       }
 
-      // === 4. Rejected
+      // Rejected
       for (const pid of rejected) {
         const category = categoryMap.get(pid) || "unknown";
+
         await tx.rejectedProduct.upsert({
           where: { plugId_productId: { plugId, productId: pid } },
           create: { plugId, productId: pid, count: 1, lastAt: now },
           update: { count: { increment: 1 }, lastAt: now },
         });
 
+        await tx.acceptedProduct.deleteMany({
+          where: { plugId, productId: pid },
+        });
+
+        // Retrieve once per category instead of per product — optimization below
         const existing = await tx.plugCategoryRating.findUnique({
           where: { plugId_category: { plugId, category } },
         });
