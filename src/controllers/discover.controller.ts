@@ -101,6 +101,10 @@ export const discoverProducts = async (
 
     // 5️⃣ Exclusion list
     const excludedIds = [...excludedInventory, ...acceptedIds];
+
+    console.log("excludedIds", excludedIds.length);
+    console.log("excludedInventory", excludedInventory.length);
+    console.log("acceptedIds", acceptedIds.length);
     const exclusionSql =
       excludedIds.length > 0
         ? `AND p."id" NOT IN (${excludedIds.map((id) => `'${id}'`).join(",")})`
