@@ -38,7 +38,6 @@ function shuffle<T>(arr: T[]) {
   return arr;
 }
 
-// fixes BigInt serialization
 function normalizeBigInt(obj: any): any {
   if (Array.isArray(obj)) return obj.map(normalizeBigInt);
   if (obj && typeof obj === "object") {
@@ -55,8 +54,8 @@ function normalizeBigInt(obj: any): any {
 }
 
 /**
- * GET /discover
- * Paginated discovery algorithm.
+ * GET /api/discover/products?page=1&limit=20
+ * Paginated discovery endpoint.
  */
 export const discoverProducts = async (
   req: AuthRequest,
@@ -66,31 +65,33 @@ export const discoverProducts = async (
   try {
     const plug = req.plug!;
     const plugId = plug.id;
-    const limit = Math.min(1000, parseInt(String(req.query.limit || "20")));
-    const poolSize = Math.min(5000, parseInt(String(req.query.pool || "1000")));
 
-    // 1️⃣ excluded: plug's own products
+    const limit = Math.min(100, parseInt(String(req.query.limit || "20")));
+    const page = Math.max(1, parseInt(String(req.query.page || "1")));
+    const offset = (page - 1) * limit;
+
+    // 1️⃣ Exclude plug's own products
     const plugProducts = await prisma.plugProduct.findMany({
       where: { plugId },
       select: { originalId: true },
     });
     const excludedInventory = plugProducts.map((p) => p.originalId);
 
-    // 2️⃣ excluded: accepted
+    // 2️⃣ Exclude accepted products
     const acceptedRows = await prisma.acceptedProduct.findMany({
       where: { plugId },
       select: { productId: true },
     });
     const acceptedIds = acceptedRows.map((r) => r.productId);
 
-    // 3️⃣ rejected: map productId -> count
+    // 3️⃣ Map rejected product penalties
     const rejectedRows = await prisma.rejectedProduct.findMany({
       where: { plugId },
     });
     const rejectedMap = new Map<string, number>();
     for (const r of rejectedRows) rejectedMap.set(r.productId, r.count);
 
-    // 4️⃣ category ratings
+    // 4️⃣ Category ratings per plug
     const ratingsRows = await prisma.plugCategoryRating.findMany({
       where: { plugId },
     });
@@ -98,13 +99,24 @@ export const discoverProducts = async (
       ratingsRows.map((r) => [r.category, r.rating])
     );
 
-    // 5️⃣ candidate pool query
+    // 5️⃣ Exclusion list
     const excludedIds = [...excludedInventory, ...acceptedIds];
     const exclusionSql =
       excludedIds.length > 0
         ? `AND p."id" NOT IN (${excludedIds.map((id) => `'${id}'`).join(",")})`
         : "";
 
+    // 6️⃣ Total count (for hasNextPage detection)
+    const totalCountResult = await prisma.$queryRawUnsafe<{ count: number }[]>(`
+      SELECT COUNT(*)::int AS count
+      FROM "Product" p
+      WHERE p."status" = 'APPROVED'
+        AND COALESCE(p."stock",0) > 0
+        ${exclusionSql};
+    `);
+    const totalCount = totalCountResult[0]?.count ?? 0;
+
+    // 7️⃣ Fetch candidates for this page
     const candidates = await prisma.$queryRawUnsafe<any[]>(`
       SELECT 
         p.*, 
@@ -114,10 +126,10 @@ export const discoverProducts = async (
         AND COALESCE(p."stock",0) > 0
         ${exclusionSql}
       ORDER BY p."createdAt" DESC
-      LIMIT ${poolSize};
+      LIMIT ${limit} OFFSET ${offset};
     `);
 
-    // 6️⃣ score computation
+    // 8️⃣ Compute product scores
     const annotated = candidates.map((p) => {
       const catRating = ratingMap.get(p.category) ?? DEFAULT_CATEGORY_RATING;
       let score = computeProductBaseScore(p, catRating);
@@ -134,36 +146,40 @@ export const discoverProducts = async (
       return { ...p, _score: score, _rejectedCount: rejCount };
     });
 
-
-    // 7️⃣ sort & shuffle
+    // 9️⃣ Sort & shuffle top of page
     annotated.sort((a, b) => b._score - a._score);
     const top = shuffle(annotated.slice(0, limit));
 
-
-    // 8️⃣ hasNextPage detection (true if there are more than limit items available)
-    const hasNextPage = annotated.length > limit;
-
-
-    // 9️⃣ response — normalize and fix image arrays
+    // 🔟 Parse images
     for (const p of top) {
       if (typeof p.images === "string") {
         try {
           p.images = JSON.parse(p.images);
         } catch {
           p.images = [];
-          
         }
       }
     }
 
+    // 11️⃣ Pagination metadata
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+
+    // 12️⃣ Send response
     res.status(200).json({
-      meta: { hasNextPage },
+      meta: {
+        page,
+        totalPages,
+        totalCount,
+        hasNextPage,
+      },
       data: normalizeBigInt(top),
     });
   } catch (err) {
     next(err);
   }
 };
+
 
 /**
  * POST /discover/sync
