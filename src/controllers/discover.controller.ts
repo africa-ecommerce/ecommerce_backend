@@ -289,6 +289,9 @@ export const discoverProducts = async (
 
     // 5️⃣ Exclusion list
     const excludedIds = [...excludedInventory, ...acceptedIds];
+    console.log("excludedIds", excludedIds.length)
+    console.log("excludedInventory", excludedInventory.length)
+    console.log("acceptedIds", acceptedIds.length)
     const exclusionSql =
       excludedIds.length > 0
         ? `AND p."id" NOT IN (${excludedIds.map((id) => `'${id}'`).join(",")})`
@@ -303,6 +306,8 @@ export const discoverProducts = async (
         ${exclusionSql};
     `);
     const totalCount = totalCountResult[0]?.count ?? 0;
+        console.log("totalCount", totalCount)
+
 
     // ⚙️ Dynamic + Random Pool Size
     let poolSize = 250 + Math.floor(Math.random() * 100); // 250–350 baseline
@@ -651,6 +656,8 @@ export const syncDiscovery = async (
     const plug = req.plug!;
     const plugId = plug.id;
     const { accepted = [], rejected = [], swipesCount = 0 } = req.body;
+    
+        console.log("req.body", req.body);
 
     const now = new Date();
 
