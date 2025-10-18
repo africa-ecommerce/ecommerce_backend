@@ -651,11 +651,10 @@ export const syncDiscovery = async (
     const plug = req.plug!;
     const plugId = plug.id;
     const { accepted = [], rejected = [], swipesCount = 0 } = req.body;
-    console.log(req.body);
 
     const now = new Date();
 
-    // === 1. Fetch categories outside transaction
+    // === 1. Fetch product categories (read-only, safe outside tx)
     const allIds = Array.from(new Set([...accepted, ...rejected]));
     const productData = allIds.length
       ? await prisma.product.findMany({
@@ -665,74 +664,84 @@ export const syncDiscovery = async (
       : [];
     const categoryMap = new Map(productData.map((p) => [p.id, p.category]));
 
-    // constants
     const ACCEPT_DELTA = 0.03;
     const REJECT_DELTA = -0.02;
 
-    // === 2. Now do atomic updates in one compact transaction
-    await prisma.$transaction(async (tx) => {
-      // Track discovery stats
-      await tx.trackDiscovery.upsert({
-        where: { plugId },
-        create: { plugId, totalSwipes: swipesCount, lastAt: now },
-        update: { totalSwipes: { increment: swipesCount }, lastAt: now },
+    // === 2. TrackDiscovery update (not critical, fire-and-forget style)
+    await prisma.trackDiscovery.upsert({
+      where: { plugId },
+      create: {
+        plugId,
+        totalSwipes: swipesCount,
+        lastAt: now,
+      },
+      update: {
+        totalSwipes: { increment: swipesCount },
+        lastAt: now,
+      },
+    });
+
+    // === 3. Process accepted products
+    const acceptedPromises = accepted.map(async (pid) => {
+      const category = categoryMap.get(pid) || "unknown";
+
+      // upsert accepted
+      await prisma.acceptedProduct.upsert({
+        where: { plugId_productId: { plugId, productId: pid } },
+        create: { plugId, productId: pid, count: 1, lastAt: now },
+        update: { count: { increment: 1 }, lastAt: now },
       });
 
-      // Accepted
-      for (const pid of accepted) {
-        const category = categoryMap.get(pid) || "unknown";
+      // cleanup from rejected if previously rejected
+      await prisma.rejectedProduct.deleteMany({
+        where: { plugId, productId: pid },
+      });
 
-        await tx.acceptedProduct.upsert({
-          where: { plugId_productId: { plugId, productId: pid } },
-          create: { plugId, productId: pid, count: 1, lastAt: now },
-          update: { count: { increment: 1 }, lastAt: now },
-        });
-
-        await tx.rejectedProduct.deleteMany({
-          where: { plugId, productId: pid },
-        });
-
-        await tx.plugCategoryRating.upsert({
-          where: { plugId_category: { plugId, category } },
-          create: {
-            plugId,
-            category,
-            rating: DEFAULT_CATEGORY_RATING + ACCEPT_DELTA,
-          },
-          update: { rating: { increment: ACCEPT_DELTA } },
-        });
-      }
-
-      // Rejected
-      for (const pid of rejected) {
-        const category = categoryMap.get(pid) || "unknown";
-
-        await tx.rejectedProduct.upsert({
-          where: { plugId_productId: { plugId, productId: pid } },
-          create: { plugId, productId: pid, count: 1, lastAt: now },
-          update: { count: { increment: 1 }, lastAt: now },
-        });
-
-        await tx.acceptedProduct.deleteMany({
-          where: { plugId, productId: pid },
-        });
-
-        // Retrieve once per category instead of per product — optimization below
-        const existing = await tx.plugCategoryRating.findUnique({
-          where: { plugId_category: { plugId, category } },
-        });
-
-        const newRating = existing
-          ? Math.max(0.2, existing.rating + REJECT_DELTA)
-          : Math.max(0.2, DEFAULT_CATEGORY_RATING + REJECT_DELTA);
-
-        await tx.plugCategoryRating.upsert({
-          where: { plugId_category: { plugId, category } },
-          create: { plugId, category, rating: newRating },
-          update: { rating: newRating },
-        });
-      }
+      // bump category rating
+      await prisma.plugCategoryRating.upsert({
+        where: { plugId_category: { plugId, category } },
+        create: {
+          plugId,
+          category,
+          rating: DEFAULT_CATEGORY_RATING + ACCEPT_DELTA,
+        },
+        update: { rating: { increment: ACCEPT_DELTA } },
+      });
     });
+
+    // === 4. Process rejected products
+    const rejectedPromises = rejected.map(async (pid) => {
+      const category = categoryMap.get(pid) || "unknown";
+
+      await prisma.rejectedProduct.upsert({
+        where: { plugId_productId: { plugId, productId: pid } },
+        create: { plugId, productId: pid, count: 1, lastAt: now },
+        update: { count: { increment: 1 }, lastAt: now },
+      });
+
+      // cleanup from accepted if previously accepted
+      await prisma.acceptedProduct.deleteMany({
+        where: { plugId, productId: pid },
+      });
+
+      // adjust category rating
+      const existing = await prisma.plugCategoryRating.findUnique({
+        where: { plugId_category: { plugId, category } },
+      });
+
+      const newRating = existing
+        ? Math.max(0.2, existing.rating + REJECT_DELTA)
+        : Math.max(0.2, DEFAULT_CATEGORY_RATING + REJECT_DELTA);
+
+      await prisma.plugCategoryRating.upsert({
+        where: { plugId_category: { plugId, category } },
+        create: { plugId, category, rating: newRating },
+        update: { rating: newRating },
+      });
+    });
+
+    // Run all in parallel (independent, fast)
+    await Promise.allSettled([...acceptedPromises, ...rejectedPromises]);
 
     res.status(200).json({
       message: "Synced",
@@ -743,6 +752,7 @@ export const syncDiscovery = async (
     next(err);
   }
 };
+
 
 export const getAcceptedProducts = async (
   req: AuthRequest,
