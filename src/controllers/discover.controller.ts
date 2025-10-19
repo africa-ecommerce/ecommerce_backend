@@ -314,7 +314,7 @@ export const getAcceptedProducts = async (
   try {
     const plug = req.plug!;
     const plugId = plug.id;
-    const limit = parseInt(String(req.query.limit || "100")); //how  many
+    const limit = parseInt(String(req.query.limit)); //how  many
 
     const accepted = await prisma.acceptedProduct.findMany({
       where: { plugId },
@@ -335,6 +335,9 @@ export const getAcceptedProducts = async (
         name: true,
         price: true,
         images: true,
+        minPrice: true,
+        maxPrice: true,
+
       },
     });
 
