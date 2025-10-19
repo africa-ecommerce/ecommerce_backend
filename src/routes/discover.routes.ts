@@ -1,6 +1,6 @@
 import { Router } from "express";
 import authenticateJWT from "../middleware/auth.middleware";
-import { discoverProducts, getAcceptedProducts, syncDiscovery } from "../controllers/discover.controller";
+import { discoverProducts, getAcceptedProducts, syncDiscovery, deleteAcceptedProducts } from "../controllers/discover.controller";
 import { isPlug } from "../middleware/role.middleware";
 
 
@@ -17,6 +17,7 @@ router.use(plugAuth);
 router.get("/products", discoverProducts);
 router.post("/sync", syncDiscovery);
 router.get("/products/accepted", getAcceptedProducts);
+router.delete("/products/accepted", deleteAcceptedProducts);
 
 
 
