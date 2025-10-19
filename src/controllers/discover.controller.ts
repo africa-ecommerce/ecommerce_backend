@@ -319,7 +319,7 @@ export const getAcceptedProducts = async (
     const accepted = await prisma.acceptedProduct.findMany({
       where: { plugId },
       orderBy: { lastAt: "desc" },
-      take: limit,
+      // take: limit,
       select: { productId: true, count: true, lastAt: true },
     });
     const ids = accepted.map((a) => a.productId);
