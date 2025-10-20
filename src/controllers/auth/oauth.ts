@@ -12,7 +12,8 @@ export const google = (req: Request, res: Response, next: NextFunction) => {
       typeof callbackUrl === "string" &&
       isValidCallbackUrl(callbackUrl)
         ? callbackUrl
-        : "/dashboard";
+        : "/marketplace";
+        
 
     const decodedCallback = decodeURIComponent(url);
 
