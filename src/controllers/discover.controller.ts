@@ -314,19 +314,18 @@ export const getAcceptedProducts = async (
   try {
     const plug = req.plug!;
     const plugId = plug.id;
-    const limit = parseInt(String(req.query.limit || "100")); // default 100 if not provided
+    const limit = parseInt(String(req.query.limit)); //how many
 
     const accepted = await prisma.acceptedProduct.findMany({
       where: { plugId },
       orderBy: { lastAt: "desc" },
-      // take: limit, // optional if we want to limit later
+      // take: limit,
       select: { productId: true, count: true, lastAt: true },
     });
-
     const ids = accepted.map((a) => a.productId);
     if (!ids.length) {
-       res.status(200).json({ count: 0, products: [] });
-       return;
+      res.status(200).json({ count: 0, products: [] });
+      return;
     }
 
     const products = await prisma.product.findMany({
@@ -341,53 +340,30 @@ export const getAcceptedProducts = async (
       },
     });
 
-    // Map products by ID for preserving order
-    const map = new Map(
-      products.map((p) => [
-        p.id,
-        {
-          ...p,
-          images: safeParseImages(p.images),
-        },
-      ])
-    );
+    // Parse images safely
+    for (const p of products) {
+      if (typeof p.images === "string") {
+        try {
+          p.images = JSON.parse(p.images);
+        } catch {
+          p.images = [] as any;
+        }
+      }
+    }
 
-    const ordered = accepted
-      .map((a) => {
-        const product = map.get(a.productId);
-        if (!product) return null;
-        return {
-          ...product,
-          acceptedCount: a.count,
-          lastAt: a.lastAt,
-        };
-      })
-      .filter(Boolean); // remove nulls if any missing products
+    // preserve order of accepted list: map products by id
+    const map = new Map(products.map((p) => [p.id, p]));
+    const ordered = accepted.map((a) => ({
+      ...map.get(a.productId),
+      acceptedCount: a.count,
+      lastAt: a.lastAt,
+    }));
 
     res.status(200).json({ count: ordered.length, products: ordered });
   } catch (err) {
     next(err);
   }
 };
-
-/**
- * Safely parse image field.
- * Handles cases where it's a stringified JSON or already an array.
- */
-function safeParseImages(images: any): string[] {
-  if (!images) return [];
-  if (Array.isArray(images)) return images;
-  if (typeof images === "string") {
-    try {
-      const parsed = JSON.parse(images);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
 
 
 
