@@ -1,10 +1,7 @@
-
-
 import { NextFunction, Response } from "express";
 import { AuthRequest } from "../types";
 import { prisma } from "../config";
 import { discoverCache } from "../helper/cache/discoverCache";
-
 
 // --- Constants ---
 export const DEFAULT_CATEGORY_RATING = 1.0;
@@ -19,10 +16,7 @@ function daysSince(date: Date | string) {
   return (Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24);
 }
 
-function computeProductBaseScore(
-  product: any,
-  categoryRating = DEFAULT_CATEGORY_RATING
-) {
+function computeProductBaseScore(product: any, categoryRating = DEFAULT_CATEGORY_RATING) {
   let score = 1.0;
   if (product.plugsCount && product.plugsCount > 0)
     score += Math.log10(product.plugsCount + 1) * WEIGHT_PLUGSCOUNT;
@@ -48,14 +42,16 @@ function normalizeBigInt(obj: any): any {
     const normalized: any = {};
     for (const [key, value] of Object.entries(obj)) {
       if (typeof value === "bigint") normalized[key] = Number(value);
-      else if (typeof value === "object")
-        normalized[key] = normalizeBigInt(value);
+      else if (typeof value === "object") normalized[key] = normalizeBigInt(value);
       else normalized[key] = value;
     }
     return normalized;
   }
   return obj;
 }
+
+// 🔒 Simple in-memory lock to prevent concurrent stack builds
+const stackLocks = new Set<string>();
 
 // 🚀 MAIN ENDPOINT
 export const discoverProducts = async (
@@ -65,135 +61,145 @@ export const discoverProducts = async (
 ) => {
   try {
     const plug = req.plug!;
-    const plugId = plug.id;
+    const plugId = String(plug.id); // Ensure consistent cache key type
     const page = parseInt(String(req.query.page || "1"));
     const limit = Math.min(100, parseInt(String(req.query.limit || "20")));
     const cacheKey = `discover_stack_${plugId}`;
 
-    // --- Check cache first ---
-    let cachedStack = discoverCache.get<{ ids: string[]; createdAt: number }>(
-      cacheKey
-    );
+    // --- 1️⃣ Try cache first ---
+    let cachedStack = discoverCache.get<{ ids: string[]; createdAt: number }>(cacheKey);
 
     if (!cachedStack) {
-      console.log("🧠 Generating new discovery stack for plug:", plugId);
-
-      // 1️⃣ Exclude plug's own products
-      const plugProducts = await prisma.plugProduct.findMany({
-        where: { plugId },
-        select: { originalId: true },
-      });
-      const excludedInventory = plugProducts.map((p) => p.originalId);
-
-      // 2️⃣ Exclude accepted products
-      const acceptedRows = await prisma.acceptedProduct.findMany({
-        where: { plugId },
-        select: { productId: true },
-      });
-      const acceptedIds = acceptedRows.map((r) => r.productId);
-
-      // 3️⃣ Rejected penalties
-      const rejectedRows = await prisma.rejectedProduct.findMany({
-        where: { plugId },
-      });
-      const rejectedMap = new Map<string, number>();
-      for (const r of rejectedRows) rejectedMap.set(r.productId, r.count);
-
-      // 4️⃣ Category ratings
-      const ratingsRows = await prisma.plugCategoryRating.findMany({
-        where: { plugId },
-      });
-      const ratingMap = new Map<string, number>(
-        ratingsRows.map((r) => [r.category, r.rating])
-      );
-
-      // 5️⃣ Exclusion SQL
-      const excludedIds = [...excludedInventory, ...acceptedIds];
-      const exclusionSql =
-        excludedIds.length > 0
-          ? `AND p."id" NOT IN (${excludedIds
-              .map((id) => `'${id}'`)
-              .join(",")})`
-          : "";
-
-      // 6️⃣ Total count (for pool size)
-      const totalCountResult = await prisma.$queryRawUnsafe<
-        { count: number }[]
-      >(`
-        SELECT COUNT(*)::int AS count
-        FROM "Product" p
-        WHERE p."status" = 'APPROVED'
-          AND COALESCE(p."stock",0) > 0
-          ${exclusionSql};
-      `);
-      const totalCount = totalCountResult[0]?.count ?? 0;
-
-      // ⚙️ Dynamic + Random Pool Size
-      let poolSize = 250 + Math.floor(Math.random() * 100); // 250–350 baseline
-      if (totalCount > 1000)
-        poolSize = 400 + Math.floor(Math.random() * 100); // up to 500
-      else if (totalCount < 300) poolSize = Math.min(200, totalCount);
-
-      // 7️⃣ Fetch pool
-      const candidates = await prisma.$queryRawUnsafe<any[]>(`
-        SELECT 
-          p.*, 
-          CAST((SELECT COUNT(*) FROM "Review" r WHERE r."productId" = p.id) AS INT) AS "reviewsCount"
-        FROM "Product" p
-        WHERE p."status" = 'APPROVED'
-          AND COALESCE(p."stock",0) > 0
-          ${exclusionSql}
-        ORDER BY p."createdAt" DESC, RANDOM()
-        LIMIT ${poolSize};
-      `);
-
-      // 8️⃣ Compute scores
-      const annotated = candidates.map((p) => {
-        const catRating = ratingMap.get(p.category) ?? DEFAULT_CATEGORY_RATING;
-        let score = computeProductBaseScore(p, catRating);
-        const rejCount = rejectedMap.get(p.id) ?? 0;
-        if (rejCount > 0) {
-          const penaltyMultiplier = Math.pow(
-            REJECT_PENALTY_MULTIPLIER,
-            Math.min(rejCount, 4)
-          );
-          score *= penaltyMultiplier;
+      // prevent concurrent rebuilds
+      if (stackLocks.has(cacheKey)) {
+        console.log("⏳ Waiting for ongoing stack build:", plugId);
+        let retries = 0;
+        while (!discoverCache.get(cacheKey) && retries < 20) {
+          await new Promise((r) => setTimeout(r, 300));
+          retries++;
         }
-        return { ...p, _score: score };
-      });
+        cachedStack = discoverCache.get(cacheKey);
+      }
 
-      // 9️⃣ Sort + shuffle top 100
-      annotated.sort((a, b) => b._score - a._score);
-      const top100 = shuffle(annotated.slice(0, 100));
+      // if still not cached, generate new stack
+      if (!cachedStack) {
+        stackLocks.add(cacheKey);
+        console.log("🧠 Generating new discovery stack for plug:", plugId);
 
-      // 🧠 Cache the stack (only IDs for performance)
-      discoverCache.set(cacheKey, {
-        ids: top100.map((p) => p.id),
-        createdAt: Date.now(),
-      });
+        // --- Exclusions ---
+        const plugProducts = await prisma.plugProduct.findMany({
+          where: { plugId },
+          select: { originalId: true },
+        });
+        const excludedInventory = plugProducts.map((p) => p.originalId);
 
-      cachedStack = discoverCache.get(cacheKey)!;
+        const acceptedRows = await prisma.acceptedProduct.findMany({
+          where: { plugId },
+          select: { productId: true },
+        });
+        const acceptedIds = acceptedRows.map((r) => r.productId);
+
+        const rejectedRows = await prisma.rejectedProduct.findMany({
+          where: { plugId },
+        });
+        const rejectedMap = new Map<string, number>();
+        for (const r of rejectedRows) rejectedMap.set(r.productId, r.count);
+
+        const ratingsRows = await prisma.plugCategoryRating.findMany({
+          where: { plugId },
+        });
+        const ratingMap = new Map<string, number>(
+          ratingsRows.map((r) => [r.category, r.rating])
+        );
+
+        const excludedIds = [...excludedInventory, ...acceptedIds];
+        const exclusionSql =
+          excludedIds.length > 0
+            ? `AND p."id" NOT IN (${excludedIds.map((id) => `'${id}'`).join(",")})`
+            : "";
+
+        // --- Count + Pool size ---
+        const totalCountResult = await prisma.$queryRawUnsafe<{ count: number }[]>(`
+          SELECT COUNT(*)::int AS count
+          FROM "Product" p
+          WHERE p."status" = 'APPROVED'
+            AND COALESCE(p."stock",0) > 0
+            ${exclusionSql};
+        `);
+        const totalCount = totalCountResult[0]?.count ?? 0;
+
+        let poolSize = 250 + Math.floor(Math.random() * 100);
+        if (totalCount > 1000)
+          poolSize = 400 + Math.floor(Math.random() * 100);
+        else if (totalCount < 300) poolSize = Math.min(200, totalCount);
+
+        // --- Fetch candidate pool ---
+        const candidates = await prisma.$queryRawUnsafe<any[]>(`
+          SELECT 
+            p.*, 
+            CAST((SELECT COUNT(*) FROM "Review" r WHERE r."productId" = p.id) AS INT) AS "reviewsCount"
+          FROM "Product" p
+          WHERE p."status" = 'APPROVED'
+            AND COALESCE(p."stock",0) > 0
+            ${exclusionSql}
+          ORDER BY p."createdAt" DESC, RANDOM()
+          LIMIT ${poolSize};
+        `);
+
+        // --- Compute scores ---
+        const annotated = candidates.map((p) => {
+          const catRating = ratingMap.get(p.category) ?? DEFAULT_CATEGORY_RATING;
+          let score = computeProductBaseScore(p, catRating);
+          const rejCount = rejectedMap.get(p.id) ?? 0;
+          if (rejCount > 0) {
+            const penaltyMultiplier = Math.pow(
+              REJECT_PENALTY_MULTIPLIER,
+              Math.min(rejCount, 4)
+            );
+            score *= penaltyMultiplier;
+          }
+          return { ...p, _score: score };
+        });
+
+        annotated.sort((a, b) => b._score - a._score);
+        const top100 = shuffle(annotated.slice(0, 100));
+
+        // --- Cache the stack (IDs only) ---
+        discoverCache.set(cacheKey, {
+          ids: top100.map((p) => p.id),
+          createdAt: Date.now(),
+        });
+
+        cachedStack = discoverCache.get(cacheKey)!;
+        stackLocks.delete(cacheKey);
+      }
     }
 
-    // --- Pagination on cached stack ---
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    const paginatedIds = cachedStack.ids.slice(startIndex, endIndex);
+    // --- 2️⃣ Paginate from cached stack ---
+    const start = (page - 1) * limit;
+    const end = start + limit;
+    const paginatedIds = cachedStack.ids.slice(start, end);
 
     if (paginatedIds.length === 0) {
        res.status(200).json({
-        meta: { hasNextPage: false, totalCount: cachedStack.ids.length,  cacheCreatedAt: cachedStack.createdAt, limit, page },
+        meta: {
+          totalCount: cachedStack.ids.length,
+          limit,
+          page,
+          hasNextPage: false,
+          cacheCreatedAt: cachedStack.createdAt,
+        },
         data: [],
       });
       return;
     }
 
-    // Fetch those product details
+    // --- 3️⃣ Fetch actual products for this page ---
     const products = await prisma.product.findMany({
       where: { id: { in: paginatedIds } },
     });
 
-    // Parse images safely
+    // parse images safely
     for (const p of products) {
       if (typeof p.images === "string") {
         try {
@@ -204,14 +210,14 @@ export const discoverProducts = async (
       }
     }
 
-    // --- Response ---
+    // --- 4️⃣ Respond ---
     res.status(200).json({
       meta: {
         totalCount: cachedStack.ids.length,
         limit,
         page,
-        hasNextPage: endIndex < cachedStack.ids.length,
-        cacheCreatedAt: cachedStack.createdAt, // ✅ cache creation time (for client to calculate)
+        hasNextPage: end < cachedStack.ids.length,
+        cacheCreatedAt: cachedStack.createdAt,
       },
       data: normalizeBigInt(products),
     });
