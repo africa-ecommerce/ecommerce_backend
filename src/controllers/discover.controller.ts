@@ -50,9 +50,6 @@ function normalizeBigInt(obj: any): any {
   return obj;
 }
 
-// 🔒 Simple in-memory lock to prevent concurrent stack builds
-const stackLocks = new Set<string>();
-
 // 🚀 MAIN ENDPOINT
 export const discoverProducts = async (
   req: AuthRequest,
@@ -61,131 +58,117 @@ export const discoverProducts = async (
 ) => {
   try {
     const plug = req.plug!;
-    const plugId = String(plug.id); // Ensure consistent cache key type
+    const plugId = String(plug.id);
+    const cacheKey = `discover_stack_${plugId}`;
     const page = parseInt(String(req.query.page || "1"));
     const limit = Math.min(100, parseInt(String(req.query.limit || "20")));
-    const cacheKey = `discover_stack_${plugId}`;
-    console.log("plugid", plugId);
-    console.log("cacheKey", cacheKey);
 
-    // --- 1️⃣ Try cache first ---
+    console.log("🔍 Plug ID:", plugId);
+    console.log("🔑 Cache Key:", cacheKey);
+
+    // 1️⃣ Try to get from cache
     let cachedStack = discoverCache.get<{ ids: string[]; createdAt: number }>(cacheKey);
 
-     console.log("cachedStack", cachedStack);
+     console.log("🔑 cachedStack:", cachedStack);
 
     if (!cachedStack) {
-      // prevent concurrent rebuilds
-      if (stackLocks.has(cacheKey)) {
-        console.log("⏳ Waiting for ongoing stack build:", plugId);
-        let retries = 0;
-        while (!discoverCache.get(cacheKey) && retries < 20) {
-          await new Promise((r) => setTimeout(r, 300));
-          retries++;
+      console.log("⚙️ No cache found. Generating new discovery stack...");
+
+      // --- Exclusions ---
+      const plugProducts = await prisma.plugProduct.findMany({
+        where: { plugId },
+        select: { originalId: true },
+      });
+      const excludedInventory = plugProducts.map((p) => p.originalId);
+
+      const acceptedRows = await prisma.acceptedProduct.findMany({
+        where: { plugId },
+        select: { productId: true },
+      });
+      const acceptedIds = acceptedRows.map((r) => r.productId);
+
+      const rejectedRows = await prisma.rejectedProduct.findMany({
+        where: { plugId },
+      });
+      const rejectedMap = new Map<string, number>();
+      for (const r of rejectedRows) rejectedMap.set(r.productId, r.count);
+
+      const ratingsRows = await prisma.plugCategoryRating.findMany({
+        where: { plugId },
+      });
+      const ratingMap = new Map<string, number>(
+        ratingsRows.map((r) => [r.category, r.rating])
+      );
+
+      const excludedIds = [...excludedInventory, ...acceptedIds];
+      const exclusionSql =
+        excludedIds.length > 0
+          ? `AND p."id" NOT IN (${excludedIds.map((id) => `'${id}'`).join(",")})`
+          : "";
+
+      // --- Count + Pool size ---
+      const totalCountResult = await prisma.$queryRawUnsafe<{ count: number }[]>(`
+        SELECT COUNT(*)::int AS count
+        FROM "Product" p
+        WHERE p."status" = 'APPROVED'
+          AND COALESCE(p."stock",0) > 0
+          ${exclusionSql};
+      `);
+      const totalCount = totalCountResult[0]?.count ?? 0;
+
+      let poolSize = 250 + Math.floor(Math.random() * 100);
+      if (totalCount > 1000)
+        poolSize = 400 + Math.floor(Math.random() * 100);
+      else if (totalCount < 300) poolSize = Math.min(200, totalCount);
+
+      // --- Fetch candidates ---
+      const candidates = await prisma.$queryRawUnsafe<any[]>(`
+        SELECT 
+          p.*, 
+          CAST((SELECT COUNT(*) FROM "Review" r WHERE r."productId" = p.id) AS INT) AS "reviewsCount"
+        FROM "Product" p
+        WHERE p."status" = 'APPROVED'
+          AND COALESCE(p."stock",0) > 0
+          ${exclusionSql}
+        ORDER BY p."createdAt" DESC, RANDOM()
+        LIMIT ${poolSize};
+      `);
+
+      // --- Compute scores ---
+      const scored = candidates.map((p) => {
+        const catRating = ratingMap.get(p.category) ?? DEFAULT_CATEGORY_RATING;
+        let score = computeProductBaseScore(p, catRating);
+        const rejCount = rejectedMap.get(p.id) ?? 0;
+        if (rejCount > 0) {
+          const penaltyMultiplier = Math.pow(REJECT_PENALTY_MULTIPLIER, Math.min(rejCount, 4));
+          score *= penaltyMultiplier;
         }
-        cachedStack = discoverCache.get(cacheKey);
-      }
+        return { ...p, _score: score };
+      });
 
-      // if still not cached, generate new stack
-      if (!cachedStack) {
-        stackLocks.add(cacheKey);
-        console.log("🧠 Generating new discovery stack for plug:", plugId);
+      scored.sort((a, b) => b._score - a._score);
+      const top100 = shuffle(scored.slice(0, 100));
 
-        // --- Exclusions ---
-        const plugProducts = await prisma.plugProduct.findMany({
-          where: { plugId },
-          select: { originalId: true },
-        });
-        const excludedInventory = plugProducts.map((p) => p.originalId);
+      // --- Save to cache ---
+      const newStack = {
+        ids: top100.map((p) => p.id),
+        createdAt: Date.now(),
+      };
 
-        const acceptedRows = await prisma.acceptedProduct.findMany({
-          where: { plugId },
-          select: { productId: true },
-        });
-        const acceptedIds = acceptedRows.map((r) => r.productId);
+      // 💡 FIX: clone the object manually to avoid undefined returns
+      discoverCache.set(cacheKey, JSON.parse(JSON.stringify(newStack)));
 
-        const rejectedRows = await prisma.rejectedProduct.findMany({
-          where: { plugId },
-        });
-        const rejectedMap = new Map<string, number>();
-        for (const r of rejectedRows) rejectedMap.set(r.productId, r.count);
-
-        const ratingsRows = await prisma.plugCategoryRating.findMany({
-          where: { plugId },
-        });
-        const ratingMap = new Map<string, number>(
-          ratingsRows.map((r) => [r.category, r.rating])
-        );
-
-        const excludedIds = [...excludedInventory, ...acceptedIds];
-        const exclusionSql =
-          excludedIds.length > 0
-            ? `AND p."id" NOT IN (${excludedIds.map((id) => `'${id}'`).join(",")})`
-            : "";
-
-        // --- Count + Pool size ---
-        const totalCountResult = await prisma.$queryRawUnsafe<{ count: number }[]>(`
-          SELECT COUNT(*)::int AS count
-          FROM "Product" p
-          WHERE p."status" = 'APPROVED'
-            AND COALESCE(p."stock",0) > 0
-            ${exclusionSql};
-        `);
-        const totalCount = totalCountResult[0]?.count ?? 0;
-
-        let poolSize = 250 + Math.floor(Math.random() * 100);
-        if (totalCount > 1000)
-          poolSize = 400 + Math.floor(Math.random() * 100);
-        else if (totalCount < 300) poolSize = Math.min(200, totalCount);
-
-        // --- Fetch candidate pool ---
-        const candidates = await prisma.$queryRawUnsafe<any[]>(`
-          SELECT 
-            p.*, 
-            CAST((SELECT COUNT(*) FROM "Review" r WHERE r."productId" = p.id) AS INT) AS "reviewsCount"
-          FROM "Product" p
-          WHERE p."status" = 'APPROVED'
-            AND COALESCE(p."stock",0) > 0
-            ${exclusionSql}
-          ORDER BY p."createdAt" DESC, RANDOM()
-          LIMIT ${poolSize};
-        `);
-
-        // --- Compute scores ---
-        const annotated = candidates.map((p) => {
-          const catRating = ratingMap.get(p.category) ?? DEFAULT_CATEGORY_RATING;
-          let score = computeProductBaseScore(p, catRating);
-          const rejCount = rejectedMap.get(p.id) ?? 0;
-          if (rejCount > 0) {
-            const penaltyMultiplier = Math.pow(
-              REJECT_PENALTY_MULTIPLIER,
-              Math.min(rejCount, 4)
-            );
-            score *= penaltyMultiplier;
-          }
-          return { ...p, _score: score };
-        });
-
-        annotated.sort((a, b) => b._score - a._score);
-        const top100 = shuffle(annotated.slice(0, 100));
-
-        // --- Cache the stack (IDs only) ---
-        discoverCache.set(cacheKey, {
-          ids: top100.map((p) => p.id),
-          createdAt: Date.now(),
-        });
-
-        cachedStack = discoverCache.get(cacheKey)!;
-        stackLocks.delete(cacheKey);
-      }
+      cachedStack = newStack;
+      console.log("✅ Cached new stack:", cacheKey);
     }
 
-    // --- 2️⃣ Paginate from cached stack ---
+    // 2️⃣ Paginate
     const start = (page - 1) * limit;
     const end = start + limit;
     const paginatedIds = cachedStack.ids.slice(start, end);
 
     if (paginatedIds.length === 0) {
-       res.status(200).json({
+      return res.status(200).json({
         meta: {
           totalCount: cachedStack.ids.length,
           limit,
@@ -195,10 +178,9 @@ export const discoverProducts = async (
         },
         data: [],
       });
-      return;
     }
 
-    // --- 3️⃣ Fetch actual products for this page ---
+    // 3️⃣ Fetch actual products
     const products = await prisma.product.findMany({
       where: { id: { in: paginatedIds } },
     });
@@ -214,7 +196,7 @@ export const discoverProducts = async (
       }
     }
 
-    // --- 4️⃣ Respond ---
+    // 4️⃣ Respond
     res.status(200).json({
       meta: {
         totalCount: cachedStack.ids.length,
