@@ -1,8 +1,12 @@
+
+
 import { NextFunction, Response } from "express";
 import { AuthRequest } from "../types";
 import { prisma } from "../config";
+import { discoverCache } from "../helper/cache/discoverCache";
 
-// constants
+
+// --- Constants ---
 export const DEFAULT_CATEGORY_RATING = 1.0;
 const WEIGHT_PLUGSCOUNT = 0.1;
 const WEIGHT_SOLD = 0.2;
@@ -10,12 +14,15 @@ const WEIGHT_RECENT = 0.06;
 const WEIGHT_REVIEW = 0.05;
 export const REJECT_PENALTY_MULTIPLIER = 0.3;
 
-// --- utils ---
+// --- Utils ---
 function daysSince(date: Date | string) {
   return (Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24);
 }
 
-function computeProductBaseScore(product: any, categoryRating = DEFAULT_CATEGORY_RATING) {
+function computeProductBaseScore(
+  product: any,
+  categoryRating = DEFAULT_CATEGORY_RATING
+) {
   let score = 1.0;
   if (product.plugsCount && product.plugsCount > 0)
     score += Math.log10(product.plugsCount + 1) * WEIGHT_PLUGSCOUNT;
@@ -59,124 +66,351 @@ export const discoverProducts = async (
   try {
     const plug = req.plug!;
     const plugId = plug.id;
-
+    const page = parseInt(String(req.query.page || "1"));
     const limit = Math.min(100, parseInt(String(req.query.limit || "20")));
+    const cacheKey = `discover_stack_${plugId}`;
 
-    // 1️⃣ Exclude plug's own products
-    const plugProducts = await prisma.plugProduct.findMany({
-      where: { plugId },
-      select: { originalId: true },
-    });
-
-    const excludedInventory = plugProducts.map((p) => p.originalId);
-
-    // 2️⃣ Exclude accepted products
-    const acceptedRows = await prisma.acceptedProduct.findMany({
-      where: { plugId },
-      select: { productId: true },
-    });
-    const acceptedIds = acceptedRows.map((r) => r.productId);
-
-    // 3️⃣ Rejected penalties
-    const rejectedRows = await prisma.rejectedProduct.findMany({
-      where: { plugId },
-    });
-    const rejectedMap = new Map<string, number>();
-    for (const r of rejectedRows) rejectedMap.set(r.productId, r.count);
-
-    // 4️⃣ Category ratings
-    const ratingsRows = await prisma.plugCategoryRating.findMany({
-      where: { plugId },
-    });
-    const ratingMap = new Map<string, number>(
-      ratingsRows.map((r) => [r.category, r.rating])
+    // --- Check cache first ---
+    let cachedStack = discoverCache.get<{ ids: string[]; createdAt: number }>(
+      cacheKey
     );
 
-    // 5️⃣ Exclusion list
-    const excludedIds = [...excludedInventory, ...acceptedIds];
-    const exclusionSql =
-      excludedIds.length > 0
-        ? `AND p."id" NOT IN (${excludedIds.map((id) => `'${id}'`).join(",")})`
-        : "";
+    if (!cachedStack) {
+      console.log("🧠 Generating new discovery stack for plug:", plugId);
 
-    // 6️⃣ Total count (to dynamically size the pool)
-    const totalCountResult = await prisma.$queryRawUnsafe<{ count: number }[]>(`
-      SELECT COUNT(*)::int AS count
-      FROM "Product" p
-      WHERE p."status" = 'APPROVED'
-        AND COALESCE(p."stock",0) > 0
-        ${exclusionSql};
-    `);
-    const totalCount = totalCountResult[0]?.count ?? 0;
-        console.log("totalCount", totalCount)
+      // 1️⃣ Exclude plug's own products
+      const plugProducts = await prisma.plugProduct.findMany({
+        where: { plugId },
+        select: { originalId: true },
+      });
+      const excludedInventory = plugProducts.map((p) => p.originalId);
 
+      // 2️⃣ Exclude accepted products
+      const acceptedRows = await prisma.acceptedProduct.findMany({
+        where: { plugId },
+        select: { productId: true },
+      });
+      const acceptedIds = acceptedRows.map((r) => r.productId);
 
-    // ⚙️ Dynamic + Random Pool Size
-    let poolSize = 250 + Math.floor(Math.random() * 100); // 250–350 baseline
-    if (totalCount > 1000) poolSize = 400 + Math.floor(Math.random() * 100); // up to 500
-    else if (totalCount < 300) poolSize = Math.min(200, totalCount); // smaller DBs
+      // 3️⃣ Rejected penalties
+      const rejectedRows = await prisma.rejectedProduct.findMany({
+        where: { plugId },
+      });
+      const rejectedMap = new Map<string, number>();
+      for (const r of rejectedRows) rejectedMap.set(r.productId, r.count);
 
+      // 4️⃣ Category ratings
+      const ratingsRows = await prisma.plugCategoryRating.findMany({
+        where: { plugId },
+      });
+      const ratingMap = new Map<string, number>(
+        ratingsRows.map((r) => [r.category, r.rating])
+      );
 
-    // 7️⃣ Fetch a semi-random pool of products
-    const candidates = await prisma.$queryRawUnsafe<any[]>(`
-      SELECT 
-        p.*, 
-        CAST((SELECT COUNT(*) FROM "Review" r WHERE r."productId" = p.id) AS INT) AS "reviewsCount"
-      FROM "Product" p
-      WHERE p."status" = 'APPROVED'
-        AND COALESCE(p."stock",0) > 0
-        ${exclusionSql}
-      ORDER BY p."createdAt" DESC, RANDOM()
-      LIMIT ${poolSize};
-    `);
+      // 5️⃣ Exclusion SQL
+      const excludedIds = [...excludedInventory, ...acceptedIds];
+      const exclusionSql =
+        excludedIds.length > 0
+          ? `AND p."id" NOT IN (${excludedIds
+              .map((id) => `'${id}'`)
+              .join(",")})`
+          : "";
 
-    // 8️⃣ Compute scores
-    const annotated = candidates.map((p) => {
-      const catRating = ratingMap.get(p.category) ?? DEFAULT_CATEGORY_RATING;
-      let score = computeProductBaseScore(p, catRating);
+      // 6️⃣ Total count (for pool size)
+      const totalCountResult = await prisma.$queryRawUnsafe<
+        { count: number }[]
+      >(`
+        SELECT COUNT(*)::int AS count
+        FROM "Product" p
+        WHERE p."status" = 'APPROVED'
+          AND COALESCE(p."stock",0) > 0
+          ${exclusionSql};
+      `);
+      const totalCount = totalCountResult[0]?.count ?? 0;
 
-      const rejCount = rejectedMap.get(p.id) ?? 0;
-      if (rejCount > 0) {
-        const penaltyMultiplier = Math.pow(
-          REJECT_PENALTY_MULTIPLIER,
-          Math.min(rejCount, 4)
-        );
-        score *= penaltyMultiplier;
-      }
+      // ⚙️ Dynamic + Random Pool Size
+      let poolSize = 250 + Math.floor(Math.random() * 100); // 250–350 baseline
+      if (totalCount > 1000)
+        poolSize = 400 + Math.floor(Math.random() * 100); // up to 500
+      else if (totalCount < 300) poolSize = Math.min(200, totalCount);
 
-      return { ...p, _score: score, _rejectedCount: rejCount };
+      // 7️⃣ Fetch pool
+      const candidates = await prisma.$queryRawUnsafe<any[]>(`
+        SELECT 
+          p.*, 
+          CAST((SELECT COUNT(*) FROM "Review" r WHERE r."productId" = p.id) AS INT) AS "reviewsCount"
+        FROM "Product" p
+        WHERE p."status" = 'APPROVED'
+          AND COALESCE(p."stock",0) > 0
+          ${exclusionSql}
+        ORDER BY p."createdAt" DESC, RANDOM()
+        LIMIT ${poolSize};
+      `);
+
+      // 8️⃣ Compute scores
+      const annotated = candidates.map((p) => {
+        const catRating = ratingMap.get(p.category) ?? DEFAULT_CATEGORY_RATING;
+        let score = computeProductBaseScore(p, catRating);
+        const rejCount = rejectedMap.get(p.id) ?? 0;
+        if (rejCount > 0) {
+          const penaltyMultiplier = Math.pow(
+            REJECT_PENALTY_MULTIPLIER,
+            Math.min(rejCount, 4)
+          );
+          score *= penaltyMultiplier;
+        }
+        return { ...p, _score: score };
+      });
+
+      // 9️⃣ Sort + shuffle top 100
+      annotated.sort((a, b) => b._score - a._score);
+      const top100 = shuffle(annotated.slice(0, 100));
+
+      // 🧠 Cache the stack (only IDs for performance)
+      discoverCache.set(cacheKey, {
+        ids: top100.map((p) => p.id),
+        createdAt: Date.now(),
+      });
+
+      cachedStack = discoverCache.get(cacheKey)!;
+    }
+
+    // --- Pagination on cached stack ---
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedIds = cachedStack.ids.slice(startIndex, endIndex);
+
+    if (paginatedIds.length === 0) {
+       res.status(200).json({
+        meta: { hasNextPage: false, totalCount: cachedStack.ids.length,  cacheCreatedAt: cachedStack.createdAt, limit, page },
+        data: [],
+      });
+      return;
+    }
+
+    // Fetch those product details
+    const products = await prisma.product.findMany({
+      where: { id: { in: paginatedIds } },
     });
 
-    // 9️⃣ Sort & shuffle top results
-    annotated.sort((a, b) => b._score - a._score);
-    const top = shuffle(annotated.slice(0, limit));
-
-    // 🔟 Parse images safely
-    for (const p of top) {
+    // Parse images safely
+    for (const p of products) {
       if (typeof p.images === "string") {
         try {
-          p.images = JSON.parse(p.images);
+          (p as any).images = JSON.parse(p.images);
         } catch {
-          p.images = [];
+          (p as any).images = [];
         }
       }
     }
 
-    // 11️⃣ Response (meta for pagination/UI)
+    // --- Response ---
     res.status(200).json({
       meta: {
-        totalCount,
-        poolSize,
+        totalCount: cachedStack.ids.length,
         limit,
-        hasNextPage: totalCount > limit,
+        page,
+        hasNextPage: endIndex < cachedStack.ids.length,
+        cacheCreatedAt: cachedStack.createdAt, // ✅ cache creation time (for client to calculate)
       },
-      data: normalizeBigInt(top),
+      data: normalizeBigInt(products),
     });
   } catch (err) {
     console.error("discoverProducts error:", err);
     next(err);
   }
 };
+
+
+
+
+
+
+
+
+
+
+
+
+// import { NextFunction, Response } from "express";
+// import { AuthRequest } from "../types";
+// import { prisma } from "../config";
+
+// // constants
+// export const DEFAULT_CATEGORY_RATING = 1.0;
+// const WEIGHT_PLUGSCOUNT = 0.1;
+// const WEIGHT_SOLD = 0.2;
+// const WEIGHT_RECENT = 0.06;
+// const WEIGHT_REVIEW = 0.05;
+// export const REJECT_PENALTY_MULTIPLIER = 0.3;
+
+// // --- utils ---
+// function daysSince(date: Date | string) {
+//   return (Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24);
+// }
+
+// function computeProductBaseScore(product: any, categoryRating = DEFAULT_CATEGORY_RATING) {
+//   let score = 1.0;
+//   if (product.plugsCount && product.plugsCount > 0)
+//     score += Math.log10(product.plugsCount + 1) * WEIGHT_PLUGSCOUNT;
+//   if (product.sold && product.sold > 0)
+//     score += Math.log10(product.sold + 1) * WEIGHT_SOLD;
+//   if (daysSince(product.createdAt) <= 7) score += WEIGHT_RECENT;
+//   if (product.reviewsCount && product.reviewsCount > 0)
+//     score += Math.log10(product.reviewsCount + 1) * WEIGHT_REVIEW;
+//   return score * categoryRating;
+// }
+
+// function shuffle<T>(arr: T[]) {
+//   for (let i = arr.length - 1; i > 0; i--) {
+//     const j = Math.floor(Math.random() * (i + 1));
+//     [arr[i], arr[j]] = [arr[j], arr[i]];
+//   }
+//   return arr;
+// }
+
+// function normalizeBigInt(obj: any): any {
+//   if (Array.isArray(obj)) return obj.map(normalizeBigInt);
+//   if (obj && typeof obj === "object") {
+//     const normalized: any = {};
+//     for (const [key, value] of Object.entries(obj)) {
+//       if (typeof value === "bigint") normalized[key] = Number(value);
+//       else if (typeof value === "object")
+//         normalized[key] = normalizeBigInt(value);
+//       else normalized[key] = value;
+//     }
+//     return normalized;
+//   }
+//   return obj;
+// }
+
+// // 🚀 MAIN ENDPOINT
+// export const discoverProducts = async (
+//   req: AuthRequest,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+//     const plug = req.plug!;
+//     const plugId = plug.id;
+
+//     const limit = Math.min(100, parseInt(String(req.query.limit || "20")));
+
+//     // 1️⃣ Exclude plug's own products
+//     const plugProducts = await prisma.plugProduct.findMany({
+//       where: { plugId },
+//       select: { originalId: true },
+//     });
+
+//     const excludedInventory = plugProducts.map((p) => p.originalId);
+
+//     // 2️⃣ Exclude accepted products
+//     const acceptedRows = await prisma.acceptedProduct.findMany({
+//       where: { plugId },
+//       select: { productId: true },
+//     });
+//     const acceptedIds = acceptedRows.map((r) => r.productId);
+
+//     // 3️⃣ Rejected penalties
+//     const rejectedRows = await prisma.rejectedProduct.findMany({
+//       where: { plugId },
+//     });
+//     const rejectedMap = new Map<string, number>();
+//     for (const r of rejectedRows) rejectedMap.set(r.productId, r.count);
+
+//     // 4️⃣ Category ratings
+//     const ratingsRows = await prisma.plugCategoryRating.findMany({
+//       where: { plugId },
+//     });
+//     const ratingMap = new Map<string, number>(
+//       ratingsRows.map((r) => [r.category, r.rating])
+//     );
+
+//     // 5️⃣ Exclusion list
+//     const excludedIds = [...excludedInventory, ...acceptedIds];
+//     const exclusionSql =
+//       excludedIds.length > 0
+//         ? `AND p."id" NOT IN (${excludedIds.map((id) => `'${id}'`).join(",")})`
+//         : "";
+
+//     // 6️⃣ Total count (to dynamically size the pool)
+//     const totalCountResult = await prisma.$queryRawUnsafe<{ count: number }[]>(`
+//       SELECT COUNT(*)::int AS count
+//       FROM "Product" p
+//       WHERE p."status" = 'APPROVED'
+//         AND COALESCE(p."stock",0) > 0
+//         ${exclusionSql};
+//     `);
+//     const totalCount = totalCountResult[0]?.count ?? 0;
+//         console.log("totalCount", totalCount)
+
+
+//     // ⚙️ Dynamic + Random Pool Size
+//     let poolSize = 250 + Math.floor(Math.random() * 100); // 250–350 baseline
+//     if (totalCount > 1000) poolSize = 400 + Math.floor(Math.random() * 100); // up to 500
+//     else if (totalCount < 300) poolSize = Math.min(200, totalCount); // smaller DBs
+
+
+//     // 7️⃣ Fetch a semi-random pool of products
+//     const candidates = await prisma.$queryRawUnsafe<any[]>(`
+//       SELECT 
+//         p.*, 
+//         CAST((SELECT COUNT(*) FROM "Review" r WHERE r."productId" = p.id) AS INT) AS "reviewsCount"
+//       FROM "Product" p
+//       WHERE p."status" = 'APPROVED'
+//         AND COALESCE(p."stock",0) > 0
+//         ${exclusionSql}
+//       ORDER BY p."createdAt" DESC, RANDOM()
+//       LIMIT ${poolSize};
+//     `);
+
+//     // 8️⃣ Compute scores
+//     const annotated = candidates.map((p) => {
+//       const catRating = ratingMap.get(p.category) ?? DEFAULT_CATEGORY_RATING;
+//       let score = computeProductBaseScore(p, catRating);
+
+//       const rejCount = rejectedMap.get(p.id) ?? 0;
+//       if (rejCount > 0) {
+//         const penaltyMultiplier = Math.pow(
+//           REJECT_PENALTY_MULTIPLIER,
+//           Math.min(rejCount, 4)
+//         );
+//         score *= penaltyMultiplier;
+//       }
+
+//       return { ...p, _score: score, _rejectedCount: rejCount };
+//     });
+
+//     // 9️⃣ Sort & shuffle top results
+//     annotated.sort((a, b) => b._score - a._score);
+//     const top = shuffle(annotated.slice(0, limit));
+
+//     // 🔟 Parse images safely
+//     for (const p of top) {
+//       if (typeof p.images === "string") {
+//         try {
+//           p.images = JSON.parse(p.images);
+//         } catch {
+//           p.images = [];
+//         }
+//       }
+//     }
+
+//     // 11️⃣ Response (meta for pagination/UI)
+//     res.status(200).json({
+//       meta: {
+//         totalCount,
+//         poolSize,
+//         limit,
+//         hasNextPage: totalCount > limit,
+//       },
+//       data: normalizeBigInt(top),
+//     });
+//   } catch (err) {
+//     console.error("discoverProducts error:", err);
+//     next(err);
+//   }
+// };
 
 
 
