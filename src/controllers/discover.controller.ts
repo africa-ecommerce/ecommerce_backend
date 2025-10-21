@@ -59,7 +59,8 @@ export const discoverProducts = async (
   try {
     const plug = req.plug!;
     const plugId = String(plug.id);
-    const cacheKey = `discover_stack_${plugId}`;
+    const CACHE_VERSION = "v10"; // increment when schema changes
+    const cacheKey = `discover_stack_${CACHE_VERSION}_${plugId}`;
     const page = parseInt(String(req.query.page || "1"));
     const limit = Math.min(100, parseInt(String(req.query.limit || "20")));
 
