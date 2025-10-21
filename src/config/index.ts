@@ -45,6 +45,8 @@ export const logisticsBaseUrl = process.env.LOGISTICS_BASE_URL || "https://65c3-
 export const paystackSecretKey = "sk_test_d122660fa27fb2c7df66284432992eced5d50b78";
 export const domain = process.env.DOMAIN || "localhost";
 export const adminAccount = process.env.ADMIN_ACCOUNT || "*************";
+export const upstashRedisRestUrl = process.env.UPSTASH_REDIS_REST_URL || "*************";
+export const upstashRedisRestToken =  process.env.UPSTASH_REDIS_REST_TOKEN || "*************";
 
 
 export const emailConfigs = {

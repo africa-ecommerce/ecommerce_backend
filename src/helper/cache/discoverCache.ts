@@ -1,8 +1,9 @@
 import { Redis } from "@upstash/redis";
+import { upstashRedisRestUrl, upstashRedisRestToken } from "../../config";
 
 export const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+  url: upstashRedisRestUrl,
+  token: upstashRedisRestToken,
 });
 
 const DISCOVER_TTL = 6 * 60 * 60; // 6 hours
@@ -13,17 +14,20 @@ export interface DiscoverStack {
   createdAt: number;
 }
 
-export async function getDiscoverStack(plugId: string): Promise<DiscoverStack | null> {
-  const raw = await redis.get<string>(`discover_stack_v10_${plugId}`);
+export async function getDiscoverStack(
+  plugId: string
+): Promise<DiscoverStack | null> {
+  const raw = await redis.get(`discover_stack_v10_${plugId}`);
+
   if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed || !Array.isArray(parsed.ids)) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
+
+  // Handle both cases: already parsed object or JSON string
+  const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+
+  if (!parsed || !Array.isArray(parsed.ids)) return null;
+  return parsed;
 }
+
 
 export async function setDiscoverStack(plugId: string, ids: string[]) {
   const stack: DiscoverStack = { ids, createdAt: Date.now() };
