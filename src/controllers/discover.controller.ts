@@ -71,6 +71,8 @@ export const discoverProducts = async (
       cacheKey
     );
 
+    console.log("cachedStack", cachedStack);
+
     if (!cachedStack) {
       // --- Exclusions ---
       const plugProducts = await prisma.plugProduct.findMany({
@@ -161,6 +163,7 @@ export const discoverProducts = async (
       discoverCache.set(cacheKey, JSON.parse(JSON.stringify(newStack)));
       cachedStack = newStack;
     } else {
+      console.log("yes")
       // 🧠 EVEN WHEN USING CACHE: exclude accepted/rejected/plugged
       const [plugProducts, acceptedRows, rejectedRows] = await Promise.all([
         prisma.plugProduct.findMany({
@@ -188,12 +191,16 @@ export const discoverProducts = async (
 
       // update cache with cleaned stack
       discoverCache.set(cacheKey, JSON.parse(JSON.stringify(cachedStack)));
+
+       console.log("cachedStack", cachedStack);
     }
 
     // --- Pagination ---
     const start = (page - 1) * limit;
     const end = start + limit;
     const paginatedIds = cachedStack.ids.slice(start, end);
+
+     console.log("paginatedIds", paginatedIds);
 
     const hasNextPage = end < cachedStack.ids.length;
 
