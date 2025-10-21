@@ -65,9 +65,13 @@ export const discoverProducts = async (
     const page = parseInt(String(req.query.page || "1"));
     const limit = Math.min(100, parseInt(String(req.query.limit || "20")));
     const cacheKey = `discover_stack_${plugId}`;
+    console.log("plugid", plugId);
+    console.log("cacheKey", cacheKey);
 
     // --- 1️⃣ Try cache first ---
     let cachedStack = discoverCache.get<{ ids: string[]; createdAt: number }>(cacheKey);
+
+     console.log("cachedStack", cachedStack);
 
     if (!cachedStack) {
       // prevent concurrent rebuilds
