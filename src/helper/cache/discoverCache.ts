@@ -5,45 +5,42 @@ export const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 });
 
-// 6 hours cache TTL
-const DISCOVER_TTL = 6 * 60 * 60; // seconds
-const LOCK_TTL = 20; // lock expires after 20s
+const DISCOVER_TTL = 6 * 60 * 60; // 6 hours
+const LOCK_TTL = 20; // 20s
 
 export interface DiscoverStack {
   ids: string[];
   createdAt: number;
 }
 
-// 🧩 Get stack
 export async function getDiscoverStack(plugId: string): Promise<DiscoverStack | null> {
-  const raw = await redis.get<string>(`discover_stack_${plugId}`);
+  const raw = await redis.get<string>(`discover_stack_v10_${plugId}`);
   if (!raw) return null;
   try {
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.ids)) return null;
+    return parsed;
   } catch {
     return null;
   }
 }
 
-// 💾 Save stack with TTL
 export async function setDiscoverStack(plugId: string, ids: string[]) {
   const stack: DiscoverStack = { ids, createdAt: Date.now() };
-  await redis.set(`discover_stack_${plugId}`, JSON.stringify(stack), { ex: DISCOVER_TTL });
+  await redis.set(`discover_stack_v10_${plugId}`, JSON.stringify(stack), {
+    ex: DISCOVER_TTL,
+  });
 }
 
-// 🔒 Acquire lock to prevent double generation
 export async function acquireLock(plugId: string): Promise<boolean> {
-  const lockKey = `lock_discover_${plugId}`;
-  const res = await redis.set(lockKey, "locked", { nx: true, ex: LOCK_TTL });
+  const res = await redis.set(`lock_discover_v10_${plugId}`, "locked", { nx: true, ex: LOCK_TTL });
   return res === "OK";
 }
 
-// 🔓 Release lock
 export async function releaseLock(plugId: string) {
-  await redis.del(`lock_discover_${plugId}`);
+  await redis.del(`lock_discover_v10_${plugId}`);
 }
 
-// ⏳ Wait for stack (poll up to `timeoutMs`)
 export async function waitForStack(
   plugId: string,
   timeoutMs = 8000,
