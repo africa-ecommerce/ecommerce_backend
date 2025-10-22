@@ -4,8 +4,6 @@ import { prisma } from "../config";
 import {
   getDiscoverStack,
   setDiscoverStack,
-  getDiscoverPage,
-  updateDiscoverPage,
   acquireLock,
   releaseLock,
   waitForStack,
@@ -18,14 +16,12 @@ const WEIGHT_RECENT = 0.06;
 const WEIGHT_REVIEW = 0.05;
 export const REJECT_PENALTY_MULTIPLIER = 0.3;
 
+// --- helpers ---
 function daysSince(date: Date | string) {
   return (Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24);
 }
 
-function computeProductBaseScore(
-  product: any,
-  categoryRating = DEFAULT_CATEGORY_RATING
-) {
+function computeProductBaseScore(product: any, categoryRating = DEFAULT_CATEGORY_RATING) {
   let score = 1.0;
   if (product.plugsCount)
     score += Math.log10(product.plugsCount + 1) * WEIGHT_PLUGSCOUNT;
@@ -68,10 +64,8 @@ export const discoverProducts = async (
   try {
     const plug = req.plug!;
     const plugId = String(plug.id);
-    const clientPage = Math.max(1, parseInt(String(req.query.page || "1")));
-    const limit = Math.min(100, parseInt(String(req.query.limit || "20")));
 
-    // --- Step 1: get or create stack ---
+    // --- Step 1: get or create cached stack ---
     let cachedStack = await getDiscoverStack(plugId);
     if (!cachedStack || !Array.isArray(cachedStack.ids)) {
       const gotLock = await acquireLock(plugId);
@@ -103,9 +97,7 @@ export const discoverProducts = async (
           const excludedIds = [...excludedInventory, ...acceptedIds];
           const exclusionSql =
             excludedIds.length > 0
-              ? `AND p."id" NOT IN (${excludedIds
-                  .map((id) => `'${id}'`)
-                  .join(",")})`
+              ? `AND p."id" NOT IN (${excludedIds.map((id) => `'${id}'`).join(",")})`
               : "";
 
           const [{ count: totalCount = 0 } = { count: 0 }] =
@@ -115,10 +107,9 @@ export const discoverProducts = async (
               WHERE p."status"='APPROVED' AND COALESCE(p."stock",0)>0 ${exclusionSql};
             `);
 
-          // 🧮 dynamic pool size
+          // dynamic pool
           let poolSize = 250 + Math.floor(Math.random() * 100);
-          if (totalCount > 1000)
-            poolSize = 400 + Math.floor(Math.random() * 100);
+          if (totalCount > 1000) poolSize = 400 + Math.floor(Math.random() * 100);
           else if (totalCount < 300) poolSize = Math.min(200, totalCount);
 
           const candidates = await prisma.$queryRawUnsafe<any[]>(`
@@ -131,15 +122,11 @@ export const discoverProducts = async (
           `);
 
           const scored = candidates.map((p) => {
-            const catRating =
-              ratingMap.get(p.category) ?? DEFAULT_CATEGORY_RATING;
+            const catRating = ratingMap.get(p.category) ?? DEFAULT_CATEGORY_RATING;
             let score = computeProductBaseScore(p, catRating);
             const rejCount = rejectedMap.get(p.id) ?? 0;
             if (rejCount > 0)
-              score *= Math.pow(
-                REJECT_PENALTY_MULTIPLIER,
-                Math.min(rejCount, 4)
-              );
+              score *= Math.pow(REJECT_PENALTY_MULTIPLIER, Math.min(rejCount, 4));
             return { ...p, _score: score };
           });
 
@@ -155,31 +142,7 @@ export const discoverProducts = async (
       }
     }
 
-    // --- Step 2: fallback empty ---
-    if (!cachedStack || !Array.isArray(cachedStack.ids)) {
-      res.status(200).json({
-        meta: {
-          totalCount: 0,
-          limit,
-          page: 1,
-          hasNextPage: false,
-          cacheCreatedAt: Date.now(),
-        },
-        data: [],
-      });
-      return;
-    }
-
-    // --- Step 3: safe page logic ---
-    const backendPage = await getDiscoverPage(plugId);
-    const currentPage = Math.max(clientPage, backendPage); // backend truth if greater
-    await updateDiscoverPage(plugId, currentPage);
-
-    const start = (currentPage - 1) * limit;
-    const end = start + limit;
-    let paginatedIds = cachedStack.ids.slice(start, end);
-
-    // --- Step 4: filter exclusions ---
+    // --- Step 2: filter out interacted products ---
     const [plugNow, acceptedNow, rejectedNow] = await Promise.all([
       prisma.plugProduct.findMany({
         where: { plugId },
@@ -201,61 +164,17 @@ export const discoverProducts = async (
       ...rejectedNow.map((r) => r.productId),
     ]);
 
-    paginatedIds = paginatedIds.filter((id) => !excludeSet.has(id));
+    const filteredIds = cachedStack?.ids.filter((id) => !excludeSet.has(id));
 
- if (paginatedIds.length === 0 && end < cachedStack.ids.length) {
-  // Move to next page
-  const nextPage = currentPage + 1;
-  await updateDiscoverPage(plugId, nextPage);
-
-  const nextStart = (nextPage - 1) * limit;
-  const nextEnd = nextStart + limit;
-  const nextPaginatedIds = cachedStack.ids.slice(nextStart, nextEnd)
-    .filter((id) => !excludeSet.has(id));
-
-  if (nextPaginatedIds.length > 0) {
-    const nextProducts = await prisma.product.findMany({
-      where: { id: { in: nextPaginatedIds } },
-    });
-    const nextMap = new Map(nextProducts.map((p) => [p.id, p]));
-    const orderedNext = nextPaginatedIds.map((id) => nextMap.get(id)).filter(Boolean);
-
-    for (const p of orderedNext) {
-      if (typeof p?.images === "string") {
-        try {
-          (p as any).images = JSON.parse(p.images);
-        } catch {
-          (p as any).images = [];
-        }
-      }
-    }
-
-    res.status(200).json({
-      meta: {
-        totalCount: cachedStack.ids.length,
-        limit,
-        page: nextPage,
-        hasNextPage: nextEnd < cachedStack.ids.length,
-        cacheCreatedAt: cachedStack.createdAt,
-      },
-      data: normalizeBigInt(orderedNext),
-    });
-    return;
-  }
-}
-
-
-    // --- Step 5: fetch products ---
+    // --- Step 3: fetch & format products ---
     const products = await prisma.product.findMany({
-      where: { id: { in: paginatedIds } },
+      where: { id: { in: filteredIds } },
     });
 
     const productMap = new Map(products.map((p) => [p.id, p]));
-    const ordered = paginatedIds
-      .map((id) => productMap.get(id))
-      .filter(Boolean);
+    const ordered = filteredIds?.map((id) => productMap.get(id)).filter(Boolean);
 
-    for (const p of ordered) {
+    for (const p of ordered!) {
       if (typeof p?.images === "string") {
         try {
           (p as any).images = JSON.parse(p.images);
@@ -265,14 +184,12 @@ export const discoverProducts = async (
       }
     }
 
-    // --- Step 6: respond ---
+    // --- Step 4: respond with all 100 (minus exclusions) ---
     res.status(200).json({
       meta: {
-        totalCount: cachedStack.ids.length,
-        limit,
-        page: currentPage,
-        hasNextPage: end < cachedStack.ids.length,
-        cacheCreatedAt: cachedStack.createdAt,
+        totalCount: cachedStack?.ids.length,
+        returnedCount: ordered?.length,
+        cacheCreatedAt: cachedStack?.createdAt,
       },
       data: normalizeBigInt(ordered),
     });
