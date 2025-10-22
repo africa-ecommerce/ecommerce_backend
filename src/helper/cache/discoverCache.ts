@@ -7,7 +7,7 @@ export const redis = new Redis({
 });
 
 const DISCOVER_TTL = 6 * 60 * 60; // 6 hours
-const LOCK_TTL = 20; // 20s
+const LOCK_TTL = 20; // 20 seconds
 
 export interface DiscoverStack {
   ids: string[];
@@ -28,7 +28,6 @@ export async function getDiscoverStack(
   return parsed;
 }
 
-
 export async function setDiscoverStack(plugId: string, ids: string[]) {
   const stack: DiscoverStack = { ids, createdAt: Date.now() };
   await redis.set(`discover_stack_v10_${plugId}`, JSON.stringify(stack), {
@@ -36,8 +35,46 @@ export async function setDiscoverStack(plugId: string, ids: string[]) {
   });
 }
 
+/**
+ * Updates or creates the user's current discover page in cache.
+ * ⚡ Does NOT refresh the TTL — it always expires with the main stack.
+ */
+export async function updateDiscoverPage(plugId: string, page: number) {
+  const pageKey = `discover_page_v10_${plugId}`;
+
+  // Check if page key already exists
+  const exists = await redis.exists(pageKey);
+  if (exists) {
+    // Update the value only, do not reset TTL
+    await redis.set(pageKey, page);
+  } else {
+    // Sync page key expiration with main stack TTL
+    const stackTtl = await redis.ttl(`discover_stack_v10_${plugId}`);
+    if (stackTtl > 0) {
+      await redis.set(pageKey, page, { ex: stackTtl });
+    } else {
+      await redis.set(pageKey, page, { ex: DISCOVER_TTL }); // fallback
+    }
+  }
+}
+
+/**
+ * Gets the user’s last known discover page from cache.
+ * Returns 1 if no page found.
+ */
+export async function getDiscoverPage(plugId: string): Promise<number> {
+  const page = await redis.get<number>(`discover_page_v10_${plugId}`);
+  return typeof page === "number" ? page : 1;
+}
+
+/**
+ * Lock helpers to prevent multiple concurrent stack generations.
+ */
 export async function acquireLock(plugId: string): Promise<boolean> {
-  const res = await redis.set(`lock_discover_v10_${plugId}`, "locked", { nx: true, ex: LOCK_TTL });
+  const res = await redis.set(`lock_discover_v10_${plugId}`, "locked", {
+    nx: true,
+    ex: LOCK_TTL,
+  });
   return res === "OK";
 }
 
@@ -45,6 +82,9 @@ export async function releaseLock(plugId: string) {
   await redis.del(`lock_discover_v10_${plugId}`);
 }
 
+/**
+ * Waits for the stack to appear if another process is building it.
+ */
 export async function waitForStack(
   plugId: string,
   timeoutMs = 8000,
