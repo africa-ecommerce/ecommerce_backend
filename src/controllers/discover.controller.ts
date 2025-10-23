@@ -21,7 +21,10 @@ function daysSince(date: Date | string) {
   return (Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24);
 }
 
-function computeProductBaseScore(product: any, categoryRating = DEFAULT_CATEGORY_RATING) {
+function computeProductBaseScore(
+  product: any,
+  categoryRating = DEFAULT_CATEGORY_RATING
+) {
   let score = 1.0;
   if (product.plugsCount)
     score += Math.log10(product.plugsCount + 1) * WEIGHT_PLUGSCOUNT;
@@ -97,7 +100,9 @@ export const discoverProducts = async (
           const excludedIds = [...excludedInventory, ...acceptedIds];
           const exclusionSql =
             excludedIds.length > 0
-              ? `AND p."id" NOT IN (${excludedIds.map((id) => `'${id}'`).join(",")})`
+              ? `AND p."id" NOT IN (${excludedIds
+                  .map((id) => `'${id}'`)
+                  .join(",")})`
               : "";
 
           const [{ count: totalCount = 0 } = { count: 0 }] =
@@ -109,7 +114,8 @@ export const discoverProducts = async (
 
           // dynamic pool
           let poolSize = 250 + Math.floor(Math.random() * 100);
-          if (totalCount > 1000) poolSize = 400 + Math.floor(Math.random() * 100);
+          if (totalCount > 1000)
+            poolSize = 400 + Math.floor(Math.random() * 100);
           else if (totalCount < 300) poolSize = Math.min(200, totalCount);
 
           const candidates = await prisma.$queryRawUnsafe<any[]>(`
@@ -122,11 +128,15 @@ export const discoverProducts = async (
           `);
 
           const scored = candidates.map((p) => {
-            const catRating = ratingMap.get(p.category) ?? DEFAULT_CATEGORY_RATING;
+            const catRating =
+              ratingMap.get(p.category) ?? DEFAULT_CATEGORY_RATING;
             let score = computeProductBaseScore(p, catRating);
             const rejCount = rejectedMap.get(p.id) ?? 0;
             if (rejCount > 0)
-              score *= Math.pow(REJECT_PENALTY_MULTIPLIER, Math.min(rejCount, 4));
+              score *= Math.pow(
+                REJECT_PENALTY_MULTIPLIER,
+                Math.min(rejCount, 4)
+              );
             return { ...p, _score: score };
           });
 
@@ -172,7 +182,9 @@ export const discoverProducts = async (
     });
 
     const productMap = new Map(products.map((p) => [p.id, p]));
-    const ordered = filteredIds?.map((id) => productMap.get(id)).filter(Boolean);
+    const ordered = filteredIds
+      ?.map((id) => productMap.get(id))
+      .filter(Boolean);
 
     for (const p of ordered!) {
       if (typeof p?.images === "string") {
@@ -577,13 +589,20 @@ export const deleteAcceptedProducts = async (
   try {
     const plug = req.plug!;
     const plugId = plug.id;
-    const { productIds = [] } = req.body as { productIds?: string[] };
 
     // 🧩 If empty array, delete ALL accepted products for this plug
     let deletedCount = 0;
 
-    if (!Array.isArray(productIds)) {
-      res.status(400).json({ error: "invalid field data!" });
+    const body = req.body;
+
+    let productIds: string[] = [];
+
+    if (Array.isArray(body)) {
+      productIds = body;
+    } else if (Array.isArray(body.productIds)) {
+      productIds = body.productIds;
+    } else {
+      res.status(400).json({ error: "Invalid request format!" });
       return;
     }
 
