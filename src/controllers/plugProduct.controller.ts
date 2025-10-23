@@ -115,7 +115,7 @@ export const plugProductController = {
   },
 
 
- addProductToPlug: async (
+addProductToPlug: async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
@@ -125,14 +125,14 @@ export const plugProductController = {
     const plug = req.plug!;
 
     if (!id || !price || !commissionRate) {
-       res.status(400).json({ error: "Please provide required fields!" });
-       return
+      res.status(400).json({ error: "Please provide required fields!" });
+      return;
     }
 
     const parsedPrice = parseFloat(price);
     if (isNaN(parsedPrice) || parsedPrice < 0) {
-       res.status(400).json({ error: "Provide a valid product price!" });
-       return;
+      res.status(400).json({ error: "Provide a valid product price!" });
+      return;
     }
 
     // Fetch supplier product
@@ -142,28 +142,40 @@ export const plugProductController = {
     });
 
     if (!product) {
-       res.status(404).json({ error: "Product not found!" });
-       return;
+      res.status(404).json({ error: "Product not found!" });
+      return;
     }
 
     // Validation: don’t allow plugging below supplier’s price
     if (parsedPrice < product.price) {
-       res.status(400).json({
+      res.status(400).json({
         error: "Price cannot be below supplier price!",
         supplierPrice: product.price,
         proposedPrice: parsedPrice,
       });
-      return
+      return;
     }
 
-    const PLUG_CATEGORY_DELTA = 0.08; // strong reinforcement for added products
+    const PLUG_CATEGORY_DELTA = 0.08;
+    const DEFAULT_CATEGORY_RATING = 1;
     const now = new Date();
 
     // === Transactional operation
     const created = await prisma.$transaction(async (tx) => {
-      // 1️⃣ Create plug product
-      const plugProduct = await tx.plugProduct.create({
-        data: {
+      // 1️⃣ Upsert plug product (update if exists, else create)
+      const plugProduct = await tx.plugProduct.upsert({
+        where: {
+          plugId_originalId: {
+            plugId: plug.id,
+            originalId: product.id,
+          },
+        },
+        update: {
+          price: parsedPrice,
+          commission: commissionRate,
+          updatedAt: now,
+        },
+        create: {
           originalId: product.id,
           plugId: plug.id,
           price: parsedPrice,
@@ -171,50 +183,49 @@ export const plugProductController = {
         },
       });
 
-      // 2️⃣ Increment original product's plug count
-      await tx.product.update({
-        where: { id: product.id },
-        data: { plugsCount: { increment: 1 } },
-      });
+      // 2️⃣ Increment original product's plug count only if it was newly created
+      if (!plugProduct.createdAt || plugProduct.createdAt.getTime() === plugProduct.updatedAt.getTime()) {
+        await tx.product.update({
+          where: { id: product.id },
+          data: { plugsCount: { increment: 1 } },
+        });
+      }
 
-      // 3️⃣ Remove from accepted list (if it exists)
+      // 3️⃣ Remove from accepted list (if exists)
       await tx.acceptedProduct.deleteMany({
         where: { plugId: plug.id, productId: product.id },
       });
 
-      // 4️⃣ Update or create PlugCategoryRating (stronger delta)
-      const category = product.category;
-      const existing = await tx.plugCategoryRating.findUnique({
-        where: { plugId_category: { plugId: plug.id, category } },
-      });
-
-      if (existing) {
-        const newRating = existing.rating + PLUG_CATEGORY_DELTA;
-        await tx.plugCategoryRating.update({
-          where: { id: existing.id },
-          data: { rating: newRating },
-        });
-      } else {
-        await tx.plugCategoryRating.create({
-          data: {
+      // 4️⃣ Upsert plug category rating
+      await tx.plugCategoryRating.upsert({
+        where: {
+          plugId_category: {
             plugId: plug.id,
-            category,
-            rating: DEFAULT_CATEGORY_RATING + PLUG_CATEGORY_DELTA,
+            category: product.category,
           },
-        });
-      }
+        },
+        update: {
+          rating: { increment: PLUG_CATEGORY_DELTA },
+        },
+        create: {
+          plugId: plug.id,
+          category: product.category,
+          rating: DEFAULT_CATEGORY_RATING + PLUG_CATEGORY_DELTA,
+        },
+      });
 
       return plugProduct;
     });
 
     res.status(201).json({
-      message: "Product added to your store successfully!",
+      message: "Product added successfully!",
       id: created.id,
     });
   } catch (error) {
     next(error);
   }
 },
+
   // Get all plug products with complete details including reviews
   getPlugProducts: async (
     req: AuthRequest,
