@@ -1,22 +1,20 @@
-// src/routes/templateRoutes.ts
 import { Router } from "express";
-import {
-  // getAllTemplates,
-  // getTemplateById,
-  getTemplateFile,
-} from "../controllers/template.controller";
+import { getTemplateFile } from "../controllers/template.controller";
 import { getSPATemplate } from "../controllers/SPA.template.controller";
 
 const router = Router();
 
-// // Get all available templates
-// router.get("/", getAllTemplates);
+/**
+ * Serve any static file from a template (HTML, CSS, JS)
+ * Example:
+ *  /template/primary/index
+ *  /template/primary/css/style.css
+ *  /template/primary/js/main.js
+ */
 
-// // Get a specific template by ID
-// router.get("/:id", getTemplateById);
+router.get("/:id/*", getTemplateFile);
 
-// Get a specific file from a template (HTML, CSS, JS)
-router.get("/:id/:fileType", getTemplateFile);
-router.get('/spa/:subdomain', getSPATemplate);
+// For SPA rendering
+router.get("/spa/:subdomain", getSPATemplate);
 
 export default router;
