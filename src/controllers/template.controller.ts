@@ -79,7 +79,8 @@ export const getTemplateFile = async (
     }
 
     res.setHeader("Content-Type", contentType);
-    res.setHeader("Cache-Control", "public, max-age=3600, must-revalidate");
+    // 🕒 Client cache for 5 minutes
+    res.setHeader("Cache-Control", "public, max-age=300, must-revalidate");
     res.status(200).send(content);
   } catch (err: any) {
     if (err.code === "ENOENT") {

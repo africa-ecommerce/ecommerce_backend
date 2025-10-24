@@ -8,8 +8,8 @@ export const redis = new Redis({
   url: upstashRedisRestUrl,
   token: upstashRedisRestToken,
 });
-
-const TEMPLATE_TTL = 60 * 60; // 1 hour TTL per template
+// 🕒 1 year TTL
+const TEMPLATE_TTL = 60 * 60 * 24 * 365;
 const BASE_KEY = "template_cache_v1"; // version key in case you change logic later
 
 // 👇 Each plug has only 1 active cached template at a time
