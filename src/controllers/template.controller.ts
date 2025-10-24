@@ -7,8 +7,7 @@ import {
   setTemplateCache,
 } from "../helper/cache/templatesCache";
 
-const templatesDir = path.join(__dirname, "../../../public/templates");
-
+const templatesDir = path.join(process.cwd(), "public/templates");
 async function resolveFilePath(templateDir: string, fileType: string) {
   const fileMap: Record<string, string[]> = {
     html: ["index.html", "home.html", "main.html"],
