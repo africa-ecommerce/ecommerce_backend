@@ -223,16 +223,16 @@ app.use(
   })
 );
 
-// Template route with CORS and caching
-app.use("/template", corsStaticHeaders);
-app.use(
-  "/template",
-  express.static(path.join(__dirname, "../public/templates"), {
-    setHeaders: (res) => {
-      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-    },
-  })
-);
+// // Template route with CORS and caching
+// app.use("/template", corsStaticHeaders);
+// app.use(
+//   "/template",
+//   express.static(path.join(__dirname, "../public/templates"), {
+//     setHeaders: (res) => {
+//       res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+//     },
+//   })
+// );
 
 app.use(morgan("dev"));
 
@@ -293,7 +293,8 @@ app.use("/onboarding", onboardingRoutes, routeErrorCatcher);
 app.use("/marketplace", marketPlaceRoutes, routeErrorCatcher);
 app.use("/products", productRoutes, routeErrorCatcher);
 app.use("/plug/products", plugProductRoutes, routeErrorCatcher);
-app.use("/template", templateRoutes, routeErrorCatcher);
+// Template route (uses dynamic controllers, not static files)
+app.use("/template", corsStaticHeaders, templateRoutes, routeErrorCatcher);
 app.use("/site", storeRoutes, routeErrorCatcher); // ------------->
 app.use("/public", publicRoutes, routeErrorCatcher);
 app.use("/logistics", logisticsRoutes, routeErrorCatcher);

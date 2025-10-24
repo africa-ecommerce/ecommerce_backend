@@ -16,7 +16,7 @@ export interface DiscoverStack {
 
 // 🧠 Get cached stack
 export async function getDiscoverStack(plugId: string): Promise<DiscoverStack | null> {
-  const raw = await redis.get(`discover_stack_v10_${plugId}`);
+  const raw = await redis.get(`discover_stack_v1_${plugId}`);
   if (!raw) return null;
 
   const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
@@ -27,18 +27,18 @@ export async function getDiscoverStack(plugId: string): Promise<DiscoverStack | 
 // 💾 Save stack with TTL
 export async function setDiscoverStack(plugId: string, ids: string[]) {
   const stack: DiscoverStack = { ids, createdAt: Date.now() };
-  await redis.set(`discover_stack_v10_${plugId}`, JSON.stringify(stack), { ex: DISCOVER_TTL });
+  await redis.set(`discover_stack_v1_${plugId}`, JSON.stringify(stack), { ex: DISCOVER_TTL });
 }
 
 // 🔒 Prevent multiple concurrent stack builds
 export async function acquireLock(plugId: string): Promise<boolean> {
-  const res = await redis.set(`lock_discover_v10_${plugId}`, "locked", { nx: true, ex: LOCK_TTL });
+  const res = await redis.set(`lock_discover_v1_${plugId}`, "locked", { nx: true, ex: LOCK_TTL });
   return res === "OK";
 }
 
 // 🔓 Release lock
 export async function releaseLock(plugId: string) {
-  await redis.del(`lock_discover_v10_${plugId}`);
+  await redis.del(`lock_discover_v1_${plugId}`);
 }
 
 // ⏳ Wait if another instance is building the stack
