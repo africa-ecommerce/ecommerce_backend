@@ -1,104 +1,78 @@
-import { NextFunction, Request, Response } from "express";
+// src/controllers/template/getTemplateFile.ts
+import { Request, Response, NextFunction } from "express";
 import fs from "fs/promises";
 import path from "path";
 import {
-  generateTemplateCacheKey,
-  templateCache,
+  getTemplateCache,
+  setTemplateCache,
 } from "../helper/cache/templatesCache";
 
-// Templates directory path
-const templatesDir = path.join(__dirname, "../../public/templates");
+const templatesDir = path.join(__dirname, "../../../public/templates");
+
+async function resolveFilePath(templateDir: string, fileType: string) {
+  const fileMap: Record<string, string[]> = {
+    html: ["index.html", "home.html", "main.html"],
+    css: ["style.css", "main.css", "home.css"],
+    js: ["script.js", "main.js", "index.js"],
+  };
+  const candidates = fileMap[fileType] || [fileType];
+  for (const file of candidates) {
+    const full = path.join(templateDir, file);
+    try {
+      await fs.access(full);
+      return { filePath: full, contentType: getContentType(fileType) };
+    } catch {}
+  }
+  return null;
+}
+
+function getContentType(fileType: string) {
+  const map: Record<string, string> = {
+    html: "text/html",
+    css: "text/css",
+    js: "application/javascript",
+  };
+  return map[fileType] || "text/plain";
+}
 
 export const getTemplateFile = async (req: Request, res: Response, next: NextFunction) => {
   const { id, fileType } = req.params;
   const normalizedFileType = fileType.toLowerCase();
-  const cacheKey = generateTemplateCacheKey(id, fileType);
-
-  // Check cache
-  const cachedResult = templateCache.get(cacheKey);
-  if (cachedResult) {
-    console.log(`Cache HIT: ${id}/${fileType}`);
-    const { content, contentType } = cachedResult as { content: string; contentType: string };
-    res.setHeader("Content-Type", contentType);
-    res.setHeader("Cache-Control", "public, max-age=604800, immutable");
-    res.setHeader("ETag", `"${id}-${fileType}-v1"`);
-    res.status(200).send(content);
-    return;
-  }
 
   try {
     const templateDir = path.join(templatesDir, id);
-    await fs.access(templateDir).catch(() => {
-      res.status(404).json({ success: false, error: `Template '${id}' not found!` });
-      return;
-    });
+    await fs.access(templateDir);
 
+    // Check Redis cache first
+    const cached = await getTemplateCache(id);
+    if (cached) {
+      res.setHeader("Content-Type", cached.contentType);
+      res.setHeader("Cache-Control", "public, max-age=3600, must-revalidate");
+      res.status(200).send(cached.content);
+      return;
+    }
+
+    // Not cached → load from disk
     const fileInfo = await resolveFilePath(templateDir, normalizedFileType);
     if (!fileInfo) {
-      console.error(`File not found: ${id}/${normalizedFileType}`);
-       // Serve 404.html without changing the URL
-            res
-              .status(404)
-              .sendFile(
-                path.join(__dirname, "../../public/templates/primary/404.html")
-              );
-            return;
+      res.status(404).send("Template not found");
+      return;
     }
 
-    const fileContent = await fs.readFile(fileInfo.filePath, "utf-8");
-    templateCache.set(cacheKey, { content: fileContent, contentType: fileInfo.contentType });
-    console.log(`Cached: ${cacheKey}`);
+    const stat = await fs.stat(fileInfo.filePath);
+    const content = await fs.readFile(fileInfo.filePath, "utf-8");
+
+    // Skip caching incomplete files
+    if (content.length > 50) {
+      await setTemplateCache(id, content, fileInfo.contentType);
+    }
 
     res.setHeader("Content-Type", fileInfo.contentType);
-    res.setHeader("Cache-Control", "public, max-age=604800, immutable");
-    res.setHeader("ETag", `"${id}-${fileType}-v1"`);
-    res.status(200).send(fileContent);
-
+    res.setHeader("ETag", `"${stat.mtimeMs}"`);
+    res.setHeader("Cache-Control", "public, max-age=3600, must-revalidate");
+    res.status(200).send(content);
   } catch (err) {
     console.error("Template serve error:", err);
-    // Serve error.html without changing URL
-        res
-          .status(500)
-          .sendFile(
-            path.join(__dirname, "../../public/templates/primary/error.html")
-          );
+    res.status(500).send("Internal error");
   }
 };
-
-async function resolveFilePath(
-  templateDir: string,
-  fileType: string
-): Promise<{ filePath: string; contentType: string } | null> {
-  const candidates = [
-    { file: `${fileType}.html`, contentType: "text/html" },
-    { file: `css/${fileType}.css`, contentType: "text/css" },
-    { file: `js/${fileType}.js`, contentType: "application/javascript" },
-  ];
-
-  // Special case: treat index, home, main as index.html
-  if (["index", "home", "main"].includes(fileType)) {
-    candidates.unshift({ file: "index.html", contentType: "text/html" });
-  }
-
-  for (const { file, contentType } of candidates) {
-    const fullPath = path.join(templateDir, file);
-    try {
-      await fs.access(fullPath);
-      return { filePath: fullPath, contentType };
-    } catch {
-      // continue to next candidate
-    }
-  }
-
-  return null;
-}
-
-
-
-
-
-
-
-
-
-

@@ -1,77 +1,49 @@
-import NodeCache from "node-cache";
+// src/utils/redis-template-cache.ts
+import { Redis } from "@upstash/redis";
+import { upstashRedisRestUrl, upstashRedisRestToken } from "../../config";
+import fs from "fs/promises";
+import path from "path";
 
-// Single unified cache instance with aggressive caching
-export const templateCache = new NodeCache({
-  stdTTL: 7 * 24 * 60 * 60, // 7 days - aggressive caching since templates rarely change
-  checkperiod: 2 * 60 * 60,  // Check every 2 hours for expired keys
-  useClones: false,          // Better performance, templates are read-only
-  maxKeys: 2000,            // Higher limit to accommodate all template data
-  deleteOnExpire: true,     // Automatically delete expired keys
-  forceString: false,       // Allow storing objects
+export const redis = new Redis({
+  url: upstashRedisRestUrl,
+  token: upstashRedisRestToken,
 });
 
-// Helper to generate consistent cache keys with prefixes for organization
-export function generateTemplateCacheKey(templateId: string, fileType: string): string {
-  const normalizedId = templateId.toLowerCase().trim();
-  const normalizedFileType = fileType.toLowerCase().trim();
-  return `file:${normalizedId}:${normalizedFileType}`;
-}
+const TEMPLATE_TTL = 60 * 60; // 1 hour TTL per template
+const BASE_KEY = "template_cache_v1"; // version key in case you change logic later
 
+// 👇 Each plug has only 1 active cached template at a time
+export async function getTemplateCache(
+  plugId: string
+): Promise<{ content: string; contentType: string } | null> {
+  const raw = await redis.get(`${BASE_KEY}:${plugId}`);
+  if (!raw) return null;
 
-
-// Enhanced cache invalidation with pattern matching
-export function invalidateTemplateCache(templateId?: string) {
-  if (templateId) {
-    // Invalidate all keys related to specific template
-    const normalizedId = templateId.toLowerCase();
-    const keys = templateCache.keys();
-    const templateKeys = keys.filter(key => 
-      key.includes(`:${normalizedId}:`) || key.includes(`:${normalizedId}`)
-    );
-    
-    templateKeys.forEach(key => templateCache.del(key));
-    console.log(`Invalidated ${templateKeys.length} cache entries for template: ${templateId}`);
-  } else {
-    // Invalidate all template caches
-    templateCache.flushAll();
-    console.log('Invalidated all template cache entries');
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw) as { content: string; contentType: string };
+    } catch {
+      return null; // malformed JSON
+    }
   }
+
+  // in case Upstash returns object (rare)
+  if (typeof raw === "object" && raw !== null && "content" in raw && "contentType" in raw) {
+    return raw as { content: string; contentType: string };
+  }
+
+  return null;
 }
 
 
+export async function setTemplateCache(plugId: string, content: string, contentType: string) {
+  await redis.set(
+    `${BASE_KEY}:${plugId}`,
+    JSON.stringify({ content, contentType }),
+    { ex: TEMPLATE_TTL }
+  );
+}
 
-// export function generateTemplateListCacheKey(): string {
-//   return "list:all_templates";
-// }
-
-// export function generateTemplateDetailsCacheKey(templateId: string): string {
-//   return `details:${templateId.toLowerCase()}`;
-// }
-// // Invalidate specific cache types
-// export function invalidateTemplateListCache() {
-//   const keys = templateCache.keys();
-//   const listKeys = keys.filter(key => key.startsWith('list:'));
-//   listKeys.forEach(key => templateCache.del(key));
-//   console.log(`Invalidated ${listKeys.length} template list cache entries`);
-// }
-
-// export function invalidateTemplateDetailsCache(templateId?: string) {
-//   if (templateId) {
-//     templateCache.del(generateTemplateDetailsCacheKey(templateId));
-//   } else {
-//     const keys = templateCache.keys();
-//     const detailKeys = keys.filter(key => key.startsWith('details:'));
-//     detailKeys.forEach(key => templateCache.del(key));
-//     console.log(`Invalidated ${detailKeys.length} template details cache entries`);
-//   }
-// }
-
-// // Cache statistics for monitoring
-// export function getCacheStats() {
-//   return {
-//     keys: templateCache.keys().length,
-//     stats: templateCache.getStats(),
-//     memoryUsage: process.memoryUsage(),
-//   };
-// }
-
+export async function deleteTemplateCache(plugId: string) {
+  await redis.del(`${BASE_KEY}:${plugId}`);
+}
