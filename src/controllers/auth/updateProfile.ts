@@ -12,17 +12,14 @@ import {
   updatePlugInfoSchema,
 } from "../../lib/zod/schema";
 import { z } from "zod";
-import { getGeocode } from "../../helper/logistics";
 import { normalizeBusinessName } from "../../helper/helperFunc";
 import { renameStoreConfigInMinio } from "../../helper/minioObjectStore/storeConfig";
-
 
 export const updateProfile = [
   uploadMiddleware.single("avatar"),
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     let avatarUrl: string | null = null;
     let oldAvatarUrl: string | null = null;
-    // let geocodeData: { lat: number; lng: number } | null = null;
 
     try {
       const userId = req.user?.id;
@@ -69,26 +66,12 @@ export const updateProfile = [
         }
 
         supplierAddressData = addrParse.data;
-        const fullAddress = `${supplierAddressData.streetAddress}, ${supplierAddressData.lga}, ${supplierAddressData.state}`;
-        // const geocodeResult = await getGeocode(fullAddress);
-        // if (geocodeResult.status !== "success" || !geocodeResult.data) {
-        //   throw new Error(
-        //     `Geocoding failed for supplier address: ${fullAddress}`
-        //   );
-        // }
-        // geocodeData = geocodeResult.data;
-
         oldAvatarUrl = user.supplier.avatar || null;
 
         if (req.file) {
-          // const [url] = await uploadImages([req.file] as Express.Multer.File[]);
-
-          const [url] = await uploadImages(
-            [req.file] as Express.Multer.File[],
-            {
-              avatar: true,
-            }
-          );
+          const [url] = await uploadImages([req.file] as Express.Multer.File[], {
+            avatar: true,
+          });
           avatarUrl = url;
         }
 
@@ -120,8 +103,6 @@ export const updateProfile = [
               lga: supplierAddressData.lga,
               state: supplierAddressData.state,
               directions: supplierAddressData.directions?.trim(),
-              // latitude: geocodeData?.lat,
-              // longitude: geocodeData?.lng,
               updatedAt: new Date(),
             },
           });
@@ -135,82 +116,92 @@ export const updateProfile = [
         return;
       }
 
-      //------------PLUG UPDATE ------------- 
-    if (user.userType === "PLUG" && user.plug) {
-      const plugParse = updatePlugInfoSchema.safeParse({
-        businessName: profileData.businessName,
-        phone: profileData.phone,
-        state: profileData.state,
-      });
+      // ------------------------ PLUG UPDATE ------------------------
+      if (user.userType === "PLUG" && user.plug) {
+        const plugParse = updatePlugInfoSchema.safeParse({
+          businessName: profileData.businessName,
+          phone: profileData.phone,
+          state: profileData.state,
+        });
 
-      if (!plugParse.success) {
-        res.status(400).json({ error: "All fields are required!" });
+        if (!plugParse.success) {
+          res.status(400).json({ error: "All fields are required!" });
+          return;
+        }
+
+        oldAvatarUrl = user.plug.avatar || null;
+
+        if (req.file) {
+          const [url] = await uploadImages([req.file] as Express.Multer.File[], {
+            avatar: true,
+          });
+          avatarUrl = url;
+        }
+
+        const normalized = normalizeBusinessName(plugParse.data.businessName!);
+
+        // 🆕 Extract subdomain info safely
+        const oldSubdomain = user.plug.subdomain || null; // ✅ ensure null if not created
+        const newSubdomain = normalized;
+        let configUrl: string | null = user.plug.configUrl || null;
+
+        try {
+          // 🆕 Only rename if the user has a store (has subdomain)
+          // and the subdomain actually changed
+          if (oldSubdomain && oldSubdomain !== newSubdomain) {
+            configUrl = await renameStoreConfigInMinio(
+              oldSubdomain,
+              newSubdomain
+            );
+          }
+
+          // 🆕 If user does not yet have a store (no subdomain),
+          // skip all storeConfig and subdomain updates
+          await prisma.$transaction(async (tx) => {
+            await tx.plug.update({
+              where: { userId },
+              data: {
+                businessName: plugParse.data.businessName?.trim(),
+                phone: plugParse.data.phone,
+                state: plugParse.data.state || user.plug?.state,
+                aboutBusiness:
+                  profileData.aboutBusiness || user.plug?.aboutBusiness,
+                avatar: avatarUrl || oldAvatarUrl,
+                updatedAt: new Date(),
+                normalizedBusinessName: normalized,
+
+                // ✅ Only update subdomain/config if plug already has a store
+                ...(oldSubdomain
+                  ? {
+                      subdomain: newSubdomain,
+                      configUrl, // ✅ consistent with rename result
+                    }
+                  : {}),
+              },
+            });
+          });
+        } catch (err) {
+          // Rollback rename only if rename was attempted
+          if (oldSubdomain && oldSubdomain !== newSubdomain && configUrl) {
+            try {
+              await renameStoreConfigInMinio(newSubdomain, oldSubdomain);
+            } catch (rollbackErr) {
+              console.error(
+                "Rollback failed, manual fix required:",
+                rollbackErr
+              );
+            }
+          }
+          throw err;
+        }
+
+        if (oldAvatarUrl && avatarUrl && oldAvatarUrl !== avatarUrl) {
+          await deleteImages([oldAvatarUrl]);
+        }
+
+        res.status(200).json({ message: "Profile updated successfully!" });
         return;
       }
-
-      oldAvatarUrl = user.plug.avatar || null;
-
-      if (req.file) {
-        const [url] = await uploadImages([req.file] as Express.Multer.File[], {
-          avatar: true,
-        });
-        avatarUrl = url;
-      }
-
-      const normalized = normalizeBusinessName(plugParse.data.businessName!);
-
-      const oldSubdomain = user.plug.subdomain;
-      const newSubdomain = normalized;
-
-      let configUrl: string | null = user.plug.configUrl || null;
-
-      try {
-       
-        // Step 1: Rename in MinIO if needed
-        if (oldSubdomain && oldSubdomain !== newSubdomain) {
-          configUrl = await renameStoreConfigInMinio(
-            oldSubdomain,
-            newSubdomain
-          );
-        }
-
-        // Step 2: Update DB in transaction
-        await prisma.$transaction(async (tx) => {
-          await tx.plug.update({
-            where: { userId },
-            data: {
-              businessName: plugParse.data.businessName?.trim(),
-              phone: plugParse.data.phone,
-              state: plugParse.data.state || user.plug?.state,
-              aboutBusiness:
-                profileData.aboutBusiness || user.plug?.aboutBusiness,
-              avatar: avatarUrl || oldAvatarUrl,
-              updatedAt: new Date(),
-              normalizedBusinessName: normalized,
-              subdomain: newSubdomain,
-              configUrl, // 👈 consistent with rename result
-            },
-          });
-        });
-      } catch (err) {
-        // Step 3: Rollback MinIO if DB failed AFTER rename
-        if (oldSubdomain && oldSubdomain !== newSubdomain && configUrl) {
-          try {
-            await renameStoreConfigInMinio(newSubdomain, oldSubdomain);
-          } catch (rollbackErr) {
-            console.error("Rollback failed, manual fix required:", rollbackErr);
-          }
-        }
-        throw err;
-      }
-
-      if (oldAvatarUrl && avatarUrl && oldAvatarUrl !== avatarUrl) {
-        await deleteImages([oldAvatarUrl]);
-      }
-
-      res.status(200).json({ message: "Profile updated successfully!" });
-      return;
-    }
 
       res.status(400).json({ error: "Please refresh and try again!" });
     } catch (error) {
