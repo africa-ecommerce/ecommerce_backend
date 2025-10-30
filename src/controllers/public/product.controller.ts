@@ -216,6 +216,7 @@ export const getStoreProducts = async (
         select: { id: true },
       }),
     ]);
+    console.log("supplier", supplier);
 
     if (!plug && !supplier) {
       res.status(404).json({ error: "Subdomain not found!" });
@@ -269,10 +270,12 @@ export const getStoreProducts = async (
         },
         orderBy: { createdAt: "desc" },
       });
+      console.log("supplierProducts", supplierProducts)
 
       const formattedProducts = supplierProducts.map((p) =>
         formatSupplierProduct(p)
       );
+       console.log("formattedProducts", formattedProducts);
 
       res.status(200).json({
         message: "Supplier store products fetched successfully!",
