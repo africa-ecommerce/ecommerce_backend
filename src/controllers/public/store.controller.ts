@@ -56,40 +56,63 @@ export const verifySubdomain = async (
 
 
 
-export async function pixelStoreVisitTracker(req: Request, res: Response, next: NextFunction) {
+export async function pixelStoreVisitTracker(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const subdomain = (req.query.subdomain || "")
       .toString()
       .trim()
       .toLowerCase();
 
-      if (!subdomain) {
-        res.status(400).json({ error: "Missing or invalid field data!" });
-        return;
+    if (!subdomain) {
+      return res.status(400).json({ error: "Missing or invalid subdomain!" });
+    }
+
+    // Try finding a plug first
+    const plug = await prisma.plug.findUnique({
+      where: { subdomain },
+      select: { id: true },
+    });
+
+    // Try finding a supplier if no plug found
+    let supplier = null;
+    if (!plug) {
+      supplier = await prisma.supplier.findUnique({
+        where: { subdomain },
+        select: { id: true },
+      });
+
+      if (!supplier) {
+        return res
+          .status(404)
+          .json({ error: "Cannot find store for this subdomain!" });
       }
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    }
 
-        const plug = await prisma.plug.findUnique({
-          where: { subdomain },
-          select: { id: true },
-        });
+    // Determine what to upsert based on what was found
+    const analyticsData = plug
+      ? { plugId: plug.id, supplierId: null }
+      : { plugId: null, supplierId: supplier!.id };
 
-        if (!plug) {
-          res.status(404).json({ error: "Cannot find store for this subdomain!" });
-          return;
-        }
-    // Try to update if exists or create a new record
+    // We need a unique key for upsert, since plugId and supplierId are unique but nullable.
+    // Prisma cannot directly upsert by a composite nullable key,
+    // so we must dynamically pick the right unique field.
+    const whereClause = plug
+      ? { plugId: plug.id }
+      : { supplierId: supplier!.id };
+
     await prisma.storeAnalytics.upsert({
-      where: { plugId: plug.id },
+      where: whereClause,
       update: { count: { increment: 1 } },
       create: {
-        plugId: plug.id,
+        ...analyticsData,
         count: 1,
       },
     });
 
-    // Send minimal response
     res.status(204).end(); // No content
   } catch (error) {
     next(error);
