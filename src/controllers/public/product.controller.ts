@@ -217,6 +217,7 @@ export const getStoreProducts = async (
       }),
     ]);
     console.log("supplier", supplier);
+    console.log("plug", plug);
 
     if (!plug && !supplier) {
       res.status(404).json({ error: "Subdomain not found!" });
