@@ -68,7 +68,8 @@ export async function pixelStoreVisitTracker(
       .toLowerCase();
 
     if (!subdomain) {
-      return res.status(400).json({ error: "Missing or invalid subdomain!" });
+       res.status(400).json({ error: "Missing or invalid subdomain!" });
+       return
     }
 
     // Try finding a plug first
@@ -86,9 +87,10 @@ export async function pixelStoreVisitTracker(
       });
 
       if (!supplier) {
-        return res
+         res
           .status(404)
           .json({ error: "Cannot find store for this subdomain!" });
+          return;
       }
     }
 
