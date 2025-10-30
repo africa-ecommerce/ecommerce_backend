@@ -113,7 +113,7 @@ export const formatSupplierProduct = (supplierProduct: any) => {
     name: supplierProduct?.name,
     description: supplierProduct?.description,
     category: supplierProduct?.category,
-    originalPrice: supplierProduct?.price,
+    price: supplierProduct?.price,
     minPrice: supplierProduct?.minPrice,
     maxPrice: supplierProduct?.maxPrice,
     stocks: supplierProduct?.stock,
