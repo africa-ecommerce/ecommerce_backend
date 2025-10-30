@@ -45,7 +45,10 @@ export const getTemplateFile = async (
   next: NextFunction
 ) => {
   const { id } = req.params;
-  const relativePath = req.params[0] || "index.html"; // handle root as index.html
+  let relativePath = req.params[0] || "index.html";
+  if (!path.extname(relativePath)) {
+    relativePath += ".html";
+  }
 
   try {
     const templateDir = path.join(templatesDir, id);
