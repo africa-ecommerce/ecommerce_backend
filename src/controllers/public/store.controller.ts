@@ -21,21 +21,34 @@ export const getStoreConfig = async (req: Request, res: Response, next: NextFunc
   }
 };
 
-export const verifySubdomain = async (req: Request, res: Response, next: NextFunction) => {
+export const verifySubdomain = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const subdomain = (req.query.subdomain || "").toString().trim().toLowerCase();
+
   if (!subdomain) {
     res.status(400).json({ error: "Missing or invalid field data!" });
     return;
   }
-  try {
-    const plug = await prisma.plug.findUnique({
-      where: { subdomain },
-      select: {
-        subdomain: true,
-      },
-    });
 
-    res.status(200).json({ exists: !!plug?.subdomain });
+  try {
+    // Check both Plug and Supplier in parallel
+    const [plug, supplier] = await Promise.all([
+      prisma.plug.findUnique({
+        where: { subdomain },
+        select: { subdomain: true },
+      }),
+      prisma.supplier.findUnique({
+        where: { subdomain },
+        select: { subdomain: true },
+      }),
+    ]);
+
+    const exists = !!plug?.subdomain || !!supplier?.subdomain;
+
+    res.status(200).json({ exists });
   } catch (error) {
     next(error);
   }
