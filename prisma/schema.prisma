@@ -64,7 +64,9 @@ model WithdrawalVerificationToken {
 model Supplier {
   id                     String            @id @default(cuid())
   businessName           String            @unique
-  normalizedBusinessName String           @unique
+  normalizedBusinessName String            @unique
+  subdomain              String?       @unique
+  configUrl              String?
   businessType           String?
   phone                  String
   avatar                 String?
@@ -78,6 +80,7 @@ model Supplier {
   pickupLocation         SupplierAddress   @relation(fields: [addressId], references: [id], onDelete: Cascade)
   user                   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   supplierPayments       SupplierPayment[]
+  links                  Link[]
 
   @@index([businessName])
   @@index([normalizedBusinessName])
@@ -263,11 +266,14 @@ model PlugProduct {
   @@index([price])
 }
 
+//restructure how order is done
+
 model Order {
   id                 String            @id @default(cuid())
   orderNumber        String            @unique
   buyerId            String
   plugId             String
+  supplierId          String?
   totalAmount        Float             @default(0)
   deliveryFee        Float             @default(0)
   status             OrderStatus       @default(PENDING)
@@ -360,16 +366,19 @@ model Review {
 }
 
 model Link {
-  id        String          @id @default(cuid())
-  shortId   String          @unique
-  targetUrl String
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
-  plugId    String
-  plug      Plug            @relation(fields: [plugId], references: [id], onDelete: Cascade)
-  analytics LinkAnalytics[]
+  id         String          @id @default(cuid())
+  shortId    String          @unique
+  targetUrl  String
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  supplierId String?
+  plugId     String?
+  plug       Plug?           @relation(fields: [plugId], references: [id], onDelete: Cascade)
+  supplier   Supplier?       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  analytics  LinkAnalytics[]
 
   @@index([plugId])
+  @@index([supplierId])
 }
 
 model LinkAnalytics {
@@ -386,9 +395,10 @@ model LinkAnalytics {
 }
 
 model StoreAnalytics {
-  id        String @id @default(cuid())
-  plugId    String? @unique
-  count     Int    @default(0)
+  id         String  @id @default(cuid())
+  plugId     String? @unique
+  supplierId String? @unique
+  count      Int     @default(0)
 }
 
 model MailQueue {
@@ -473,7 +483,6 @@ enum ProductStatus {
   QUERIED
 }
 
-
 model PlugCategoryRating {
   id        String   @id @default(cuid())
   plugId    String
@@ -501,12 +510,12 @@ model TrackDiscovery {
 
 /// Stores products the plug has rejected (counts for penalty/logic)
 model RejectedProduct {
-  id         String   @id @default(cuid())
-  plugId     String
-  productId  String
-  count      Int      @default(1)        // how many times user rejected
-  lastAt     DateTime @default(now())
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  plugId    String
+  productId String
+  count     Int      @default(1) // how many times user rejected
+  lastAt    DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([plugId, productId])
   @@index([plugId])
@@ -515,12 +524,12 @@ model RejectedProduct {
 
 /// Stores products the plug accepted (carted/added). Use "status" to indicate carted/priced/purchased.
 model AcceptedProduct {
-  id         String   @id @default(cuid())
-  plugId     String
-  productId  String
-  count      Int      @default(1)
-  lastAt     DateTime @default(now())
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  plugId    String
+  productId String
+  count     Int      @default(1)
+  lastAt    DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([plugId, productId])
   @@index([plugId])

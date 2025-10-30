@@ -5,7 +5,7 @@ import { isPlug } from "../middleware/role.middleware";
 const router = express.Router();
 
 // This route handles generating a short link for plugs
-router.post("/generate", authenticateJWT, isPlug,  generateShortLink);
+router.post("/generate", authenticateJWT, generateShortLink);
 router.get("/:slug", linkHandler);
 
 export default router;

@@ -1,6 +1,26 @@
 import { Request } from "express";
 import { frontendUrl } from "../config";
 import rateLimit from "express-rate-limit";
+import { AuthRequest } from "../types";
+
+
+
+
+export const currentUser =  (req: AuthRequest) => {
+  const userType = req.user?.userType;
+
+  if (userType === "PLUG") {
+    const plug = req.plug!;
+    return { type: "PLUG", plug, id: plug.id };
+  }
+
+  if (userType === "SUPPLIER") {
+    const supplier = req.supplier!;
+    return { type: "SUPPLIER", supplier, id: supplier.id };
+  }
+
+  throw new Error("Invalid or unset user type.");
+}
 
 // Helper function to validate the callback URL
 export const isValidCallbackUrl = (url: string): boolean => {

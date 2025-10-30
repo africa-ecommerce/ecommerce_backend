@@ -193,6 +193,8 @@ export function formatSupplierOrders(orderItems: any[]) {
       buyerAddress: order.buyerAddress,
       buyerState: order.buyerState,
       buyerLga: order.buyerLga,
+      terminalAddress: order.terminalAddress,
+      deliveryType: order.deliveryType,
       orderItems: items.map((item: any) => ({
         id: item.id,
         quantity: item.quantity,
