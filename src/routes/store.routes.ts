@@ -6,13 +6,12 @@ import {
   checkSubdomainAvailability,
   getStoreConfig,
 } from "../controllers/store.controller";
-import { isPlug } from "../middleware/role.middleware";
 import authenticateJWT from "../middleware/auth.middleware";
 
 const router = Router();
 
 // Middleware to ensure user is authenticated and is a plug
-const plugAuth = [authenticateJWT, isPlug];
+const plugAuth = [authenticateJWT];
 
 router.use(plugAuth);
 // Protected routes requiring plug authentication
