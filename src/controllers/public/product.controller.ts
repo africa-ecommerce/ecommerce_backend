@@ -404,6 +404,7 @@ export const getProductById = async (
     ]);
 
     if (!plug && !supplier) {
+      console.log("yes1")
       res.status(404).json({ error: "Owner not found!" });
       return;
     }
@@ -431,6 +432,7 @@ export const getProductById = async (
       });
 
       if (!plugProduct) {
+         console.log("yes2")
         res.status(404).json({ error: "Product not found!" });
         return;
       }
@@ -440,6 +442,7 @@ export const getProductById = async (
         plugProduct.originalProduct.priceUpdatedAt > plugProduct.updatedAt &&
         plugProduct.originalProduct.status === "APPROVED"
       ) {
+         console.log("yes3")
         res.status(404).json({ error: "Product not found!" });
         return;
       }
@@ -472,12 +475,14 @@ export const getProductById = async (
       });
 
       if (!product) {
+         console.log("yes4")
         res.status(404).json({ error: "Product not found!" });
         return;
       }
 
       // Ensure supplier product is APPROVED (same safety as other supplier endpoints)
       if (product.status !== "APPROVED") {
+        console.log("yes5")
         res.status(404).json({ error: "Product not found!" });
         return;
       }
