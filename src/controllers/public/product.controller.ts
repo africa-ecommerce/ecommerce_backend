@@ -252,7 +252,6 @@ export const getStoreProducts = async (
 
       res.status(200).json({
         message: "Plug store products fetched successfully!",
-        type: "PLUG",
         data: formattedProducts,
       });
       return;
@@ -276,7 +275,6 @@ export const getStoreProducts = async (
       
       res.status(200).json({
         message: "Supplier store products fetched successfully!",
-        type: "SUPPLIER",
         data: formattedProducts,
       });
     }
@@ -345,7 +343,6 @@ export const getStoreProductById = async (
       const formattedProduct = formatPlugProduct(plugProduct);
       res.status(200).json({
         message: "Plug product fetched successfully!",
-        type: "PLUG",
         data: formattedProduct,
       });
       return;
@@ -370,7 +367,6 @@ export const getStoreProductById = async (
       const formattedProduct = formatSupplierProduct(supplierProduct);
       res.status(200).json({
         message: "Supplier product fetched successfully!",
-        type: "SUPPLIER",
         data: formattedProduct,
       });
       return;
@@ -388,23 +384,22 @@ export const getProductById = async (
   next: NextFunction
 ) => {
   try {
-    const { plugId, productId } = req.params;
-    if (!plugId || !productId) {
+    const { id, productId } = req.params;
+    if (!id || !productId) {
       res.status(400).json({ error: "Missing or invalid field data!" });
       return;
     }
 
     // Determine whether plugId is actually a Plug or a Supplier id
     const [plug, supplier] = await Promise.all([
-      prisma.plug.findUnique({ where: { id: plugId }, select: { id: true } }),
+      prisma.plug.findUnique({ where: { id }, select: { id: true } }),
       prisma.supplier.findUnique({
-        where: { id: plugId },
+        where: { id },
         select: { id: true },
       }),
     ]);
 
     if (!plug && !supplier) {
-      console.log("yes1")
       res.status(404).json({ error: "Owner not found!" });
       return;
     }
@@ -432,7 +427,6 @@ export const getProductById = async (
       });
 
       if (!plugProduct) {
-         console.log("yes2")
         res.status(404).json({ error: "Product not found!" });
         return;
       }
@@ -442,7 +436,6 @@ export const getProductById = async (
         plugProduct.originalProduct.priceUpdatedAt > plugProduct.updatedAt &&
         plugProduct.originalProduct.status === "APPROVED"
       ) {
-         console.log("yes3")
         res.status(404).json({ error: "Product not found!" });
         return;
       }
@@ -450,7 +443,6 @@ export const getProductById = async (
       const formatted = formatPlugProduct(plugProduct);
       res.status(200).json({
         message: "Product fetched successfully!",
-        type: "PLUG",
         data: formatted,
       });
       return;
@@ -475,14 +467,12 @@ export const getProductById = async (
       });
 
       if (!product) {
-         console.log("yes4")
         res.status(404).json({ error: "Product not found!" });
         return;
       }
 
       // Ensure supplier product is APPROVED (same safety as other supplier endpoints)
       if (product.status !== "APPROVED") {
-        console.log("yes5")
         res.status(404).json({ error: "Product not found!" });
         return;
       }
@@ -490,7 +480,6 @@ export const getProductById = async (
       const formatted = formatSupplierProduct(product);
       res.status(200).json({
         message: "Product fetched successfully!",
-        type: "SUPPLIER",
         data: formatted,
       });
       return;

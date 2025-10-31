@@ -8,7 +8,7 @@ import {
 import { getOrderItemByOrderNumber, manageOrder } from "../controllers/public/order.controller";
 const router = Router();
 // This route handles fetching a specific product by its ID for a specific plug.
-router.get("/products/:productId/:plugId", getProductById);
+router.get("/products/:productId/:id", getProductById);
 router.get("/products/:productId", getStoreProductById);
 router.get("/order/:orderNumber", getOrderItemByOrderNumber);
 router.put("/order/manage", manageOrder);
