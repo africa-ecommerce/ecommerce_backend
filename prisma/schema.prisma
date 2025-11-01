@@ -541,6 +541,7 @@ model AcceptedProduct {
 model Channel {
   id                  String   @id @default(cuid())
   supplierId          String   @unique
+   channelId           String   @unique
   payOnDelivery       Boolean
   fulfillmentTime     FulfillmentTime
   returnPolicy        Boolean

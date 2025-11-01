@@ -1,6 +1,10 @@
 import { Response, NextFunction } from "express";
 import { prisma } from "../config";
 import { AuthRequest } from "../types";
+import { customAlphabet } from "nanoid";
+
+const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const nanoid6 = customAlphabet(alphabet, 6);
 
 export const upsertSupplierChannel = async (
   req: AuthRequest,
@@ -8,12 +12,7 @@ export const upsertSupplierChannel = async (
   next: NextFunction
 ) => {
   try {
-    const supplierId = req.supplier?.id;
-    
-    if(!supplierId){
-        return;
-    }
-   
+    const supplierId = req.supplier?.id!;
     const {
       payOnDelivery,
       fulfillmentTime,
@@ -29,7 +28,7 @@ export const upsertSupplierChannel = async (
       instagram,
     } = req.body;
 
-    // Basic validation
+    // ✅ Basic validation
     if (
       typeof payOnDelivery !== "boolean" ||
       typeof returnPolicy !== "boolean" ||
@@ -41,21 +40,30 @@ export const upsertSupplierChannel = async (
         "WEEKEND",
       ].includes(fulfillmentTime)
     ) {
-       res
-        .status(400)
-        .json({ error: "Invalid or missing required fields!" });
-        return;
+      res.status(400).json({ error: "Invalid or missing required fields!" });
+      return;
     }
 
-    // Optional validation for return window
+    // ✅ Validate return window
     if (returnWindow && (isNaN(returnWindow) || returnWindow < 1)) {
-       res
+      res
         .status(400)
         .json({ error: "Return window must be a positive integer!" });
-        return;
+      return;
     }
 
-    // Upsert supplier channel rules
+    // 🧩 Check if channel already exists for this supplier
+    const existing = await prisma.channel.findUnique({ where: { supplierId } });
+
+    let channelId = existing?.channelId;
+
+    // 🆕 If not exists, generate a new channelId
+    if (!channelId) {
+      const datePart = new Date().toISOString().slice(2, 10).replace(/-/g, "");
+      channelId = `CH-${datePart}-${nanoid6()}`;
+    }
+
+    // ⚡ Upsert channel data
     const channel = await prisma.channel.upsert({
       where: { supplierId },
       update: {
@@ -74,6 +82,7 @@ export const upsertSupplierChannel = async (
       },
       create: {
         supplierId,
+        channelId,
         payOnDelivery,
         fulfillmentTime,
         returnPolicy,
@@ -89,9 +98,13 @@ export const upsertSupplierChannel = async (
       },
     });
 
+  
+
     res.status(200).json({
-      message: "Channel created successfully!",
-      data: channel,
+      message: existing
+        ? "Channel updated successfully!"
+        : "Channel created successfully!",
+      data: channel
     });
   } catch (error) {
     next(error);
@@ -105,15 +118,14 @@ export const getSupplierChannel = async (
 ) => {
   try {
     const supplierId = req.supplier?.id;
-    
 
     const channel = await prisma.channel.findUnique({
       where: { supplierId },
     });
 
     if (!channel) {
-       res.status(404).json({ error: "Channel not found!" });
-       return;
+      res.status(404).json({ error: "Channel not found!" });
+      return;
     }
 
     res.status(200).json({ data: channel });
@@ -129,7 +141,7 @@ export const deleteSupplierChannel = async (
 ) => {
   try {
     const supplierId = req.supplier?.id;
-    
+
     await prisma.channel.delete({
       where: { supplierId },
     });
@@ -137,8 +149,8 @@ export const deleteSupplierChannel = async (
     res.status(200).json({ message: "Channel deleted successfully!" });
   } catch (error: any) {
     if (error.code === "P2025") {
-       res.status(404).json({ error: "Channel not found!" });
-       return;
+      res.status(404).json({ error: "Channel not found!" });
+      return;
     }
     next(error);
   }

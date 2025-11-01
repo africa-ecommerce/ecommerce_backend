@@ -36,6 +36,7 @@ import contactSupportRoutes from "./routes/contactSupport.routes";
 import subscribeRoutes from "./routes/subscribe.routes";
 import mailRoutes from "./routes/mail.routes";
 import discoverRoutes from "./routes/discover.routes";
+import channelRoutes from "./routes/channel.routes";
 import { closeAllTransporters, initializeMailTransporters } from "./lib/mail";
 
 
@@ -307,6 +308,7 @@ app.use("/admin", adminRoutes, routeErrorCatcher);
 app.use("/mail", mailRoutes, routeErrorCatcher);
 app.use("/subscribe", subscribeRoutes, routeErrorCatcher);
 app.use("/discover", discoverRoutes, routeErrorCatcher);
+app.use("/channel", channelRoutes, routeErrorCatcher);
 
 // Global error handling middleware
 app.use(async(err: any, req: Request, res: Response, next: NextFunction) => {
