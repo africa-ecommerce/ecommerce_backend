@@ -535,3 +535,38 @@ model AcceptedProduct {
   @@index([plugId])
   @@index([productId])
 }
+
+
+
+model Channel {
+  id                  String   @id @default(cuid())
+  supplierId          String   @unique
+  payOnDelivery       Boolean
+  fulfillmentTime     FulfillmentTime
+  returnPolicy        Boolean
+  returnWindow        Int?      // Optional
+  returnPolicyTerms   String?   // Optional
+  refundPolicy        Boolean?  // Optional
+  returnShippingFee   ReturnShippingFee? // Optional
+  supplierShare       Float?    // Optional (percentage)
+  phone               String?   // Optional
+  whatsapp            String?   // Optional
+  telegram            String?   // Optional
+  instagram           String?   // Optional
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+enum FulfillmentTime {
+  SAME_DAY
+  NEXT_DAY
+  TWO_DAYS
+  THREE_PLUS_DAYS
+  WEEKEND
+}
+
+enum ReturnShippingFee {
+  BUYER
+  SUPPLIER
+  SHARED
+}
