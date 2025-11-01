@@ -7,16 +7,15 @@ import { AuthRequest } from "../types";
 
 
 export const currentUser =  (req: AuthRequest) => {
-  const user = req.user;
-  const userType = user?.userType;
+  const userType = req?.user?.userType;
 
   if (userType === "PLUG") {
-    const plug = user?.plug!;
+    const plug = req?.user?.plug!;
     return { type: "PLUG", plug, id: plug.id };
   }
 
   if (userType === "SUPPLIER") {
-    const supplier = user?.supplier!;
+    const supplier = req?.user?.supplier!;
     return { type: "SUPPLIER", supplier, id: supplier.id };
   }
 
