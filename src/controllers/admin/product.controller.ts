@@ -12,7 +12,6 @@ import {
   uploadImages,
 } from "../../helper/minioObjectStore/image";
 import { formatProduct } from "../../helper/formatData";
-import { ProductStatus } from "@prisma/client";
 
 export const adminProductController = {
   createProduct: [
@@ -315,12 +314,7 @@ export const adminProductController = {
         req.query.productStatus as string | undefined
       )?.toUpperCase();
       const where: any = {};
-      if (
-        status &&
-        Object.values(ProductStatus).includes(status as ProductStatus)
-      ) {
-        where.status = status as ProductStatus;
-      }
+ 
       const supplierId = req.params.supplierId;
       where.supplierId = supplierId;
       // Get all products filter by product status
