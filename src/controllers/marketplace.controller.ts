@@ -150,8 +150,7 @@ function buildWhereClause(params: {
 }) {
   const conditions: any[] = [];
 
-  // Only approved products
-  conditions.push({ status: "APPROVED" });
+  
 
   // Exclude plugged products for PLUG users
   if (

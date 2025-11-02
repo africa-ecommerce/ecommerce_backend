@@ -304,3 +304,77 @@ export const checkSubdomainAvailability = async (
     next(error);
   }
 };
+
+
+export const upsertSupplierStorePolicy = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const supplierId = req.supplier?.id!;
+    const {
+      payOnDelivery,
+      returnPolicy,
+      returnWindow,
+      returnPolicyTerms,
+      refundPolicy,
+      returnShippingFee,
+      supplierShare
+    } = req.body;
+
+    // ✅ Basic validation
+    if (
+      typeof payOnDelivery !== "boolean" ||
+      typeof returnPolicy !== "boolean" 
+    ) {
+      res.status(400).json({ error: "Invalid or missing required fields!" });
+      return;
+    }
+
+    // ✅ Validate return window
+    if (returnWindow && (isNaN(returnWindow) || returnWindow < 1)) {
+      res
+        .status(400)
+        .json({ error: "Return window must be a positive integer!" });
+      return;
+    }
+
+    // 🧩 Check if store rules already exists for this supplier
+    const existing = await prisma.supplierStorePolicy.findUnique({
+      where: { supplierId },
+    });
+
+    // ⚡ Upsert supplier store rule 
+    const supplierStorePolicy = await prisma.supplierStorePolicy.upsert({
+      where: { supplierId },
+      update: {
+        payOnDelivery,
+        returnPolicy,
+        returnWindow,
+        returnPolicyTerms,
+        refundPolicy,
+        returnShippingFee,
+        supplierShare
+      },
+      create: {
+        supplierId,
+        payOnDelivery,
+        returnPolicy,
+        returnWindow,
+        returnPolicyTerms,
+        refundPolicy,
+        returnShippingFee,
+        supplierShare
+      },
+    });
+    res.status(200).json({
+      message: existing
+        ? "Policy updated successfully!"
+        : "Policy set successfully!",
+      data: supplierStorePolicy
+    });
+  } catch (error) {
+    next(error);
+  }
+};

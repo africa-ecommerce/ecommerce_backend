@@ -109,7 +109,7 @@ export const discoverProducts = async (
             await prisma.$queryRawUnsafe<{ count: number }[]>(`
               SELECT COUNT(*)::int AS count
               FROM "Product" p
-              WHERE p."status"='APPROVED' AND COALESCE(p."stock",0)>0 ${exclusionSql};
+              WHERE COALESCE(p."stock",0)>0 ${exclusionSql};
             `);
 
           // dynamic pool
@@ -122,7 +122,7 @@ export const discoverProducts = async (
             SELECT p.*, 
               CAST((SELECT COUNT(*) FROM "Review" r WHERE r."productId"=p.id) AS INT) AS "reviewsCount"
             FROM "Product" p
-            WHERE p."status"='APPROVED' AND COALESCE(p."stock",0)>0 ${exclusionSql}
+            WHERE COALESCE(p."stock",0)>0 ${exclusionSql}
             ORDER BY p."createdAt" DESC, RANDOM()
             LIMIT ${poolSize};
           `);

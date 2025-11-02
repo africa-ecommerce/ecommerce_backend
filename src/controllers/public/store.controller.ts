@@ -120,3 +120,49 @@ export async function pixelStoreVisitTracker(
     next(error);
   }
 }
+
+
+
+// export const getSupplierStorePolicy = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+
+
+//      const subdomain = (req.query.subdomain || "")
+//        .toString()
+//        .trim()
+//        .toLowerCase();
+
+//      if (!subdomain) {
+//        res.status(400).json({ error: "Missing or invalid subdomain!" });
+//        return;
+//      }
+
+//      const supplier = await prisma.supplier.findUnique({
+//              where: { subdomain },
+//              select: { id: true },
+//            });
+
+//       if (!supplier) {
+//       res.status(404).json({ error: "Subdomain not found!" });
+//       return;
+//     }
+//     const supplierId = supplier.id;
+
+//     const supplierStorePolicy = await prisma.supplierStorePolicy.findUnique({
+//       where: { supplierId },
+//     });
+
+//     if (!supplierStorePolicy) {
+//       res.status(404).json({ error: "Store policy not found!" });
+//       return;
+//     }
+
+//     res.status(200).json({ data: supplierStorePolicy });
+//   } catch (error) {
+//     next(error);
+//   }
+// };

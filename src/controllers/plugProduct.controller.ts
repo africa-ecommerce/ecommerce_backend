@@ -259,7 +259,6 @@ addProductToPlug: async (
       // Filter out outdated ones (supplier updated price after plug last updated AND has been approved)
       const filteredProducts = plugProducts.filter(
         (pp) =>
-          pp.originalProduct.status !== "APPROVED" || // keep if not approved yet
           pp.originalProduct.priceUpdatedAt <= pp.updatedAt // if approved, must be up-to-date
       );
 
@@ -356,9 +355,6 @@ addProductToPlug: async (
       const plugProducts = await prisma.plugProduct.findMany({
         where: {
           plugId: plug.id,
-          originalProduct: {
-            status: "APPROVED",
-          },
         },
         include: {
           originalProduct: {

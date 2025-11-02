@@ -5,20 +5,23 @@ import {
   deleteStore,
   checkSubdomainAvailability,
   getStoreConfig,
+  upsertSupplierStorePolicy,
 } from "../controllers/store.controller";
 import authenticateJWT from "../middleware/auth.middleware";
+import { isSupplier } from "../middleware/role.middleware";
 
 const router = Router();
 
 // Middleware to ensure user is authenticated and is a plug
-const plugAuth = [authenticateJWT];
+const auth = [authenticateJWT];
 
-router.use(plugAuth);
+router.use(auth);
 // Protected routes requiring plug authentication
 router.get("/config", getStoreConfig);
 router.post("/check-subdomain", checkSubdomainAvailability);
 router.post("/", createStore);
 router.put("/", updateStore);
 router.delete("/", deleteStore);
+router.post("/policy", isSupplier, upsertSupplierStorePolicy);
 
 export default router;

@@ -53,7 +53,6 @@ export const getStoreProducts = async (
       // Only show products that are still valid for plugs
       const filteredProducts = plugProducts.filter(
         (pp) =>
-          pp.originalProduct.status === "APPROVED" &&
           pp.originalProduct.priceUpdatedAt <= pp.updatedAt
       );
 
@@ -71,7 +70,7 @@ export const getStoreProducts = async (
     // 🧱 Supplier store
     if (supplier) {
       const supplierProducts = await prisma.product.findMany({
-        where: { supplierId: supplier.id, status: "APPROVED" },
+        where: { supplierId: supplier.id },
         include: {
           variations: true,
           supplier: { select: { id: true } },
@@ -142,9 +141,12 @@ export const getStoreProductById = async (
         },
       });
 
+      const supplierPolicy = await prisma.supplierStorePolicy.findUnique({
+        where: {supplierId: plugProduct?.originalProduct.supplierId}
+      })
+
       if (
         !plugProduct ||
-        plugProduct.originalProduct.status !== "APPROVED" ||
         plugProduct.originalProduct.priceUpdatedAt > plugProduct.updatedAt
       ) {
         res.status(404).json({ error: "Product not found or unavailable!" });
@@ -154,7 +156,7 @@ export const getStoreProductById = async (
       const formattedProduct = formatPlugProduct(plugProduct);
       res.status(200).json({
         message: "Plug product fetched successfully!",
-        data: formattedProduct,
+        data: { ...formattedProduct, supplierPolicy },
       });
       return;
     }
@@ -162,13 +164,18 @@ export const getStoreProductById = async (
     // 🧱 Supplier store product
     if (supplier) {
       const supplierProduct = await prisma.product.findFirst({
-        where: { id: productId, supplierId: supplier.id, status: "APPROVED" },
+        where: { id: productId, supplierId: supplier.id },
         include: {
           variations: true,
           supplier: { select: { id: true } },
           reviews: true,
         },
       });
+
+       const supplierPolicy = await prisma.supplierStorePolicy.findUnique({
+         where: { supplierId: supplier.id },
+       });
+
 
       if (!supplierProduct) {
         res.status(404).json({ error: "Product not found!" });
@@ -178,7 +185,7 @@ export const getStoreProductById = async (
       const formattedProduct = formatSupplierProduct(supplierProduct);
       res.status(200).json({
         message: "Supplier product fetched successfully!",
-        data: formattedProduct,
+        data: {...formattedProduct, supplierPolicy},
       });
       return;
     }
@@ -237,6 +244,11 @@ export const getProductById = async (
         },
       });
 
+        const supplierPolicy = await prisma.supplierStorePolicy.findUnique({
+          where: { supplierId: plugProduct?.originalProduct.supplierId },
+        });
+
+
       if (!plugProduct) {
         res.status(404).json({ error: "Product not found!" });
         return;
@@ -244,8 +256,7 @@ export const getProductById = async (
 
       // Outdated check: supplier changed price after plug last updated and original product is APPROVED
       if (
-        plugProduct.originalProduct.priceUpdatedAt > plugProduct.updatedAt &&
-        plugProduct.originalProduct.status === "APPROVED"
+        plugProduct.originalProduct.priceUpdatedAt > plugProduct.updatedAt 
       ) {
         res.status(404).json({ error: "Product not found!" });
         return;
@@ -254,7 +265,7 @@ export const getProductById = async (
       const formatted = formatPlugProduct(plugProduct);
       res.status(200).json({
         message: "Product fetched successfully!",
-        data: formatted,
+        data: {...formatted, supplierPolicy},
       });
       return;
     }
@@ -277,21 +288,20 @@ export const getProductById = async (
         },
       });
 
+       const supplierPolicy = await prisma.supplierStorePolicy.findUnique({
+         where: { supplierId: supplier.id },
+       });
+
       if (!product) {
         res.status(404).json({ error: "Product not found!" });
         return;
       }
 
-      // Ensure supplier product is APPROVED (same safety as other supplier endpoints)
-      if (product.status !== "APPROVED") {
-        res.status(404).json({ error: "Product not found!" });
-        return;
-      }
 
       const formatted = formatSupplierProduct(product);
       res.status(200).json({
         message: "Product fetched successfully!",
-        data: formatted,
+        data: {...formatted, supplierPolicy},
       });
       return;
     }

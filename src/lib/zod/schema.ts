@@ -113,14 +113,16 @@ export const productSchema = z.object({
   category: z.string(),
   //variations
   size: z.string().optional(),
-  colors: z.array(z.string()).optional(), 
+  colors: z.array(z.string()).optional(),
   stock: z.number().int().nonnegative().optional(),
+  moq: z.number().positive().optional(),
 });
 
 export const productVariationSchema = z.object({
   size: z.string().optional(),
   colors: z.array(z.string()).optional(),
   stock: z.number().int().nonnegative(),
+  moq: z.number().positive().optional(),
 });
 
 export const productVariationsSchema = z.array(productVariationSchema);

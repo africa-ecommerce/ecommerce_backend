@@ -32,7 +32,6 @@ export const productController = {
           return;
         }
 
-        console.log("productData", productData);
         // Validate main product data
         const validatedData = productSchema.safeParse({
           name: productData.name,
@@ -42,6 +41,7 @@ export const productController = {
           size: productData.size,
           colors: productData.colors,
           stock: productData.stock,
+          moq: productData.moq
         });
         if (!validatedData.success) {
           res.status(400).json({
@@ -85,12 +85,14 @@ export const productController = {
               size: validatedData.data.size?.trim(),
               colors: validatedData.data.colors || [],
               stock: validatedData.data.stock,
+              moq: validatedData.data.moq,
               supplierId: supplier.id,
               variations: {
                 create: validatedVariations.map((variation: any) => ({
                   size: variation.size?.trim(),
                   colors: variation.colors || [],
                   stock: variation.stock,
+                  moq: variation.moq,
                 })),
               },
             },
@@ -127,18 +129,6 @@ export const productController = {
         orderBy: { createdAt: "desc" },
         include: {
           variations: true,
-          // supplier: {
-          //   select: {
-          //     businessName: true,
-          //     pickupLocation: {
-          //       select: {
-          //         lga: true,
-          //         state: true,
-          //       },
-          //     },
-          //     avatar: true,
-          //   },
-          // },
         },
       });
 
@@ -277,6 +267,7 @@ export const productController = {
           size: productData.size,
           colors: productData.colors || [],
           stock: productData.stock,
+          moq: productData.moq,
         });
 
         if (!validatedData.success) {
@@ -336,6 +327,7 @@ export const productController = {
               size: variation.size?.trim(),
               colors: variation.colors || [],
               stock: variation.stock,
+              moq: variation.moq,
             })),
           });
         }
@@ -354,10 +346,11 @@ export const productController = {
             category: validatedData.data.category,
             size: validatedData.data.size?.trim(),
             colors: validatedData.data.colors || [],
-            status: "PENDING", // Reset to pending on update
+            moq: validatedData.data.moq,
             stock: validatedData.data.stock,
             images: JSON.stringify(updatedImages),
             updatedAt: new Date(),
+
             priceUpdatedAt: isPriceChanged
               ? new Date()
               : existingProduct.priceUpdatedAt,
@@ -385,92 +378,6 @@ export const productController = {
     },
   ],
 
-  // Update only product price and stock
-  // updateProductStockAndPrice: [
-  //   async (req: AuthRequest, res: Response, next: NextFunction) => {
-  //     try {
-  //       const productId = req.params.productId;
-  //       const supplier = req.supplier!;
-
-  //       const productData = req.body;
-
-  //       // Validate base product stock and price only
-  //       const validatedData = updateProductSchema.safeParse({
-  //         price: parseFloat(productData.price),
-  //         stock: productData.stock,
-  //       });
-
-  //       if (!validatedData.success) {
-  //         res.status(400).json({ error: "Invalid price or stock data!" });
-  //         return;
-  //       }
-
-  //       // Validate variations if provided
-  //       let validatedVariations: any = [];
-  //       if (productData.variations && Array.isArray(productData.variations)) {
-  //         const variationsResult = updateProductVariationsSchema.safeParse(
-  //           productData.variations
-  //         );
-  //         if (!variationsResult.success) {
-  //           res.status(400).json({ error: "Invalid variation data!" });
-  //           return;
-  //         }
-  //         validatedVariations = variationsResult.data;
-  //       }
-
-  //       // Check product ownership
-  //       const existingProduct = await prisma.product.findFirst({
-  //         where: {
-  //           id: productId,
-  //           supplierId: supplier.id,
-  //         },
-  //       });
-
-  //       if (!existingProduct) {
-  //         res.status(404).json({ error: "Product not found!" });
-  //         return;
-  //       }
-
-  //       // Update product and variations in transaction
-  //       const updatedProduct = await prisma.$transaction(async (tx) => {
-  //         // Update base product
-  //         const updated = await tx.product.update({
-  //           where: { id: productId },
-  //           data: {
-  //             price: validatedData.data.price,
-  //             stock: validatedData.data.stock,
-  //             updatedAt: new Date(),
-  //           },
-  //         });
-
-  //         // Update variations if provided
-  //         if (validatedVariations.length > 0) {
-  //           // Delete old variations
-  //           await tx.productVariation.deleteMany({ where: { productId } });
-
-  //           // Insert updated variations
-  //           await tx.productVariation.createMany({
-  //             data: validatedVariations.map((variation: any) => ({
-  //               productId,
-  //               size: variation.size?.trim(),
-  //               color: variation.color?.trim(),
-  //               stock: variation.stock,
-  //             })),
-  //           });
-  //         }
-
-  //         return updated;
-  //       });
-
-  //       res.status(200).json({
-  //         message: "Product stock and price updated successfully!",
-  //         data: formatProduct(updatedProduct),
-  //       });
-  //     } catch (error) {
-  //       next(error);
-  //     }
-  //   },
-  // ],
 
   // Delete product with MinIO cleanup
   deleteProduct: async (

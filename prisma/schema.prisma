@@ -228,13 +228,13 @@ model Product {
   colors         String[]           @default([])
   sold           Int                @default(0)
   stock          Int                @default(0)
+  moq            Int                @default(1)
   plugsCount     Int                @default(0)
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
   maxPrice       Float              @default(0)
   minPrice       Float              @default(0)
   priceUpdatedAt DateTime           @default(now())
-  status         ProductStatus      @default(PENDING)
   plugProducts   PlugProduct[]
   supplier       Supplier           @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   variations     ProductVariation[]
@@ -477,11 +477,7 @@ enum MailStatus {
   FAILED
 }
 
-enum ProductStatus {
-  PENDING
-  APPROVED
-  QUERIED
-}
+
 
 model PlugCategoryRating {
   id        String   @id @default(cuid())
@@ -537,13 +533,27 @@ model AcceptedProduct {
 }
 
 
+model SupplierStorePolicy {
+  id                  String   @id @default(cuid())
+  supplierId          String   @unique
+  payOnDelivery       Boolean
+  returnPolicy        Boolean
+  returnWindow        Int?      // Optional
+  returnPolicyTerms   String?   // Optional
+  refundPolicy        Boolean?  // Optional
+  returnShippingFee   ReturnShippingFee? // Optional
+  supplierShare       Float?    // Optional (percentage)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+
 
 model Channel {
   id                  String   @id @default(cuid())
   supplierId          String   @unique
-   channelId           String   @unique
+  channelId           String   @unique
   payOnDelivery       Boolean
-  fulfillmentTime     FulfillmentTime
   returnPolicy        Boolean
   returnWindow        Int?      // Optional
   returnPolicyTerms   String?   // Optional
@@ -558,13 +568,7 @@ model Channel {
   updatedAt           DateTime  @updatedAt
 }
 
-enum FulfillmentTime {
-  SAME_DAY
-  NEXT_DAY
-  TWO_DAYS
-  THREE_PLUS_DAYS
-  WEEKEND
-}
+
 
 enum ReturnShippingFee {
   BUYER

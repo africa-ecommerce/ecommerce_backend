@@ -4,6 +4,7 @@ import {
   verifySubdomain,
   getStoreConfig,
   pixelStoreVisitTracker,
+  // getSupplierStorePolicy,
 } from "../controllers/public/store.controller";
 import { getOrderItemByOrderNumber, manageOrder } from "../controllers/public/order.controller";
 const router = Router();
@@ -17,5 +18,6 @@ router.get("/store/products", getStoreProducts);
 router.get("/store/pixel", pixelStoreVisitTracker);
 //adjust middleware
 router.get("/store/verifySubdomain", verifySubdomain);
+// router.get("/store/policy", getSupplierStorePolicy);
 
 export default router;

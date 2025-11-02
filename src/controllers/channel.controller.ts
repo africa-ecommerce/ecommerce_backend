@@ -15,7 +15,6 @@ export const upsertSupplierChannel = async (
     const supplierId = req.supplier?.id!;
     const {
       payOnDelivery,
-      fulfillmentTime,
       returnPolicy,
       returnWindow,
       returnPolicyTerms,
@@ -31,14 +30,7 @@ export const upsertSupplierChannel = async (
     // ✅ Basic validation
     if (
       typeof payOnDelivery !== "boolean" ||
-      typeof returnPolicy !== "boolean" ||
-      ![
-        "SAME_DAY",
-        "NEXT_DAY",
-        "TWO_DAYS",
-        "THREE_PLUS_DAYS",
-        "WEEKEND",
-      ].includes(fulfillmentTime)
+      typeof returnPolicy !== "boolean" 
     ) {
       res.status(400).json({ error: "Invalid or missing required fields!" });
       return;
@@ -68,7 +60,6 @@ export const upsertSupplierChannel = async (
       where: { supplierId },
       update: {
         payOnDelivery,
-        fulfillmentTime,
         returnPolicy,
         returnWindow,
         returnPolicyTerms,
@@ -84,7 +75,6 @@ export const upsertSupplierChannel = async (
         supplierId,
         channelId,
         payOnDelivery,
-        fulfillmentTime,
         returnPolicy,
         returnWindow,
         returnPolicyTerms,
