@@ -375,13 +375,7 @@ export const adminProductController = {
         return;
       }
 
-      if (product.status !== ProductStatus.PENDING) {
-        res
-          .status(400)
-          .json({ error: "Product must be PENDING!" });
-        return;
-      }
-
+     
       // Validate prices
       if (minPrice < product.price) {
         res.status(400).json({
@@ -402,7 +396,6 @@ export const adminProductController = {
         data: {
           minPrice,
           maxPrice,
-          status: ProductStatus.APPROVED,
           updatedAt: new Date(),
         },
       });
@@ -432,17 +425,11 @@ export const adminProductController = {
         return;
       }
 
-      if (product.status !== ProductStatus.PENDING) {
-        res
-          .status(400)
-          .json({ error: "Product must be PENDING!" });
-        return;
-      }
+     
 
       const updatedProduct = await prisma.product.update({
         where: { id: productId },
         data: {
-          status: ProductStatus.QUERIED,
           updatedAt: new Date(),
         },
       });
