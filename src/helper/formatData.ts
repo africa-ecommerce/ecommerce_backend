@@ -109,6 +109,7 @@ export const formatSupplierProduct = (supplierProduct: any) => {
   // Construct base response
   const formattedProduct: any = {
     // Original product details
+    id: supplierProduct?.id,
     supplierId: supplierProduct?.supplier?.id,
     name: supplierProduct?.name,
     description: supplierProduct?.description,
