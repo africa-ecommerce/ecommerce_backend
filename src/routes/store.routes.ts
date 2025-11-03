@@ -6,6 +6,7 @@ import {
   checkSubdomainAvailability,
   getStoreConfig,
   upsertSupplierStorePolicy,
+  getSupplierStorePolicy
 } from "../controllers/store.controller";
 import authenticateJWT from "../middleware/auth.middleware";
 import { isSupplier } from "../middleware/role.middleware";
@@ -23,5 +24,6 @@ router.post("/", createStore);
 router.put("/", updateStore);
 router.delete("/", deleteStore);
 router.post("/policy", isSupplier, upsertSupplierStorePolicy);
+router.get("/policy", isSupplier, getSupplierStorePolicy);
 
 export default router;
