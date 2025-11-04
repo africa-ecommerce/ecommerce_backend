@@ -366,7 +366,7 @@ document.addEventListener("DOMContentLoaded", function () {
       ) {
         // Check if all variations are out of stock
         const hasAvailableVariations = product.variations.some(
-          (v) => v.stocks > 0
+          (v) => v.stocks > 0 || v.stocks > v.moq
         );
         if (!hasAvailableVariations) {
           showNotification("This product is out of stock", "error");
@@ -377,7 +377,7 @@ document.addEventListener("DOMContentLoaded", function () {
         window.cart.showVariationModal(product, true);
       } else if (product.colors && product.colors.length > 1) {
         // Check stock for multiple colors
-        if (productStock < 1) {
+        if (productStock < 1 || product.moq > productStock) {
           showNotification("This product is out of stock", "error");
           return;
         }
@@ -386,7 +386,7 @@ document.addEventListener("DOMContentLoaded", function () {
         window.cart.showColorModal(product, true);
       } else {
         // Check stock for simple product
-        if (productStock < 1) {
+        if (productStock < 1 || product.moq > productStock) {
           showNotification("This product is out of stock", "error");
           return;
         }

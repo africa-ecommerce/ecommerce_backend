@@ -241,7 +241,7 @@ class ProductDetailsPage {
       }
     } else if (this.currentProduct) {
       // Restore button states based on product data
-      if (this.currentProduct.totalStock === 0) {
+      if (this.currentProduct.totalStock === 0 || this.currentProduct.moq > this.currentProduct.totalStock) {
         if (addToCartBtn) {
           addToCartBtn.textContent = "Out of Stock"
           addToCartBtn.disabled = true
@@ -308,7 +308,7 @@ class ProductDetailsPage {
       if (product.hasVariations) {
         stockText = `Quantity: ${product.totalStock} items available`
       } else {
-        stockText = product.stocks > 0 ? `Quantity: ${product.stocks}` : "Out of stock"
+        stockText = product.stocks > 0 || product.moq > product.stocks ? `Quantity: ${product.stocks}` : "Out of stock"
       }
 
       productMeta.innerHTML = `
@@ -468,7 +468,7 @@ class ProductDetailsPage {
 
         if (product.hasVariations && product.variations && product.variations.length > 0) {
           // Check if all variations are out of stock
-          const hasAvailableVariations = product.variations.some((v) => v.stocks > 0)
+          const hasAvailableVariations = product.variations.some((v) => v.stocks > 0 || v.stocks > v.moq)
           if (!hasAvailableVariations) {
             window.cart.showNotification("This product is out of stock", "error")
             return
@@ -478,13 +478,13 @@ class ProductDetailsPage {
 
         } else if (product.colors && product.colors.length > 1) {
           // Product has multiple colors but no variations
-          if (productStock < 1) {
+          if (productStock < 1 || product.moq > productStock) {
             this.showNotification("This product is out of stock", "error")
             return
           }
           window.cart.showColorModal(product)
         } else {
-          if (productStock < 1) {
+          if (productStock < 1 || product.moq > productStock) {
             window.cart.showNotification("This product is out of stock", "error")
             return
           }
@@ -525,7 +525,7 @@ if (buyNowBtn) {
 
     if (product.hasVariations && product.variations?.length > 0) {
       const hasAvailableVariations = product.variations.some(
-        (v) => v.stocks > 0
+        (v) => v.stocks > 0 || v.stocks > v.moq
       );
       if (!hasAvailableVariations) {
         this.showNotification("This product is out of stock", "error");
@@ -535,14 +535,14 @@ if (buyNowBtn) {
       // ✅ Pass true for Buy Now flag
       window.cart.showVariationModal(product, true);
     } else if (product.colors && product.colors.length > 1) {
-      if (productStock < 1) {
+      if (productStock < 1 || product.moq > productStock) {
         this.showNotification("This product is out of stock", "error");
         return;
       }
 
       window.cart.showColorModal(product, true);
     } else {
-      if (productStock < 1) {
+      if (productStock < 1 || product.moq > productStock) {
         this.showNotification("This product is out of stock", "error");
         return;
       }
@@ -880,11 +880,11 @@ function updateProductDetailsBasic(product) {
     if (product.hasVariations) {
       stockText = `Quantity: ${product.totalStock} items available`
     } else {
-      stockText = product.stocks > 0 ? `Quantity: ${product.stocks}` : "Out of stock"
+      stockText = product.stocks > 0 || product.moq > product.totalStock ? `Quantity: ${product.stocks}` : "Out of stock"
     }
 
     productMeta.innerHTML = `
-            <div class="stock-info ${product.totalStock === 0 ? "out-of-stock" : product.totalStock < 5 ? "low-stock" : ""}">
+            <div class="stock-info ${product.totalStock === 0 || product.moq > product.totalStock ? "out-of-stock" : product.totalStock < 5 ? "low-stock" : ""}">
                 <span>${stockText}</span>
             </div>
         `
@@ -1056,7 +1056,7 @@ function addEventListenersBasic(product) {
           console.error("Cart variation modal not available")
         }
       } else if (product.colors && product.colors.length > 1) {
-        if (product.stocks < 1) {
+        if (product.stocks < 1 || product.moq > product.stocks) {
           window.cart.showNotification("This product is out of stock", "error")
           return
         }
@@ -1067,7 +1067,7 @@ function addEventListenersBasic(product) {
           console.error("Cart color modal not available")
         }
       } else {
-        if (product.stocks < 1) {
+        if (product.stocks < 1 || product.moq > product.stocks) {
           window.cart.showNotification("This product is out of stock", "error")
           return
         }

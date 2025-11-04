@@ -223,10 +223,10 @@ class ShoppingCart {
             </div>
 
             <button class="btn btn-primary variation-select-btn"
-              ${variation.stocks < 1 ? "disabled" : ""}
+              ${variation.stocks < 1 || variation.moq > variation.stocks ? "disabled" : ""}
               data-variation-index="${index}">
               ${
-                variation.stocks < 1
+                variation.stocks < 1 || variation.moq > variation.stocks
                   ? "Out of Stock"
                   : isBuyNow && variation.moq > 1
                   ? "Add to Cart"
@@ -402,7 +402,7 @@ class ShoppingCart {
       this.showNotification(`Cart limit reached (${this.maxItems} items max).`, "error");
       return;
     }
-    if (stockLimit !== null && stockLimit < 1) {
+    if (stockLimit !== null && stockLimit < 1 || moq > stockLimit) {
       this.showNotification(`${product.title} is out of stock.`, "error");
       return;
     }
@@ -513,7 +513,7 @@ addItemWithVariationAndColor(product, selectedVariation, selectedColor) {
       this.showNotification(`Cart limit reached (${this.maxItems} items max).`, "error");
       return;
     }
-    if (stockLimit !== null && stockLimit < 1) {
+    if (stockLimit !== null && stockLimit < 1 || moq > stockLimit) {
       this.showNotification(`${product.title} is out of stock.`, "error");
       return;
     }
@@ -610,7 +610,7 @@ addItem(product, selectedVariation = null) {
       this.showNotification(`Cart limit reached (${this.maxItems} items max).`, "error");
       return;
     }
-    if (stockLimit !== null && stockLimit < 1) {
+    if (stockLimit !== null && stockLimit < 1 || moq > stockLimit) {
       this.showNotification(`${product.title} is out of stock.`, "error");
       return;
     }
@@ -902,7 +902,7 @@ addItem(product, selectedVariation = null) {
 
           if (product.hasVariations && product.variations && product.variations.length > 0) {
             // Check if all variations are out of stock
-            const hasAvailableVariations = product.variations.some((v) => v.stocks > 0)
+            const hasAvailableVariations = product.variations.some((v) => v.stocks > 0 || v.stocks > v.moq)
             if (!hasAvailableVariations) {
               this.showNotification("This product is out of stock", "error")
               return
@@ -910,14 +910,14 @@ addItem(product, selectedVariation = null) {
             // Show variation modal for buy now
             this.showVariationModal(product, true)
           } else if (product.colors && product.colors.length > 1) {
-            if (productStock < 1) {
+            if (productStock < 1 || product.moq > productStock) {
               this.showNotification("This product is out of stock", "error")
               return
             }
             this.showColorModal(product, true)
           } else {
             // Check stock for simple product
-            if (productStock < 1) {
+            if (productStock < 1 || product.moq > productStock) {
               this.showNotification("This product is out of stock", "error")
               return
             }
