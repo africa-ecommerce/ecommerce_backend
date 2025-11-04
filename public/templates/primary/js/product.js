@@ -440,6 +440,7 @@ class EnhancedProductCache {
         description: product.description || "No description available",
         stocks: totalStocks,
         sold: product.sold || 0,
+        moq: product.moq || 1,
         originalPrice: product.originalPrice,
         variations: product.variations || [],
         hasVariations: hasVariations,

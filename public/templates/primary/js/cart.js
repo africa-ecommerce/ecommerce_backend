@@ -153,14 +153,161 @@ class ShoppingCart {
     }, 10)
   }
 
+  // showVariationModal(product, isBuyNow = false) {
+  //   const overlay = document.createElement("div")
+  //   overlay.className = "variation-modal-overlay"
+
+  //   const modal = document.createElement("div")
+  //   modal.className = "variation-modal"
+
+  //   modal.innerHTML = `
+  //   <div class="variation-modal-header">
+  //     <h3>Choose Variation</h3>
+  //     <button class="variation-modal-close">
+  //       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" 
+  //         viewBox="0 0 24 24" fill="none" stroke="currentColor" 
+  //         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  //         <path d="M18 6 6 18" />
+  //         <path d="m6 6 12 12" />
+  //       </svg>
+  //     </button>
+  //   </div>
+  //   <div class="variation-modal-body">
+  //     <div class="product-variant-info">
+  //       <img src="${product.image}" alt="${product.title}" class="variation-product-image" crossorigin="anonymous">
+  //       <h4 class="variation-product-title">${product.title}</h4>
+  //       <p class="variation-product-price">₦${product.price.toLocaleString()}</p>
+  //     </div>
+  //     <div class="variations-list">
+  //       ${product.variations.map((variation, index) => `
+  //         <div class="variation-item" data-variation-id="${variation.id}">
+  //           <div class="variation-header">
+  //             <h5>Variant ${index + 1}</h5>
+  //             <span class="variation-stock ${variation.stocks < 5 ? "low-stock" : ""}">
+  //               ${variation.stocks} in stock
+  //             </span>
+  //           </div>
+  //           <div class="variation-display">
+           
+
+  //           ${variation.colors && variation.colors.length > 0 ? `
+  //             <div class="variation-colors-popover">
+  //               <button class="variation-color-toggle">
+  //                 ${variation.colors[0].toUpperCase()} ▼
+  //               </button>
+  //               <div class="variation-colors-list">
+  //                 ${variation.colors.map((color, cIndex) => `
+  //                   <div class="variation-color-option ${cIndex === 0 ? "active" : ""}" 
+  //                        data-color="${color}">
+                      
+  //                     <span class="color-name">${color.toUpperCase()}</span>
+  //                   </div>
+  //                 `).join("")}
+  //               </div>
+  //             </div>
+  //           ` : ""}
+
+  //            <div class="variation-details">
+  //             ${variation.size ? `<span class="variation-size">Size: ${variation.size}</span>` : ""}
+  //           </div>
+  //                 </div>
+  //           <button class="btn btn-primary variation-select-btn"
+  //             ${variation.stocks < 1 ? "disabled" : ""}
+  //             data-variation-index="${index}">
+  //             ${variation.stocks < 1 ? "Out of Stock" : isBuyNow ? "Buy Now" : "Add to Cart"}
+  //           </button>
+  //         </div>
+  //       `).join("")}
+  //     </div>
+  //   </div>
+  // `
+
+  //   overlay.appendChild(modal)
+  //   document.body.appendChild(overlay)
+  //   document.body.style.overflow = "hidden"
+
+  //   // ===== Event handling =====
+  //   const closeBtn = modal.querySelector(".variation-modal-close")
+  //   const selectBtns = modal.querySelectorAll(".variation-select-btn")
+  //   const popoverToggles = modal.querySelectorAll(".variation-color-toggle")
+
+  //   let selectedColors = {} // track color per variation
+
+  //   const closeModal = () => {
+  //     overlay.remove()
+  //     document.body.style.overflow = ""
+  //   }
+
+  //   closeBtn.addEventListener("click", closeModal)
+  //   overlay.addEventListener("click", (e) => {
+  //     if (e.target === overlay) closeModal()
+  //   })
+
+  //   // Toggle color popovers
+  //   popoverToggles.forEach((btn) => {
+  //     btn.addEventListener("click", (e) => {
+  //       e.stopPropagation()
+  //       const popover = btn.nextElementSibling
+  //       popover.classList.toggle("active")
+  //     })
+  //   })
+
+  //   // Color selection per variation
+  //   modal.querySelectorAll(".variation-color-option").forEach((option) => {
+  //     option.addEventListener("click", () => {
+  //       const parent = option.closest(".variation-colors-popover")
+  //       const toggleBtn = parent.querySelector(".variation-color-toggle")
+  //       const allOptions = parent.querySelectorAll(".variation-color-option")
+
+  //       allOptions.forEach(o => o.classList.remove("active"))
+  //       option.classList.add("active")
+
+  //       const chosenColor = option.getAttribute("data-color")
+  //       toggleBtn.textContent = chosenColor + " ▼"
+
+  //       const variationId = option.closest(".variation-item").getAttribute("data-variation-id")
+  //       selectedColors[variationId] = chosenColor
+
+  //       parent.querySelector(".variation-colors-list").classList.remove("active")
+  //     })
+  //   })
+
+  //   // Handle variation select
+  //   selectBtns.forEach((btn) => {
+  //     btn.addEventListener("click", () => {
+  //       const variationIndex = parseInt(btn.getAttribute("data-variation-index"))
+  //       const selectedVariation = product.variations[variationIndex]
+  //       const chosenColor = selectedColors[selectedVariation.id] || selectedVariation.colors?.[0] || null
+
+  //       if (selectedVariation.stocks > 0) {
+  //         if (isBuyNow) {
+  //           const ref = this.getSubdomain()
+  //           let checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&variation=${selectedVariation.id}&ref=${ref}&platform=store`
+  //           if (chosenColor) checkoutUrl += `&color=${encodeURIComponent(chosenColor)}`
+  //           window.open(checkoutUrl, "_blank")
+  //           closeModal()
+  //         } else {
+  //           this.addItemWithVariationAndColor(product, selectedVariation, chosenColor)
+  //           closeModal()
+  //         }
+  //       } else {
+  //         this.showNotification("This variation is out of stock", "error")
+  //       }
+  //     })
+  //   })
+
+  //   setTimeout(() => overlay.classList.add("active"), 10)
+  // }
+
+
   showVariationModal(product, isBuyNow = false) {
-    const overlay = document.createElement("div")
-    overlay.className = "variation-modal-overlay"
+  const overlay = document.createElement("div");
+  overlay.className = "variation-modal-overlay";
 
-    const modal = document.createElement("div")
-    modal.className = "variation-modal"
+  const modal = document.createElement("div");
+  modal.className = "variation-modal";
 
-    modal.innerHTML = `
+  modal.innerHTML = `
     <div class="variation-modal-header">
       <h3>Choose Variation</h3>
       <button class="variation-modal-close">
@@ -179,7 +326,9 @@ class ShoppingCart {
         <p class="variation-product-price">₦${product.price.toLocaleString()}</p>
       </div>
       <div class="variations-list">
-        ${product.variations.map((variation, index) => `
+        ${product.variations
+          .map(
+            (variation, index) => `
           <div class="variation-item" data-variation-id="${variation.id}">
             <div class="variation-header">
               <h5>Variant ${index + 1}</h5>
@@ -188,116 +337,144 @@ class ShoppingCart {
               </span>
             </div>
             <div class="variation-display">
-           
 
-            ${variation.colors && variation.colors.length > 0 ? `
-              <div class="variation-colors-popover">
-                <button class="variation-color-toggle">
-                  ${variation.colors[0].toUpperCase()} ▼
-                </button>
-                <div class="variation-colors-list">
-                  ${variation.colors.map((color, cIndex) => `
-                    <div class="variation-color-option ${cIndex === 0 ? "active" : ""}" 
-                         data-color="${color}">
-                      
-                      <span class="color-name">${color.toUpperCase()}</span>
-                    </div>
-                  `).join("")}
-                </div>
-              </div>
-            ` : ""}
-
-             <div class="variation-details">
-              ${variation.size ? `<span class="variation-size">Size: ${variation.size}</span>` : ""}
-            </div>
+              ${variation.colors && variation.colors.length > 0 ? `
+                <div class="variation-colors-popover">
+                  <button class="variation-color-toggle">
+                    ${variation.colors[0].toUpperCase()} ▼
+                  </button>
+                  <div class="variation-colors-list">
+                    ${variation.colors.map(
+                      (color, cIndex) => `
+                      <div class="variation-color-option ${cIndex === 0 ? "active" : ""}" 
+                           data-color="${color}">
+                        <span class="color-name">${color.toUpperCase()}</span>
+                      </div>
+                    `
+                    ).join("")}
                   </div>
+                </div>
+              ` : ""}
+
+              <div class="variation-details">
+                ${variation.size ? `<span class="variation-size">Size: ${variation.size}</span>` : ""}
+                ${
+                  variation.moq > 1
+                    ? `<span class="variation-moq">Minimum quantity: ${variation.moq}</span>`
+                    : ""
+                }
+              </div>
+            </div>
+
             <button class="btn btn-primary variation-select-btn"
               ${variation.stocks < 1 ? "disabled" : ""}
               data-variation-index="${index}">
-              ${variation.stocks < 1 ? "Out of Stock" : isBuyNow ? "Buy Now" : "Add to Cart"}
+              ${
+                variation.stocks < 1
+                  ? "Out of Stock"
+                  : isBuyNow && variation.moq > 1
+                  ? "Add to Cart"
+                  : isBuyNow
+                  ? "Buy Now"
+                  : "Add to Cart"
+              }
             </button>
           </div>
-        `).join("")}
+        `
+          )
+          .join("")}
       </div>
     </div>
-  `
+  `;
 
-    overlay.appendChild(modal)
-    document.body.appendChild(overlay)
-    document.body.style.overflow = "hidden"
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  document.body.style.overflow = "hidden";
 
-    // ===== Event handling =====
-    const closeBtn = modal.querySelector(".variation-modal-close")
-    const selectBtns = modal.querySelectorAll(".variation-select-btn")
-    const popoverToggles = modal.querySelectorAll(".variation-color-toggle")
+  // ===== Event handling =====
+  const closeBtn = modal.querySelector(".variation-modal-close");
+  const selectBtns = modal.querySelectorAll(".variation-select-btn");
+  const popoverToggles = modal.querySelectorAll(".variation-color-toggle");
 
-    let selectedColors = {} // track color per variation
+  let selectedColors = {}; // track color per variation
 
-    const closeModal = () => {
-      overlay.remove()
-      document.body.style.overflow = ""
-    }
+  const closeModal = () => {
+    overlay.remove();
+    document.body.style.overflow = "";
+  };
 
-    closeBtn.addEventListener("click", closeModal)
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) closeModal()
-    })
+  closeBtn.addEventListener("click", closeModal);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeModal();
+  });
 
-    // Toggle color popovers
-    popoverToggles.forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation()
-        const popover = btn.nextElementSibling
-        popover.classList.toggle("active")
-      })
-    })
+  // Toggle color popovers
+  popoverToggles.forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const popover = btn.nextElementSibling;
+      popover.classList.toggle("active");
+    });
+  });
 
-    // Color selection per variation
-    modal.querySelectorAll(".variation-color-option").forEach((option) => {
-      option.addEventListener("click", () => {
-        const parent = option.closest(".variation-colors-popover")
-        const toggleBtn = parent.querySelector(".variation-color-toggle")
-        const allOptions = parent.querySelectorAll(".variation-color-option")
+  // Color selection per variation
+  modal.querySelectorAll(".variation-color-option").forEach((option) => {
+    option.addEventListener("click", () => {
+      const parent = option.closest(".variation-colors-popover");
+      const toggleBtn = parent.querySelector(".variation-color-toggle");
+      const allOptions = parent.querySelectorAll(".variation-color-option");
 
-        allOptions.forEach(o => o.classList.remove("active"))
-        option.classList.add("active")
+      allOptions.forEach((o) => o.classList.remove("active"));
+      option.classList.add("active");
 
-        const chosenColor = option.getAttribute("data-color")
-        toggleBtn.textContent = chosenColor + " ▼"
+      const chosenColor = option.getAttribute("data-color");
+      toggleBtn.textContent = chosenColor + " ▼";
 
-        const variationId = option.closest(".variation-item").getAttribute("data-variation-id")
-        selectedColors[variationId] = chosenColor
+      const variationId = option.closest(".variation-item").getAttribute("data-variation-id");
+      selectedColors[variationId] = chosenColor;
 
-        parent.querySelector(".variation-colors-list").classList.remove("active")
-      })
-    })
+      parent.querySelector(".variation-colors-list").classList.remove("active");
+    });
+  });
 
-    // Handle variation select
-    selectBtns.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const variationIndex = parseInt(btn.getAttribute("data-variation-index"))
-        const selectedVariation = product.variations[variationIndex]
-        const chosenColor = selectedColors[selectedVariation.id] || selectedVariation.colors?.[0] || null
+  // Handle variation select
+  selectBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const variationIndex = parseInt(btn.getAttribute("data-variation-index"));
+      const selectedVariation = product.variations[variationIndex];
+      const chosenColor =
+        selectedColors[selectedVariation.id] || selectedVariation.colors?.[0] || null;
 
-        if (selectedVariation.stocks > 0) {
-          if (isBuyNow) {
-            const ref = this.getSubdomain()
-            let checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&variation=${selectedVariation.id}&ref=${ref}&platform=store`
-            if (chosenColor) checkoutUrl += `&color=${encodeURIComponent(chosenColor)}`
-            window.open(checkoutUrl, "_blank")
-            closeModal()
-          } else {
-            this.addItemWithVariationAndColor(product, selectedVariation, chosenColor)
-            closeModal()
-          }
-        } else {
-          this.showNotification("This variation is out of stock", "error")
+      if (selectedVariation.stocks > 0) {
+        // ✅ If MOQ > 1 and user clicked from Buy Now → add to cart instead
+        if (isBuyNow && selectedVariation.moq > 1) {
+          this.addItemWithVariationAndColor(product, selectedVariation, chosenColor);
+          this.showNotification(
+            `Minimum quantity for this variation is ${selectedVariation.moq}. Added to cart.`,
+            "info"
+          );
+          closeModal();
+          return;
         }
-      })
-    })
 
-    setTimeout(() => overlay.classList.add("active"), 10)
-  }
+        if (isBuyNow) {
+          const ref = this.getSubdomain();
+          let checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&variation=${selectedVariation.id}&ref=${ref}&platform=store`;
+          if (chosenColor) checkoutUrl += `&color=${encodeURIComponent(chosenColor)}`;
+          window.open(checkoutUrl, "_blank");
+          closeModal();
+        } else {
+          this.addItemWithVariationAndColor(product, selectedVariation, chosenColor);
+          closeModal();
+        }
+      } else {
+        this.showNotification("This variation is out of stock", "error");
+      }
+    });
+  });
+
+  setTimeout(() => overlay.classList.add("active"), 10);
+}
 
 
   addItemWithColor(product, selectedColor) {

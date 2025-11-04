@@ -4,6 +4,11 @@
     background-color: var(--color-background);
     margin-bottom: var(--spacing-8);
   }
+
+  button[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
   
   .page-header h1 {
     margin-bottom: var(--spacing-2);

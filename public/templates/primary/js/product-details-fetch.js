@@ -490,6 +490,7 @@ class EnhancedProductDetailsCache {
           stocks: apiProduct.stocks,
           totalStock: totalStock,
           hasVariations: hasVariations,
+          moq: apiProduct.moq || 1,
           variations: apiProduct.variations || [],
           sold: apiProduct.sold || 0,
           colors: apiProduct.colors || (apiProduct.color ? [apiProduct.color] : []),

@@ -457,91 +457,87 @@ document.addEventListener('DOMContentLoaded', function() {
   
 
 
- function renderProducts() {
-    // Filter and sort products
-    const filteredProducts = filterProducts();
+function renderProducts() {
+  // Filter and sort products
+  const filteredProducts = filterProducts();
+  
+  // Update total count
+  if (productsTotalElement) {
+    productsTotalElement.textContent = filteredProducts.length;
+  }
+  
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
+  const startIndex = (currentPage - 1) * productsPerPage;
+  const endIndex = startIndex + productsPerPage;
+  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+  
+  // Update pagination UI
+  renderPagination(totalPages);
+  
+  // Update pagination buttons
+  if (prevPageBtn) prevPageBtn.disabled = currentPage === 1;
+  if (nextPageBtn) nextPageBtn.disabled = currentPage === totalPages;
+  
+  // Render products
+  if (!productGrid) return;
+  
+  productGrid.innerHTML = '';
+  
+  if (paginatedProducts.length === 0) {
+    productGrid.innerHTML = `
+      <div class="no-products">
+        <p>No products found matching your criteria.</p>
+        <button class="btn btn-primary reset-filters-btn">Reset Filters</button>
+      </div>
+    `;
     
-    // Update total count
-    if (productsTotalElement) {
-      productsTotalElement.textContent = filteredProducts.length;
+    // Add event listener to reset filters button
+    const resetBtn = productGrid.querySelector('.reset-filters-btn');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', resetFilters);
     }
-    
-    // Calculate pagination
-    const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
-    const startIndex = (currentPage - 1) * productsPerPage;
-    const endIndex = startIndex + productsPerPage;
-    const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
-    
-    // Update pagination UI
-    renderPagination(totalPages);
-    
-    // Update pagination buttons
-    if (prevPageBtn) prevPageBtn.disabled = currentPage === 1;
-    if (nextPageBtn) nextPageBtn.disabled = currentPage === totalPages;
-    
-    // Render products
-    if (!productGrid) return;
-    
-    productGrid.innerHTML = '';
-    
-    if (paginatedProducts.length === 0) {
-      productGrid.innerHTML = `
-        <div class="no-products">
-          <p>No products found matching your criteria.</p>
-          <button class="btn btn-primary reset-filters-btn">Reset Filters</button>
+  } else {
+    paginatedProducts.forEach(product => {
+      const productCard = document.createElement('a');
+      productCard.className = 'product-card';
+      productCard.href = `/product-details?id=${product.id}`;
+      productCard.setAttribute('data-id', product.id);
+      
+      const formattedPrice = formatPrice(product.price);
+      
+      // ✅ Check if MOQ > 2
+      const disableBuyNow = product.moq > 1;
+
+      productCard.innerHTML = `
+        <div class="product-image">
+          <img src="${product.image}" alt="${product.title}" loading="lazy" crossorigin="anonymous">
+          ${product.hasVariations ? '<div class="variations-badge">Variants</div>' : ""}
+        </div>
+        <div class="product-info">
+          <h3 class="product-title">${product.title}</h3>
+          <p class="product-price">${formattedPrice}</p>
+          <p class="product-stock">Stock: ${product.stocks}</p>
+         
+          <div class="product-actions">
+            <button class="btn btn-sm btn-dark add-to-cart-btn" data-product-id="${product.id}">
+              Add to Cart
+            </button>
+            <button class="btn btn-sm btn-primary buy-now-btn" data-product-id="${product.id}" ${disableBuyNow ? "disabled" : ""}>
+              Buy Now
+            </button>
+          </div>
         </div>
       `;
       
-      // Add event listener to reset filters button
-      const resetBtn = productGrid.querySelector('.reset-filters-btn');
-      if (resetBtn) {
-        resetBtn.addEventListener('click', resetFilters);
-      }
-    } else {
-      paginatedProducts.forEach(product => {
-        const productCard = document.createElement('a');
-        productCard.className = 'product-card';
-        productCard.href = `/product-details?id=${product.id}`;
-        productCard.setAttribute('data-id', product.id);
-        
-        // Format price using the built-in formatter or create our own
-        const formattedPrice = formatPrice(product.price);
-        
-        productCard.innerHTML = `
-          <div class="product-image">
-            <img src="${product.image}" alt="${
-          product.title
-        }" loading="lazy" crossorigin="anonymous">
-            ${
-              product.hasVariations
-                ? '<div class="variations-badge">Variants</div>'
-                : ""
-            }
-          </div>
-          <div class="product-info">
-            <h3 class="product-title">${product.title}</h3>
-            <p class="product-price">${formattedPrice}</p>
-            <p class="product-stock">Stock: ${product.stocks}</p>
-           
-            <div class="product-actions">
-              <button class="btn btn-sm btn-dark add-to-cart-btn" data-product-id="${
-                product.id
-              }">Add to Cart</button>
-              <button class="btn btn-sm btn-primary buy-now-btn" data-product-id="${
-                product.id
-              }">Buy Now</button>
-            </div>
-          </div>
-        `;
-        
-        productGrid.appendChild(productCard);
-      });
-      
-      // Add event listeners to cart buttons
-      addCartButtonListeners();
-    }
+      productGrid.appendChild(productCard);
+    });
+    
+    // Add event listeners to cart buttons
+    addCartButtonListeners();
   }
-  
+}
+
   
   function formatPrice(price) {
     return new Intl.NumberFormat('en-NG', {

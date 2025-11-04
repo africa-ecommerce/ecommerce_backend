@@ -384,26 +384,26 @@ class ProductDetailsPage {
                                 </span>
                             </div>
                             <div class="variation-detail">
-                                 ${variation.colors
-                ? `
-                      <div class="variation-detail">
-                        <span class="detail-label">Colors:</span>
-                        <div class="colors-list">
-                          ${variation.colors
-                  .map(
-                    (color) => `
-                                <div class="color-info">
-                                 
-                                  <span class="color-name">${color}</span>
-                                </div>
-                              `
-                  )
-                  .join("")}
-                        </div>
-                      </div>
-                    `
-                : ""
-              }
+                                 ${Array.isArray(variation.colors) && variation.colors.length > 0
+  ? `
+      <div class="variation-detail">
+        <span class="detail-label">Colors:</span>
+        <div class="colors-list">
+          ${variation.colors
+            .map(
+              (color) => `
+                <div class="color-info">
+                  <span class="color-name">${color}</span>
+                </div>
+              `
+            )
+            .join("")}
+        </div>
+      </div>
+    `
+  : ""
+}
+
                                 ${variation.size
                 ? `
                                     <div class="variation-detail">
@@ -496,6 +496,15 @@ class ProductDetailsPage {
 
     // Buy now button
     const buyNowBtn = document.getElementById("buy-now")
+     if (product.moq > 1) {
+    buyNowBtn.disabled = true;
+    buyNowBtn.style.opacity = "0.6";
+    buyNowBtn.style.cursor = "not-allowed";
+  } else {
+    buyNowBtn.disabled = false;
+    buyNowBtn.style.opacity = "";
+    buyNowBtn.style.cursor = "";
+  }
     if (buyNowBtn) {
       buyNowBtn.addEventListener("click", () => {
         if (this.loadingState.isLoading) return // Prevent clicks during loading
@@ -816,6 +825,7 @@ function transformProductData(apiProduct) {
     stocks: apiProduct.stocks,
     totalStock: totalStock,
     hasVariations: hasVariations,
+     moq: apiProduct.moq || 1,
     variations: apiProduct.variations || [],
     sold: apiProduct.sold || 0,
     colors: apiProduct.colors || [],

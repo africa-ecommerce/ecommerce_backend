@@ -7,6 +7,12 @@
   max-height: 60vh;
 }
 
+button[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+
 .hero-content {
   display: flex;
   flex-direction: row;

@@ -158,74 +158,139 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  // function renderFeaturedProducts() {
+  //   if (!productGrid) return;
+
+  //   const featuredProducts = getFeaturedProducts();
+
+  //   if (featuredProducts.length === 0) {
+  //     showNoProductsState();
+  //     return;
+  //   }
+
+  //   productGrid.innerHTML = "";
+
+  //   featuredProducts.forEach((product) => {
+  //     const productCard = document.createElement("a");
+  //     productCard.className = "product-card";
+  //     productCard.href = `/product-details?id=${product.id}`;
+  //     productCard.setAttribute("data-id", product.id);
+
+  //     // Updated price formatting - EnhancedProductCache doesn't have formatPrice method
+  //     const formattedPrice = `₦${product.price.toLocaleString()}`;
+
+  //     // Create stock display if available
+  //     const stockDisplay =
+  //       product.stocks !== undefined
+  //         ? `<p class="product-stock">Stock: ${product.stocks}</p>`
+  //         : "";
+
+  //     productCard.innerHTML = `
+  //         <div class="product-image">
+  //           <img src="${product.image}" alt="${
+  //       product.title
+  //     }" loading="lazy" class="product-img" crossorigin="anonymous">
+  //           ${
+  //             product.hasVariations
+  //               ? '<div class="variations-badge">Variants</div>'
+  //               : ""
+  //           }
+  //         </div>
+  //         <div class="product-info">
+  //           <h3 class="product-title">${product.title}</h3>
+  //           <p class="product-price">${formattedPrice}</p>
+  //           ${stockDisplay}
+            
+  //           <div class="product-actions">
+  //             <button class="btn btn-sm btn-dark add-to-cart-btn" data-product-id="${
+  //               product.id
+  //             }">Add to Cart</button>
+  //             <button class="btn btn-sm btn-primary buy-now-btn" data-product-id="${
+  //               product.id
+  //             }">Buy Now</button>
+  //           </div>
+  //         </div>
+  //       `;
+
+  //     // Add error handler for the image
+  //     const img = productCard.querySelector(".product-img");
+  //     if (img) {
+  //       img.addEventListener("error", function () {
+  //         handleImageError(this);
+  //       });
+  //     }
+
+  //     productGrid.appendChild(productCard);
+  //   });
+
+  //   // Add event listeners to product actions
+  //   addProductActionListeners();
+  // }
+
+
   function renderFeaturedProducts() {
-    if (!productGrid) return;
+  if (!productGrid) return;
 
-    const featuredProducts = getFeaturedProducts();
+  const featuredProducts = getFeaturedProducts();
 
-    if (featuredProducts.length === 0) {
-      showNoProductsState();
-      return;
+  if (featuredProducts.length === 0) {
+    showNoProductsState();
+    return;
+  }
+
+  productGrid.innerHTML = "";
+
+  featuredProducts.forEach((product) => {
+    const productCard = document.createElement("a");
+    productCard.className = "product-card";
+    productCard.href = `/product-details?id=${product.id}`;
+    productCard.setAttribute("data-id", product.id);
+
+    const formattedPrice = `₦${product.price.toLocaleString()}`;
+
+    const stockDisplay =
+      product.stocks !== undefined
+        ? `<p class="product-stock">Stock: ${product.stocks}</p>`
+        : "";
+
+    // ✅ Check if MOQ is greater than 1
+    const disableBuyNow = product.moq > 1;
+
+    productCard.innerHTML = `
+      <div class="product-image">
+        <img src="${product.image}" alt="${product.title}" loading="lazy" class="product-img" crossorigin="anonymous">
+        ${product.hasVariations ? '<div class="variations-badge">Variants</div>' : ""}
+      </div>
+      <div class="product-info">
+        <h3 class="product-title">${product.title}</h3>
+        <p class="product-price">${formattedPrice}</p>
+        ${stockDisplay}
+        
+        <div class="product-actions">
+          <button class="btn btn-sm btn-dark add-to-cart-btn" data-product-id="${product.id}">
+            Add to Cart
+          </button>
+          <button class="btn btn-sm btn-primary buy-now-btn" data-product-id="${product.id}" ${disableBuyNow ? "disabled" : ""}>
+            Buy Now
+          </button>
+        </div>
+      </div>
+    `;
+
+    // Add error handler for the image
+    const img = productCard.querySelector(".product-img");
+    if (img) {
+      img.addEventListener("error", function () {
+        handleImageError(this);
+      });
     }
 
-    productGrid.innerHTML = "";
+    productGrid.appendChild(productCard);
+  });
 
-    featuredProducts.forEach((product) => {
-      const productCard = document.createElement("a");
-      productCard.className = "product-card";
-      productCard.href = `/product-details?id=${product.id}`;
-      productCard.setAttribute("data-id", product.id);
+  addProductActionListeners();
+}
 
-      // Updated price formatting - EnhancedProductCache doesn't have formatPrice method
-      const formattedPrice = `₦${product.price.toLocaleString()}`;
-
-      // Create stock display if available
-      const stockDisplay =
-        product.stocks !== undefined
-          ? `<p class="product-stock">Stock: ${product.stocks}</p>`
-          : "";
-
-      productCard.innerHTML = `
-          <div class="product-image">
-            <img src="${product.image}" alt="${
-        product.title
-      }" loading="lazy" class="product-img" crossorigin="anonymous">
-            ${
-              product.hasVariations
-                ? '<div class="variations-badge">Variants</div>'
-                : ""
-            }
-          </div>
-          <div class="product-info">
-            <h3 class="product-title">${product.title}</h3>
-            <p class="product-price">${formattedPrice}</p>
-            ${stockDisplay}
-            
-            <div class="product-actions">
-              <button class="btn btn-sm btn-dark add-to-cart-btn" data-product-id="${
-                product.id
-              }">Add to Cart</button>
-              <button class="btn btn-sm btn-primary buy-now-btn" data-product-id="${
-                product.id
-              }">Buy Now</button>
-            </div>
-          </div>
-        `;
-
-      // Add error handler for the image
-      const img = productCard.querySelector(".product-img");
-      if (img) {
-        img.addEventListener("error", function () {
-          handleImageError(this);
-        });
-      }
-
-      productGrid.appendChild(productCard);
-    });
-
-    // Add event listeners to product actions
-    addProductActionListeners();
-  }
 
   // Add event listeners to product actions
   function addProductActionListeners() {
