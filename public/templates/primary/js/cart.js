@@ -153,151 +153,7 @@ class ShoppingCart {
     }, 10)
   }
 
-  // showVariationModal(product, isBuyNow = false) {
-  //   const overlay = document.createElement("div")
-  //   overlay.className = "variation-modal-overlay"
 
-  //   const modal = document.createElement("div")
-  //   modal.className = "variation-modal"
-
-  //   modal.innerHTML = `
-  //   <div class="variation-modal-header">
-  //     <h3>Choose Variation</h3>
-  //     <button class="variation-modal-close">
-  //       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" 
-  //         viewBox="0 0 24 24" fill="none" stroke="currentColor" 
-  //         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  //         <path d="M18 6 6 18" />
-  //         <path d="m6 6 12 12" />
-  //       </svg>
-  //     </button>
-  //   </div>
-  //   <div class="variation-modal-body">
-  //     <div class="product-variant-info">
-  //       <img src="${product.image}" alt="${product.title}" class="variation-product-image" crossorigin="anonymous">
-  //       <h4 class="variation-product-title">${product.title}</h4>
-  //       <p class="variation-product-price">₦${product.price.toLocaleString()}</p>
-  //     </div>
-  //     <div class="variations-list">
-  //       ${product.variations.map((variation, index) => `
-  //         <div class="variation-item" data-variation-id="${variation.id}">
-  //           <div class="variation-header">
-  //             <h5>Variant ${index + 1}</h5>
-  //             <span class="variation-stock ${variation.stocks < 5 ? "low-stock" : ""}">
-  //               ${variation.stocks} in stock
-  //             </span>
-  //           </div>
-  //           <div class="variation-display">
-           
-
-  //           ${variation.colors && variation.colors.length > 0 ? `
-  //             <div class="variation-colors-popover">
-  //               <button class="variation-color-toggle">
-  //                 ${variation.colors[0].toUpperCase()} ▼
-  //               </button>
-  //               <div class="variation-colors-list">
-  //                 ${variation.colors.map((color, cIndex) => `
-  //                   <div class="variation-color-option ${cIndex === 0 ? "active" : ""}" 
-  //                        data-color="${color}">
-                      
-  //                     <span class="color-name">${color.toUpperCase()}</span>
-  //                   </div>
-  //                 `).join("")}
-  //               </div>
-  //             </div>
-  //           ` : ""}
-
-  //            <div class="variation-details">
-  //             ${variation.size ? `<span class="variation-size">Size: ${variation.size}</span>` : ""}
-  //           </div>
-  //                 </div>
-  //           <button class="btn btn-primary variation-select-btn"
-  //             ${variation.stocks < 1 ? "disabled" : ""}
-  //             data-variation-index="${index}">
-  //             ${variation.stocks < 1 ? "Out of Stock" : isBuyNow ? "Buy Now" : "Add to Cart"}
-  //           </button>
-  //         </div>
-  //       `).join("")}
-  //     </div>
-  //   </div>
-  // `
-
-  //   overlay.appendChild(modal)
-  //   document.body.appendChild(overlay)
-  //   document.body.style.overflow = "hidden"
-
-  //   // ===== Event handling =====
-  //   const closeBtn = modal.querySelector(".variation-modal-close")
-  //   const selectBtns = modal.querySelectorAll(".variation-select-btn")
-  //   const popoverToggles = modal.querySelectorAll(".variation-color-toggle")
-
-  //   let selectedColors = {} // track color per variation
-
-  //   const closeModal = () => {
-  //     overlay.remove()
-  //     document.body.style.overflow = ""
-  //   }
-
-  //   closeBtn.addEventListener("click", closeModal)
-  //   overlay.addEventListener("click", (e) => {
-  //     if (e.target === overlay) closeModal()
-  //   })
-
-  //   // Toggle color popovers
-  //   popoverToggles.forEach((btn) => {
-  //     btn.addEventListener("click", (e) => {
-  //       e.stopPropagation()
-  //       const popover = btn.nextElementSibling
-  //       popover.classList.toggle("active")
-  //     })
-  //   })
-
-  //   // Color selection per variation
-  //   modal.querySelectorAll(".variation-color-option").forEach((option) => {
-  //     option.addEventListener("click", () => {
-  //       const parent = option.closest(".variation-colors-popover")
-  //       const toggleBtn = parent.querySelector(".variation-color-toggle")
-  //       const allOptions = parent.querySelectorAll(".variation-color-option")
-
-  //       allOptions.forEach(o => o.classList.remove("active"))
-  //       option.classList.add("active")
-
-  //       const chosenColor = option.getAttribute("data-color")
-  //       toggleBtn.textContent = chosenColor + " ▼"
-
-  //       const variationId = option.closest(".variation-item").getAttribute("data-variation-id")
-  //       selectedColors[variationId] = chosenColor
-
-  //       parent.querySelector(".variation-colors-list").classList.remove("active")
-  //     })
-  //   })
-
-  //   // Handle variation select
-  //   selectBtns.forEach((btn) => {
-  //     btn.addEventListener("click", () => {
-  //       const variationIndex = parseInt(btn.getAttribute("data-variation-index"))
-  //       const selectedVariation = product.variations[variationIndex]
-  //       const chosenColor = selectedColors[selectedVariation.id] || selectedVariation.colors?.[0] || null
-
-  //       if (selectedVariation.stocks > 0) {
-  //         if (isBuyNow) {
-  //           const ref = this.getSubdomain()
-  //           let checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&variation=${selectedVariation.id}&ref=${ref}&platform=store`
-  //           if (chosenColor) checkoutUrl += `&color=${encodeURIComponent(chosenColor)}`
-  //           window.open(checkoutUrl, "_blank")
-  //           closeModal()
-  //         } else {
-  //           this.addItemWithVariationAndColor(product, selectedVariation, chosenColor)
-  //           closeModal()
-  //         }
-  //       } else {
-  //         this.showNotification("This variation is out of stock", "error")
-  //       }
-  //     })
-  //   })
-
-  //   setTimeout(() => overlay.classList.add("active"), 10)
-  // }
 
 
   showVariationModal(product, isBuyNow = false) {
@@ -477,204 +333,356 @@ class ShoppingCart {
 }
 
 
+  // addItemWithColor(product, selectedColor) {
+  //   // Create a unique item ID that includes color
+  //   const itemId = `${product.id}_color_${selectedColor}`
+
+  //   // Check if product already exists in cart
+  //   const existingItem = this.items.find((item) => item.itemId === itemId)
+
+  //   // Determine stock limit
+  //   const stockLimit = product.stocks
+
+  //   if (existingItem) {
+  //     // Check stock before increasing quantity
+  //     if (stockLimit !== null && existingItem.quantity >= stockLimit) {
+  //       this.showNotification(`Cannot add more ${product.title}. Only ${stockLimit} available in stock.`, "error")
+  //       return
+  //     }
+  //     existingItem.quantity += 1
+  //   } else {
+  //     // Check if we've reached the maximum number of different items
+  //     if (this.items.length >= this.maxItems) {
+  //       this.showNotification(
+  //         `Cart limit reached! You can only have ${this.maxItems} different items in your cart.`,
+  //         "error",
+  //       )
+  //       return
+  //     }
+
+  //     // Check if stock is available for new item
+  //     if (stockLimit !== null && stockLimit < 1) {
+  //       this.showNotification(`${product.title} is out of stock.`, "error")
+  //       return
+  //     }
+
+  //     this.items.push({
+  //       ...product,
+  //       itemId: itemId,
+  //       quantity: 1,
+  //       stock: stockLimit,
+  //       selectedColor: selectedColor,
+  //       image: product.image || product.images[0] || `${this.baseUrl}/image/placeholder.svg`,
+  //       displayTitle: `${product.title} (${selectedColor})`,
+  //     })
+  //   }
+
+  //   this.saveCart()
+  //   const capitalizedName = `${product.title} (${selectedColor})`
+  //     .split(" ")
+  //     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+  //     .join(" ")
+  //   this.showNotification(`${capitalizedName} added to cart!`)
+  // }
+
   addItemWithColor(product, selectedColor) {
-    // Create a unique item ID that includes color
-    const itemId = `${product.id}_color_${selectedColor}`
+  const itemId = `${product.id}_color_${selectedColor}`;
+  const existingItem = this.items.find((item) => item.itemId === itemId);
+  const stockLimit = product.stocks;
+  const moq = product.moq || 1;
 
-    // Check if product already exists in cart
-    const existingItem = this.items.find((item) => item.itemId === itemId)
-
-    // Determine stock limit
-    const stockLimit = product.stocks
-
-    if (existingItem) {
-      // Check stock before increasing quantity
-      if (stockLimit !== null && existingItem.quantity >= stockLimit) {
-        this.showNotification(`Cannot add more ${product.title}. Only ${stockLimit} available in stock.`, "error")
-        return
-      }
-      existingItem.quantity += 1
-    } else {
-      // Check if we've reached the maximum number of different items
-      if (this.items.length >= this.maxItems) {
-        this.showNotification(
-          `Cart limit reached! You can only have ${this.maxItems} different items in your cart.`,
-          "error",
-        )
-        return
-      }
-
-      // Check if stock is available for new item
-      if (stockLimit !== null && stockLimit < 1) {
-        this.showNotification(`${product.title} is out of stock.`, "error")
-        return
-      }
-
-      this.items.push({
-        ...product,
-        itemId: itemId,
-        quantity: 1,
-        stock: stockLimit,
-        selectedColor: selectedColor,
-        image: product.image || product.images[0] || `${this.baseUrl}/image/placeholder.svg`,
-        displayTitle: `${product.title} (${selectedColor})`,
-      })
+  if (existingItem) {
+    if (stockLimit !== null && existingItem.quantity >= stockLimit) {
+      this.showNotification(`Cannot add more ${product.title}. Only ${stockLimit} available.`, "error");
+      return;
+    }
+    existingItem.quantity += 1;
+  } else {
+    if (this.items.length >= this.maxItems) {
+      this.showNotification(`Cart limit reached (${this.maxItems} items max).`, "error");
+      return;
+    }
+    if (stockLimit !== null && stockLimit < 1) {
+      this.showNotification(`${product.title} is out of stock.`, "error");
+      return;
     }
 
-    this.saveCart()
-    const capitalizedName = `${product.title} (${selectedColor})`
-      .split(" ")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ")
-    this.showNotification(`${capitalizedName} added to cart!`)
+    this.items.push({
+      ...product,
+      itemId,
+      quantity: moq,
+      stock: stockLimit,
+      moq,
+      selectedColor,
+      image: product.image || product.images[0] || `${this.baseUrl}/image/placeholder.svg`,
+      displayTitle: `${product.title} (${selectedColor})`,
+    });
   }
 
-  addItemWithVariationAndColor(product, selectedVariation, selectedColor) {
-    // Create a unique item ID that includes variation and color
-    let itemId = `${product.id}_${selectedVariation.id}`
-    if (selectedColor) {
-      itemId += `_color_${selectedColor}`
+  this.saveCart();
+  this.showNotification(`${product.title} (${selectedColor}) added to cart!`);
+}
+
+
+//   addItemWithVariationAndColor(product, selectedVariation, selectedColor) {
+//     // Create a unique item ID that includes variation and color
+//     let itemId = `${product.id}_${selectedVariation.id}`
+//     if (selectedColor) {
+//       itemId += `_color_${selectedColor}`
+//     }
+
+//     // Check if product already exists in cart
+//     const existingItem = this.items.find((item) => item.itemId === itemId)
+
+//     // Determine stock limit
+//     const stockLimit = selectedVariation.stocks
+
+//    if (existingItem) {
+//   // prevent reducing below MOQ
+//   const minQty = selectedVariation.moq > 1 ? selectedVariation.moq : 1
+//   if (existingItem.quantity < minQty) existingItem.quantity = minQty
+//   if (stockLimit !== null && existingItem.quantity >= stockLimit) {
+//     this.showNotification(`Cannot add more ${product.title}. Only ${stockLimit} available in stock.`, "error")
+//     return
+//   }
+//   existingItem.quantity += 1
+// }
+// else {
+//       // Check if we've reached the maximum number of different items
+//       if (this.items.length >= this.maxItems) {
+//         this.showNotification(
+//           `Cart limit reached! You can only have ${this.maxItems} different items in your cart.`,
+//           "error",
+//         )
+//         return
+//       }
+
+//       // Check if stock is available for new item
+//       if (stockLimit !== null && stockLimit < 1) {
+//         this.showNotification(`${product.title} is out of stock.`, "error")
+//         return
+//       }
+
+//       let displayTitle = product.title
+//       if (selectedColor) {
+//         displayTitle += ` (${selectedColor})`
+//       }
+
+//       this.items.push({
+//         ...product,
+//         itemId: itemId,
+//        quantity: selectedVariation.moq > 1 ? selectedVariation.moq : 1,
+
+//         stock: stockLimit,
+//         variation: selectedVariation,
+//         selectedColor: selectedColor,
+//         image: product.image || product.images[0] || `${this.baseUrl}/image/placeholder.svg`,
+//         displayTitle: displayTitle,
+//       })
+//     }
+
+//     this.saveCart()
+//     let displayName = product.title
+//     if (selectedColor) {
+//       displayName += ` (${selectedColor})`
+//     }
+//     const capitalizedName = displayName
+//       .split(" ")
+//       .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+//       .join(" ")
+//     this.showNotification(`${capitalizedName} added to cart!`)
+//   }
+
+
+addItemWithVariationAndColor(product, selectedVariation, selectedColor) {
+  let itemId = `${product.id}_${selectedVariation.id}`;
+  if (selectedColor) itemId += `_color_${selectedColor}`;
+
+  const existingItem = this.items.find((item) => item.itemId === itemId);
+  const stockLimit = selectedVariation.stocks;
+  const moq = selectedVariation.moq || 1;
+
+  if (existingItem) {
+    if (stockLimit !== null && existingItem.quantity >= stockLimit) {
+      this.showNotification(`Cannot add more ${product.title}. Only ${stockLimit} available.`, "error");
+      return;
+    }
+    existingItem.quantity += 1;
+  } else {
+    if (this.items.length >= this.maxItems) {
+      this.showNotification(`Cart limit reached (${this.maxItems} items max).`, "error");
+      return;
+    }
+    if (stockLimit !== null && stockLimit < 1) {
+      this.showNotification(`${product.title} is out of stock.`, "error");
+      return;
     }
 
-    // Check if product already exists in cart
-    const existingItem = this.items.find((item) => item.itemId === itemId)
+    let displayTitle = product.title;
+    if (selectedColor) displayTitle += ` (${selectedColor})`;
 
-    // Determine stock limit
-    const stockLimit = selectedVariation.stocks
-
-    if (existingItem) {
-      // Check stock before increasing quantity
-      if (stockLimit !== null && existingItem.quantity >= stockLimit) {
-        this.showNotification(`Cannot add more ${product.title}. Only ${stockLimit} available in stock.`, "error")
-        return
-      }
-      existingItem.quantity += 1
-    } else {
-      // Check if we've reached the maximum number of different items
-      if (this.items.length >= this.maxItems) {
-        this.showNotification(
-          `Cart limit reached! You can only have ${this.maxItems} different items in your cart.`,
-          "error",
-        )
-        return
-      }
-
-      // Check if stock is available for new item
-      if (stockLimit !== null && stockLimit < 1) {
-        this.showNotification(`${product.title} is out of stock.`, "error")
-        return
-      }
-
-      let displayTitle = product.title
-      if (selectedColor) {
-        displayTitle += ` (${selectedColor})`
-      }
-
-      this.items.push({
-        ...product,
-        itemId: itemId,
-        quantity: 1,
-        stock: stockLimit,
-        variation: selectedVariation,
-        selectedColor: selectedColor,
-        image: product.image || product.images[0] || `${this.baseUrl}/image/placeholder.svg`,
-        displayTitle: displayTitle,
-      })
-    }
-
-    this.saveCart()
-    let displayName = product.title
-    if (selectedColor) {
-      displayName += ` (${selectedColor})`
-    }
-    const capitalizedName = displayName
-      .split(" ")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ")
-    this.showNotification(`${capitalizedName} added to cart!`)
+    this.items.push({
+      ...product,
+      itemId,
+      quantity: moq,
+      stock: stockLimit,
+      moq,
+      variation: selectedVariation,
+      selectedColor,
+      image: product.image || product.images[0] || `${this.baseUrl}/image/placeholder.svg`,
+      displayTitle,
+    });
   }
 
-  addItem(product, selectedVariation = null) {
-    // Create a unique item ID that includes variation if present
-    const itemId = selectedVariation ? `${product.id}_${selectedVariation.id}` : product.id
+  this.saveCart();
+  this.showNotification(`${product.title} added to cart!`);
+}
 
-    // Check if product already exists in cart
-    const existingItem = this.items.find((item) => item.itemId === itemId)
+//   addItem(product, selectedVariation = null) {
+//     // Create a unique item ID that includes variation if present
+//     const itemId = selectedVariation ? `${product.id}_${selectedVariation.id}` : product.id
 
-    // Determine stock limit
-    const stockLimit = selectedVariation ? selectedVariation.stocks : product.stocks
+//     // Check if product already exists in cart
+//     const existingItem = this.items.find((item) => item.itemId === itemId)
 
-    if (existingItem) {
-      // Check stock before increasing quantity
-      if (stockLimit !== null && existingItem.quantity >= stockLimit) {
-        this.showNotification(`Cannot add more ${product.title}. Only ${stockLimit} available in stock.`, "error")
-        return
-      }
-      existingItem.quantity += 1
-    } else {
-      // Check if we've reached the maximum number of different items
-      if (this.items.length >= this.maxItems) {
-        this.showNotification(
-          `Cart limit reached! You can only have ${this.maxItems} different items in your cart.`,
-          "error",
-        )
-        return
-      }
+//     // Determine stock limit
+//     const stockLimit = selectedVariation ? selectedVariation.stocks : product.stocks
 
-      // Check if stock is available for new item
-      if (stockLimit !== null && stockLimit < 1) {
-        this.showNotification(`${product.title} is out of stock.`, "error")
-        return
-      }
+//     if (existingItem) {
+//       // Check stock before increasing quantity
+//       if (stockLimit !== null && existingItem.quantity >= stockLimit) {
+//         this.showNotification(`Cannot add more ${product.title}. Only ${stockLimit} available in stock.`, "error")
+//         return
+//       }
+//       existingItem.quantity += 1
+//     } else {
+//       // Check if we've reached the maximum number of different items
+//       if (this.items.length >= this.maxItems) {
+//         this.showNotification(
+//           `Cart limit reached! You can only have ${this.maxItems} different items in your cart.`,
+//           "error",
+//         )
+//         return
+//       }
 
-      this.items.push({
-        ...product,
-        itemId: itemId,
-        quantity: 1,
-        stock: stockLimit,
-        variation: selectedVariation,
-        // Add variation display name for cart
-        image: product.image || product.images[0] || `${this.baseUrl}/image/placeholder.svg`,
-        displayTitle: selectedVariation ? `${product.title}` : product.title,
-      })
+//       // Check if stock is available for new item
+//       if (stockLimit !== null && stockLimit < 1) {
+//         this.showNotification(`${product.title} is out of stock.`, "error")
+//         return
+//       }
+
+//       this.items.push({
+//   ...product,
+//   itemId: itemId,
+//   quantity: selectedVariation && selectedVariation.moq > 1 ? selectedVariation.moq : 1,
+//   stock: stockLimit,
+//   variation: selectedVariation,
+//   image: product.image || product.images[0] || `${this.baseUrl}/image/placeholder.svg`,
+//   displayTitle: selectedVariation ? `${product.title}` : product.title,
+// })
+
+//     }
+
+//     this.saveCart()
+//     const displayName = selectedVariation ? `${product.title}` : product.title
+//     const capitalizedName = displayName
+//       .split(" ")
+//       .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+//       .join(" ")
+//     this.showNotification(`${capitalizedName} added to cart!`)
+//   }
+
+
+addItem(product, selectedVariation = null) {
+  const itemId = selectedVariation ? `${product.id}_${selectedVariation.id}` : product.id;
+  const existingItem = this.items.find((item) => item.itemId === itemId);
+  const stockLimit = selectedVariation ? selectedVariation.stocks : product.stocks;
+  const moq = selectedVariation?.moq || product.moq || 1;
+
+  if (existingItem) {
+    if (stockLimit !== null && existingItem.quantity >= stockLimit) {
+      this.showNotification(`Cannot add more ${product.title}. Only ${stockLimit} available.`, "error");
+      return;
+    }
+    existingItem.quantity += 1;
+  } else {
+    if (this.items.length >= this.maxItems) {
+      this.showNotification(`Cart limit reached (${this.maxItems} items max).`, "error");
+      return;
+    }
+    if (stockLimit !== null && stockLimit < 1) {
+      this.showNotification(`${product.title} is out of stock.`, "error");
+      return;
     }
 
-    this.saveCart()
-    const displayName = selectedVariation ? `${product.title}` : product.title
-    const capitalizedName = displayName
-      .split(" ")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ")
-    this.showNotification(`${capitalizedName} added to cart!`)
+    this.items.push({
+      ...product,
+      itemId,
+      quantity: moq,
+      stock: stockLimit,
+      moq,
+      variation: selectedVariation,
+      image: product.image || product.images[0] || `${this.baseUrl}/image/placeholder.svg`,
+      displayTitle: product.title,
+    });
   }
+
+  this.saveCart();
+  this.showNotification(`${product.title} added to cart!`);
+}
+
 
   removeItem(itemId) {
     this.items = this.items.filter((item) => item.itemId !== itemId)
     this.saveCart()
   }
 
+  // updateQuantity(itemId, quantity) {
+  //   const item = this.items.find((item) => item.itemId === itemId)
+
+  //   if (item) {
+  //     // Check stock limit before updating quantity
+  //     if (item.stock !== null && quantity > item.stock) {
+  //       this.showNotification(
+  //         `Cannot add more ${item.displayTitle || item.title}. Only ${item.stock} available in stock.`,
+  //         "error",
+  //       )
+  //       return
+  //     }
+
+  //     item.quantity = quantity
+
+  //     if (item.quantity <= 0) {
+  //       this.removeItem(itemId)
+  //     } else {
+  //       this.saveCart()
+  //     }
+  //   }
+  // }
+
   updateQuantity(itemId, quantity) {
-    const item = this.items.find((item) => item.itemId === itemId)
+  const item = this.items.find((item) => item.itemId === itemId);
 
-    if (item) {
-      // Check stock limit before updating quantity
-      if (item.stock !== null && quantity > item.stock) {
-        this.showNotification(
-          `Cannot add more ${item.displayTitle || item.title}. Only ${item.stock} available in stock.`,
-          "error",
-        )
-        return
-      }
+  if (item) {
+    const minQty = item.moq || 1;
 
-      item.quantity = quantity
-
-      if (item.quantity <= 0) {
-        this.removeItem(itemId)
-      } else {
-        this.saveCart()
-      }
+    if (quantity < minQty) {
+      this.showNotification(`Minimum quantity for this product is ${minQty}.`, "info");
+      item.quantity = minQty;
+      this.saveCart();
+      return;
     }
+
+    if (item.stock !== null && quantity > item.stock) {
+      this.showNotification(`Only ${item.stock} available in stock.`, "error");
+      return;
+    }
+
+    item.quantity = quantity;
+    this.saveCart();
   }
+}
+
 
   clearCart() {
     this.items = []
@@ -740,6 +748,7 @@ class ShoppingCart {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}</p>
+              ${item.moq > 1 ? `<p class="cart-item-moq">Minimum quantity: ${item.moq}</p>` : ""}
               <div class="cart-item-quantity">
                 <button class="quantity-btn decrease-quantity" data-id="${item.itemId}">-</button>
                 <span>${item.quantity}</span>

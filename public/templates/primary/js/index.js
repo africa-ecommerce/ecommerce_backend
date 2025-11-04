@@ -332,6 +332,7 @@ document.addEventListener("DOMContentLoaded", function () {
               stocks: product.stocks || product.stock || 0,
               hasVariations: product.hasVariations,
               variations: product.variations,
+              moq: product.moq
             };
 
             window.cart.addItem(cartProduct);

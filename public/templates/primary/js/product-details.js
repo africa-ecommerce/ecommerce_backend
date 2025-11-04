@@ -495,58 +495,68 @@ class ProductDetailsPage {
     }
 
     // Buy now button
-    const buyNowBtn = document.getElementById("buy-now")
-     if (product.moq > 1) {
+ // Buy now button
+const buyNowBtn = document.getElementById("buy-now");
+
+if (buyNowBtn) {
+  // Disable if MOQ > 1
+  if (product.moq > 1) {
     buyNowBtn.disabled = true;
     buyNowBtn.style.opacity = "0.6";
     buyNowBtn.style.cursor = "not-allowed";
-  } else {
-    buyNowBtn.disabled = false;
-    buyNowBtn.style.opacity = "";
-    buyNowBtn.style.cursor = "";
+
+    // Prevent click interaction even if event listener exists
+    buyNowBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      window.cart.showNotification(
+        `Minimum quantity: ${product.moq}`,
+        "error"
+      );
+    });
+    return; // ⛔ Stop attaching the normal Buy Now logic
   }
-    if (buyNowBtn) {
-      buyNowBtn.addEventListener("click", () => {
-        if (this.loadingState.isLoading) return // Prevent clicks during loading
 
-        const productStock = product.stocks || product.stock || 0
+  // ✅ Regular Buy Now behavior
+  buyNowBtn.addEventListener("click", () => {
+    if (this.loadingState.isLoading) return; // Prevent clicks during loading
 
-        if (product.hasVariations && product.variations && product.variations.length > 0) {
-          // Check if all variations are out of stock
-          const hasAvailableVariations = product.variations.some((v) => v.stocks > 0)
-          if (!hasAvailableVariations) {
-            this.showNotification("This product is out of stock", "error")
-            return
-          }
+    const productStock = product.stocks || product.stock || 0;
 
-          // FIXED: Pass true for buy now flag
-          window.cart.showVariationModal(product, true)
+    if (product.hasVariations && product.variations?.length > 0) {
+      const hasAvailableVariations = product.variations.some(
+        (v) => v.stocks > 0
+      );
+      if (!hasAvailableVariations) {
+        this.showNotification("This product is out of stock", "error");
+        return;
+      }
 
-        } else if (product.colors && product.colors.length > 1) {
-          // Product has multiple colors but no variations
-          if (productStock < 1) {
-            this.showNotification("This product is out of stock", "error")
-            return
-          }
+      // ✅ Pass true for Buy Now flag
+      window.cart.showVariationModal(product, true);
+    } else if (product.colors && product.colors.length > 1) {
+      if (productStock < 1) {
+        this.showNotification("This product is out of stock", "error");
+        return;
+      }
 
-          // FIXED: Pass true for buy now flag
-          window.cart.showColorModal(product, true)
-        } else {
-          if (productStock < 1) {
-            this.showNotification("This product is out of stock", "error")
-            return
-          }
+      window.cart.showColorModal(product, true);
+    } else {
+      if (productStock < 1) {
+        this.showNotification("This product is out of stock", "error");
+        return;
+      }
 
-          // Redirect to checkout with single color if available
-          const ref = window.cart.getSubdomain()
-          let checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&ref=${ref}&platform=store`
-          if (product.colors && product.colors.length === 1) {
-            checkoutUrl += `&color=${encodeURIComponent(product.colors[0])}`
-          }
-          window.open(checkoutUrl, "_blank")
-        }
-      })
+      const ref = window.cart.getSubdomain();
+      let checkoutUrl = `https://pluggn.store/checkout?pid=${product.id}&ref=${ref}&platform=store`;
+      if (product.colors && product.colors.length === 1) {
+        checkoutUrl += `&color=${encodeURIComponent(product.colors[0])}`;
+      }
+      window.open(checkoutUrl, "_blank");
     }
+  });
+}
+
 
 
     // Tab buttons
