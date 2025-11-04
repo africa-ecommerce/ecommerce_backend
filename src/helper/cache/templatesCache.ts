@@ -10,7 +10,7 @@ export const redis = new Redis({
 });
 // 🕒 1 year TTL
 const TEMPLATE_TTL = 60 * 60 * 24 * 365;
-const BASE_KEY = "template_cache_v2"; // version key in case you change logic later
+const BASE_KEY = "template_cache_v1"; // version key in case you change logic later
 
 // 👇 Each plug has only 1 active cached template at a time
 export async function getTemplateCache(
