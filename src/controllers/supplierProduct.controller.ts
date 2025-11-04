@@ -32,6 +32,7 @@ export const productController = {
           return;
         }
 
+        console.log("productData", productData)
         // Validate main product data
         const validatedData = productSchema.safeParse({
           name: productData.name,
@@ -246,6 +247,7 @@ export const productController = {
           return;
         }
 
+         console.log("productData", productData);
 
         // Check if product exists and belongs to this supplier
         const existingProduct = await prisma.product.findFirst({
