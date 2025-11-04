@@ -565,6 +565,7 @@ model Channel {
   whatsapp            String?   // Optional
   telegram            String?   // Optional
   instagram           String?   // Optional
+   disabled            Boolean  @default(false)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 }

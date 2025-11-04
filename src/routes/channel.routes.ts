@@ -1,7 +1,7 @@
 import {
   upsertSupplierChannel,
   getSupplierChannel,
-  deleteSupplierChannel
+  disableSupplierChannel
 } from "../controllers/channel.controller";
 import authenticateJWT from "../middleware/auth.middleware";
 import { isSupplier } from "../middleware/role.middleware";
@@ -15,6 +15,6 @@ router.use(plugAuth);
 
 router.post("/", upsertSupplierChannel);
 router.get("/", getSupplierChannel);
-router.delete("/", deleteSupplierChannel);
+router.delete("/", disableSupplierChannel);
 
 export default router;

@@ -109,9 +109,9 @@ export const getSupplierChannel = async (
   try {
     const supplierId = req.supplier?.id;
 
-    const channel = await prisma.channel.findUnique({
-      where: { supplierId },
-    });
+   const channel = await prisma.channel.findFirst({
+     where: { supplierId, disabled: false },
+   });
 
     if (!channel) {
       res.status(404).json({ error: "Channel not found!" });
@@ -124,7 +124,7 @@ export const getSupplierChannel = async (
   }
 };
 
-export const deleteSupplierChannel = async (
+export const disableSupplierChannel = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
@@ -132,16 +132,21 @@ export const deleteSupplierChannel = async (
   try {
     const supplierId = req.supplier?.id;
 
-    await prisma.channel.delete({
-      where: { supplierId },
-    });
-
-    res.status(200).json({ message: "Channel deleted successfully!" });
-  } catch (error: any) {
-    if (error.code === "P2025") {
+    // ✅ Check if channel exists
+    const existing = await prisma.channel.findUnique({ where: { supplierId } });
+    if (!existing) {
       res.status(404).json({ error: "Channel not found!" });
       return;
     }
+
+    // ⚡ Instead of deleting, mark as disabled
+    await prisma.channel.update({
+      where: { supplierId },
+      data: { disabled: true },
+    });
+
+    res.status(200).json({ message: "Channel disabled successfully!" });
+  } catch (error) {
     next(error);
   }
 };
