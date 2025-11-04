@@ -141,7 +141,7 @@ export const getStoreProductById = async (
         },
       });
 
-      const supplierPolicy = await prisma.supplierStorePolicy.findUnique({
+      const supplierChannelPolicy = await prisma.channel.findUnique({
         where: {supplierId: plugProduct?.originalProduct.supplierId}
       })
 
@@ -156,7 +156,7 @@ export const getStoreProductById = async (
       const formattedProduct = formatPlugProduct(plugProduct);
       res.status(200).json({
         message: "Plug product fetched successfully!",
-        data: { ...formattedProduct, supplierPolicy },
+        data: { ...formattedProduct, supplierChannelPolicy },
       });
       return;
     }
@@ -244,9 +244,9 @@ export const getProductById = async (
         },
       });
 
-        const supplierPolicy = await prisma.supplierStorePolicy.findUnique({
-          where: { supplierId: plugProduct?.originalProduct.supplierId },
-        });
+      const supplierChannelPolicy = await prisma.channel.findUnique({
+        where: {supplierId: plugProduct?.originalProduct.supplierId}
+      })
 
 
       if (!plugProduct) {
@@ -265,7 +265,7 @@ export const getProductById = async (
       const formatted = formatPlugProduct(plugProduct);
       res.status(200).json({
         message: "Product fetched successfully!",
-        data: {...formatted, supplierPolicy},
+        data: { ...formatted, supplierChannelPolicy },
       });
       return;
     }

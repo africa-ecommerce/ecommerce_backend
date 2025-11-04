@@ -494,6 +494,13 @@ class EnhancedProductDetailsCache {
           variations: apiProduct.variations || [],
           sold: apiProduct.sold || 0,
           colors: apiProduct.colors || (apiProduct.color ? [apiProduct.color] : []),
+          payOnDelivery: apiProduct.payOnDelivery,
+    returnPolicy: apiProduct.returnPolicy,
+    returnWindow: apiProduct.returnWindow,
+    returnPolicyTerms: apiProduct.returnPolicyTerms,
+    refundPolicy: apiProduct.refundPolicy,
+    returnShippingFee: apiProduct.returnShippingFee,
+    supplierShare: apiProduct.supplierShare
         };
     }
 

@@ -326,6 +326,8 @@ class ProductDetailsPage {
       this.showVariationsSection(product)
     }
 
+    this.showRules(product)
+
     // Update tab content
     this.updateTabContent(product)
   }
@@ -353,6 +355,113 @@ class ProductDetailsPage {
     }
   }
 
+  showRules(product) {
+  const rulesContainer = document.querySelector(".product-rules");
+  if (!rulesContainer) return;
+
+  let html = "";
+
+  // Utility: icon template
+  const icon = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+      stroke-linejoin="round">
+      <path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/>
+      <path d="m9 12 2 2 4-4"/>
+    </svg>
+  `;
+
+  // --- 1️⃣ Pay on Delivery ---
+  if (product.payOnDelivery) {
+    html += `
+      <div class="feature">
+        ${icon}
+        <span>
+          Pay on delivery is available, but you’ll pay the delivery charge and a little
+          non-refundable commitment fee to prove your interest in this product when you checkout.
+        </span>
+      </div>`;
+  }
+
+  // --- 2️⃣ Return / Refund Logic ---
+  if (product.returnPolicy && !product.refundPolicy) {
+    // Handle return only (no refund)
+    let feeMessage = "";
+    if (product.returnShippingFee === "BUYER") {
+      feeMessage = "the return shipping fee is covered by you.";
+    } else if (product.returnShippingFee === "SUPPLIER") {
+      feeMessage = "the return shipping fee is covered by the product seller.";
+    } else if (product.returnShippingFee === "SHARED") {
+      feeMessage = `the product seller covers ${product.supplierShare}% of the return shipping fee.`;
+    }
+
+    html += `
+      <div class="feature">
+        ${icon}
+        <span>
+          No cash refund, but return is accepted within ${product.returnWindow || "a few"} day(s)
+          from purchase if it meets our return policy, and ${feeMessage}
+        </span>
+      </div>`;
+  } 
+  else if (product.returnPolicy && product.refundPolicy) {
+    // Handle both return and refund
+    let feeMessage = "";
+    if (product.returnShippingFee === "BUYER") {
+      feeMessage = "the return shipping fee is covered by you.";
+    } else if (product.returnShippingFee === "SUPPLIER") {
+      feeMessage = "the return shipping fee is covered by the product seller.";
+    } else if (product.returnShippingFee === "SHARED") {
+      feeMessage = `the product seller covers ${product.supplierShare}% of the return shipping fee.`;
+    }
+
+    html += `
+      <div class="feature">
+        ${icon}
+        <span>
+          Returns and refunds are accepted within ${product.returnWindow || "a few"} day(s)
+          of delivery, provided the item meets our return policy and ${feeMessage}
+        </span>
+      </div>`;
+  } 
+  else if (!product.returnPolicy && !product.refundPolicy) {
+    // Handle final sale
+    html += `
+      <div class="feature">
+        ${icon}
+        <span>All sales are final — no returns or refunds accepted.</span>
+      </div>`;
+  }
+
+  // --- 3️⃣ Return Policy Terms (if available) ---
+  if (product.returnPolicyTerms) {
+    const trimmedTerms =
+      product.returnPolicyTerms.length > 1500
+        ? product.returnPolicyTerms.slice(0, 1500) + "..."
+        : product.returnPolicyTerms;
+
+    html += `
+      <div class="feature return-terms">
+        <h4 style="font-weight:600;margin-bottom:6px;">Return Policy Terms</h4>
+        <div style="
+          background:#fafafa;
+          border:1px solid #e5e7eb;
+          padding:10px 12px;
+          border-radius:8px;
+          max-height:220px;
+          overflow-y:auto;
+          line-height:1.55;
+          white-space:pre-wrap;
+          font-size:14px;
+          color:#333;
+        ">
+          ${trimmedTerms}
+        </div>
+      </div>`;
+  }
+
+  rulesContainer.innerHTML = html;
+}
   // Show variations section (reusing your original logic)
   showVariationsSection(product) {
     // Remove existing variations section if any
