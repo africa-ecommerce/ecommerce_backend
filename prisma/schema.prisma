@@ -227,8 +227,8 @@ model Product {
   size           String?
   colors         String[]           @default([])
   sold           Int                @default(0)
-  stock          Int                @default(0)
-  moq            Int                @default(1)
+  stock          Int?               @default(0)
+  moq            Int?               @default(1)
   plugsCount     Int                @default(0)
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
@@ -443,7 +443,8 @@ model ProductVariation {
   id        String   @id @default(cuid())
   size      String?
   colors    String[] @default([])
-  stock     Int      @default(0)
+  stock          Int?               @default(0)
+   moq            Int?               @default(1)
   productId String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -1,0 +1,7 @@
+-- AlterTable
+ALTER TABLE "Product" ALTER COLUMN "stock" DROP NOT NULL,
+ALTER COLUMN "moq" DROP NOT NULL;
+
+-- AlterTable
+ALTER TABLE "ProductVariation" ADD COLUMN     "moq" INTEGER DEFAULT 1,
+ALTER COLUMN "stock" DROP NOT NULL;
