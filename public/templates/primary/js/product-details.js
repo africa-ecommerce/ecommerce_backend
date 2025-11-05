@@ -434,21 +434,39 @@ class ProductDetailsPage {
   }
 
   // --- 3️⃣ Return Policy Terms (if available) ---
-  if (product.returnPolicyTerms) {
-    const trimmedTerms =
-      product.returnPolicyTerms.length > 1500
-        ? product.returnPolicyTerms.slice(0, 1500) + "..."
-        : product.returnPolicyTerms;
+if (product.returnPolicyTerms) {
+  const trimmedTerms =
+    product.returnPolicyTerms.length > 1500
+      ? product.returnPolicyTerms.slice(0, 1500) + "..."
+      : product.returnPolicyTerms;
 
-    html += `
-      <div class="feature return-terms">
-        <h4 style="font-weight:600;margin-bottom:6px;">Return Policy Terms</h4>
+  html += `
+    <div class="feature return-terms">
+      <details style="border:1px solid #e5e7eb; border-radius:8px; background:#fafafa; padding:10px 12px;">
+        <summary style="
+          font-weight:600;
+          font-size:15px;
+          color:#333;
+          cursor:pointer;
+          list-style:none;
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:4px;
+        ">
+          <span>Return Policy Terms</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="chevron">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </summary>
         <div style="
-          background:#fafafa;
+          margin-top:10px;
+          background:#fff;
           border:1px solid #e5e7eb;
           padding:10px 12px;
-          border-radius:8px;
-          max-height:220px;
+          border-radius:6px;
+          max-height:160px;
           overflow-y:auto;
           line-height:1.55;
           white-space:pre-wrap;
@@ -457,7 +475,8 @@ class ProductDetailsPage {
         ">
           ${trimmedTerms}
         </div>
-      </div>`;
+      </details>
+    </div>`;
   }
 
   rulesContainer.innerHTML = html;
