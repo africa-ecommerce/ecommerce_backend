@@ -93,7 +93,7 @@ export const getStoreProducts = async (
   }
 };
 
-// ✅ Get single product by ID (for plug or supplier store)
+// ✅ Get single product by ID (for public plug or supplier store)
 export const getStoreProductById = async (
   req: Request,
   res: Response,
@@ -101,10 +101,7 @@ export const getStoreProductById = async (
 ) => {
   try {
     const { productId } = req.params;
-    const subdomain = (req.query.subdomain || "")
-      .toString()
-      .trim()
-      .toLowerCase();
+    const subdomain = (req.query.subdomain || "").toString().trim().toLowerCase();
 
     if (!subdomain || !productId) {
       res.status(400).json({ error: "Missing or invalid field data!" });
@@ -114,10 +111,7 @@ export const getStoreProductById = async (
     // 🧩 Identify store type
     const [plug, supplier] = await Promise.all([
       prisma.plug.findUnique({ where: { subdomain }, select: { id: true } }),
-      prisma.supplier.findUnique({
-        where: { subdomain },
-        select: { id: true },
-      }),
+      prisma.supplier.findUnique({ where: { subdomain }, select: { id: true } }),
     ]);
 
     if (!plug && !supplier) {
@@ -133,17 +127,12 @@ export const getStoreProductById = async (
           originalProduct: {
             include: {
               variations: true,
-              supplier: {
-                select: { id: true },
-              },
+              supplier: { select: { id: true } },
+              reviews: true,
             },
           },
         },
       });
-
-      const supplierChannelPolicy = await prisma.channel.findUnique({
-        where: {supplierId: plugProduct?.originalProduct.supplierId}
-      })
 
       if (
         !plugProduct ||
@@ -153,10 +142,31 @@ export const getStoreProductById = async (
         return;
       }
 
+      // ✅ Fetch supplier's channel policy (only required fields)
+      const supplierChannelPolicy = await prisma.channel.findFirst({
+        where: {
+          supplierId: plugProduct.originalProduct.supplierId,
+          disabled: false,
+        },
+        select: {
+          payOnDelivery: true,
+          returnPolicy: true,
+          returnWindow: true,
+          returnPolicyTerms: true,
+          refundPolicy: true,
+          returnShippingFee: true,
+          supplierShare: true
+        },
+      });
+
       const formattedProduct = formatPlugProduct(plugProduct);
+
       res.status(200).json({
         message: "Plug product fetched successfully!",
-        data: { ...formattedProduct, supplierChannelPolicy },
+        data: {
+          ...formattedProduct,
+          ...(supplierChannelPolicy || {}),
+        },
       });
       return;
     }
@@ -172,20 +182,32 @@ export const getStoreProductById = async (
         },
       });
 
-       const supplierPolicy = await prisma.supplierStorePolicy.findUnique({
-         where: { supplierId: supplier.id },
-       });
-
-
       if (!supplierProduct) {
         res.status(404).json({ error: "Product not found!" });
         return;
       }
 
+      const supplierPolicy = await prisma.supplierStorePolicy.findUnique({
+        where: { supplierId: supplier.id },
+        select: {
+          payOnDelivery: true,
+          returnPolicy: true,
+          returnWindow: true,
+          returnPolicyTerms: true,
+          refundPolicy: true,
+          returnShippingFee: true,
+          supplierShare: true,
+        },
+      });
+
       const formattedProduct = formatSupplierProduct(supplierProduct);
+
       res.status(200).json({
         message: "Supplier product fetched successfully!",
-        data: {...formattedProduct, supplierPolicy},
+        data: {
+          ...formattedProduct,
+          ...(supplierPolicy || {}),
+        },
       });
       return;
     }
@@ -196,6 +218,7 @@ export const getStoreProductById = async (
 
 
 
+// ✅ Get product by ID for internal use (Plug or Supplier)
 export const getProductById = async (
   req: Request,
   res: Response,
@@ -208,13 +231,10 @@ export const getProductById = async (
       return;
     }
 
-    // Determine whether plugId is actually a Plug or a Supplier id
+    // Identify whether ID belongs to a plug or supplier
     const [plug, supplier] = await Promise.all([
       prisma.plug.findUnique({ where: { id }, select: { id: true } }),
-      prisma.supplier.findUnique({
-        where: { id },
-        select: { id: true },
-      }),
+      prisma.supplier.findUnique({ where: { id }, select: { id: true } }),
     ]);
 
     if (!plug && !supplier) {
@@ -222,86 +242,99 @@ export const getProductById = async (
       return;
     }
 
-    // CASE 1: Plug product (plugProduct)
+    // 🧱 Plug product case
     if (plug) {
       const plugProduct = await prisma.plugProduct.findFirst({
-        where: {
-          id: productId,
-          plugId: plug.id,
-        },
+        where: { id: productId, plugId: plug.id },
         include: {
           originalProduct: {
             include: {
               variations: true,
-              supplier: {
-                select: {
-                  id: true,
-                },
-              },
+              supplier: { select: { id: true } },
               reviews: true,
             },
           },
         },
       });
 
-      const supplierChannelPolicy = await prisma.channel.findUnique({
-        where: {supplierId: plugProduct?.originalProduct.supplierId}
-      })
-
-
-      if (!plugProduct) {
-        res.status(404).json({ error: "Product not found!" });
-        return;
-      }
-
-      // Outdated check: supplier changed price after plug last updated and original product is APPROVED
       if (
-        plugProduct.originalProduct.priceUpdatedAt > plugProduct.updatedAt 
+        !plugProduct ||
+        plugProduct.originalProduct.priceUpdatedAt > plugProduct.updatedAt
       ) {
-        res.status(404).json({ error: "Product not found!" });
+        res.status(404).json({ error: "Product not found or unavailable!" });
         return;
       }
+
+      // ✅ Fetch supplier channel policy
+      const supplierChannelPolicy = await prisma.channel.findFirst({
+        where: {
+          supplierId: plugProduct.originalProduct.supplierId,
+          disabled: false,
+        },
+        select: {
+          payOnDelivery: true,
+          returnPolicy: true,
+          returnWindow: true,
+          returnPolicyTerms: true,
+          refundPolicy: true,
+          returnShippingFee: true,
+          supplierShare: true,
+          phone: true,
+          whatsapp: true,
+          telegram: true,
+          instagram: true,
+        },
+      });
 
       const formatted = formatPlugProduct(plugProduct);
+
       res.status(200).json({
         message: "Product fetched successfully!",
-        data: { ...formatted, supplierChannelPolicy },
+        data: {
+          ...formatted,
+          ...(supplierChannelPolicy || {}),
+        },
       });
       return;
     }
 
-    // CASE 2: Supplier product (Product table)
+    // 🧱 Supplier product case
     if (supplier) {
       const product = await prisma.product.findFirst({
-        where: {
-          id: productId,
-          supplierId: supplier.id,
-        },
+        where: { id: productId, supplierId: supplier.id },
         include: {
           variations: true,
-          supplier: {
-            select: {
-              id: true,
-            },
-          },
+          supplier: { select: { id: true } },
           reviews: true,
         },
       });
-
-       const supplierPolicy = await prisma.supplierStorePolicy.findUnique({
-         where: { supplierId: supplier.id },
-       });
 
       if (!product) {
         res.status(404).json({ error: "Product not found!" });
         return;
       }
 
+      const supplierPolicy = await prisma.supplierStorePolicy.findUnique({
+        where: { supplierId: supplier.id },
+        select: {
+          payOnDelivery: true,
+          returnPolicy: true,
+          returnWindow: true,
+          returnPolicyTerms: true,
+          refundPolicy: true,
+          returnShippingFee: true,
+          supplierShare: true,
+        },
+      });
 
       const formatted = formatSupplierProduct(product);
+
       res.status(200).json({
         message: "Product fetched successfully!",
-        data: {...formatted, supplierPolicy},
+        data: {
+          ...formatted,
+          ...(supplierPolicy || {}),
+        },
       });
       return;
     }
@@ -309,5 +342,3 @@ export const getProductById = async (
     next(error);
   }
 };
-
-
