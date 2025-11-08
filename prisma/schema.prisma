@@ -539,13 +539,26 @@ model SupplierStorePolicy {
   supplierId          String   @unique
   payOnDelivery       Boolean
   returnPolicy        Boolean
-  returnWindow        Int?      // Optional
-  returnPolicyTerms   String?   // Optional
-  refundPolicy        Boolean?  // Optional
-  returnShippingFee   ReturnShippingFee? // Optional
-  supplierShare       Float?    // Optional (percentage)
+  returnWindow        Int?
+  returnPolicyTerms   String?
+  refundPolicy        Boolean?
+  returnShippingFee   ReturnShippingFee?
+  supplierShare       Float?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+
+  deliveryLocations   StoreDeliveryLocation[] // ✅ Relation
+}
+
+model StoreDeliveryLocation {
+  id          String   @id @default(cuid())
+  policyId    String
+  state       String
+  lgas        String[]
+  fee         Float
+  duration    String
+
+  policy      SupplierStorePolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
 }
 
 
@@ -556,18 +569,30 @@ model Channel {
   channelId           String   @unique
   payOnDelivery       Boolean
   returnPolicy        Boolean
-  returnWindow        Int?      // Optional
-  returnPolicyTerms   String?   // Optional
-  refundPolicy        Boolean?  // Optional
-  returnShippingFee   ReturnShippingFee? // Optional
-  supplierShare       Float?    // Optional (percentage)
-  phone               String?   // Optional
-  whatsapp            String?   // Optional
-  telegram            String?   // Optional
-  instagram           String?   // Optional
-   disabled            Boolean  @default(false)
+  returnWindow        Int?
+  returnPolicyTerms   String?
+  refundPolicy        Boolean?
+  returnShippingFee   ReturnShippingFee?
+  supplierShare       Float?
+  phone               String?
+  whatsapp            String?
+  telegram            String?
+  instagram           String?
+  disabled            Boolean  @default(false)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+
+  deliveryLocations   ChannelDeliveryLocation[]   // ✅ Relation
+}
+
+model ChannelDeliveryLocation {
+  id          String   @id @default(cuid())
+  channelId   String
+  state       String
+  lgas        String[] // Array of LGAs (use `ALL` if applicable)
+  fee         Float
+  duration    String
+  channel     Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
 }
 
 

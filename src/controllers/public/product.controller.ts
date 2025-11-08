@@ -265,7 +265,7 @@ export const getProductById = async (
         return;
       }
 
-      // ✅ Fetch supplier channel policy
+      // ✅ Fetch supplier channel policy + delivery locations
       const supplierChannelPolicy = await prisma.channel.findFirst({
         where: {
           supplierId: plugProduct.originalProduct.supplierId,
@@ -283,6 +283,15 @@ export const getProductById = async (
           whatsapp: true,
           telegram: true,
           instagram: true,
+          deliveryLocations: {
+            select: {
+              id: true,
+              state: true,
+              lgas: true,
+              fee: true,
+              duration: true
+            },
+          },
         },
       });
 
@@ -293,6 +302,7 @@ export const getProductById = async (
         data: {
           ...formatted,
           ...(supplierChannelPolicy || {}),
+          deliveryLocations: supplierChannelPolicy?.deliveryLocations || [],
         },
       });
       return;
@@ -314,6 +324,7 @@ export const getProductById = async (
         return;
       }
 
+      // ✅ Fetch store policy + store delivery locations
       const supplierPolicy = await prisma.supplierStorePolicy.findUnique({
         where: { supplierId: supplier.id },
         select: {
@@ -324,6 +335,15 @@ export const getProductById = async (
           refundPolicy: true,
           returnShippingFee: true,
           supplierShare: true,
+          deliveryLocations: {
+            select: {
+              id: true,
+              state: true,
+              lgas: true,
+              fee: true,
+              duration: true,
+            },
+          },
         },
       });
 
@@ -334,6 +354,7 @@ export const getProductById = async (
         data: {
           ...formatted,
           ...(supplierPolicy || {}),
+          deliveryLocations: supplierPolicy?.deliveryLocations || [],
         },
       });
       return;

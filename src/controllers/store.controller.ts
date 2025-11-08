@@ -320,64 +320,105 @@ export const upsertSupplierStorePolicy = async (
       returnPolicyTerms,
       refundPolicy,
       returnShippingFee,
-      supplierShare
+      supplierShare,
+      deliveryLocations = [], // ✅ Expect array from frontend
     } = req.body;
 
     // ✅ Basic validation
     if (
       typeof payOnDelivery !== "boolean" ||
-      typeof returnPolicy !== "boolean" 
+      typeof returnPolicy !== "boolean"
     ) {
-      res.status(400).json({ error: "Invalid or missing required fields!" });
-      return;
+       res
+        .status(400)
+        .json({ error: "Invalid or missing required fields!" });
+        return
     }
 
-    // ✅ Validate return window
     if (returnWindow && (isNaN(returnWindow) || returnWindow < 1)) {
-      res
+       res
         .status(400)
         .json({ error: "Return window must be a positive integer!" });
-      return;
+        return
     }
 
-    // 🧩 Check if store rules already exists for this supplier
+    if (!Array.isArray(deliveryLocations)) {
+       res
+        .status(400)
+        .json({ error: "deliveryLocations must be an array" });
+        return;
+    }
+
+    // 🧩 Fetch existing policy if any
     const existing = await prisma.supplierStorePolicy.findUnique({
       where: { supplierId },
+      include: { deliveryLocations: true },
     });
 
-    // ⚡ Upsert supplier store rule 
-    const supplierStorePolicy = await prisma.supplierStorePolicy.upsert({
-      where: { supplierId },
-      update: {
-        payOnDelivery,
-        returnPolicy,
-        returnWindow,
-        returnPolicyTerms,
-        refundPolicy,
-        returnShippingFee,
-        supplierShare
-      },
-      create: {
-        supplierId,
-        payOnDelivery,
-        returnPolicy,
-        returnWindow,
-        returnPolicyTerms,
-        refundPolicy,
-        returnShippingFee,
-        supplierShare
-      },
+    // ⚙️ Perform upsert + replace locations transactionally
+    const policy = await prisma.$transaction(async (tx) => {
+      // 1️⃣ Upsert store policy
+      const supplierStorePolicy = await tx.supplierStorePolicy.upsert({
+        where: { supplierId },
+        update: {
+          payOnDelivery,
+          returnPolicy,
+          returnWindow,
+          returnPolicyTerms,
+          refundPolicy,
+          returnShippingFee,
+          supplierShare,
+        },
+        create: {
+          supplierId,
+          payOnDelivery,
+          returnPolicy,
+          returnWindow,
+          returnPolicyTerms,
+          refundPolicy,
+          returnShippingFee,
+          supplierShare,
+        },
+      });
+
+      // 2️⃣ Replace all existing delivery locations
+      await tx.storeDeliveryLocation.deleteMany({
+        where: { policyId: supplierStorePolicy.id },
+      });
+
+      if (deliveryLocations.length > 0) {
+        await tx.storeDeliveryLocation.createMany({
+          data: deliveryLocations.map((loc: any) => ({
+            policyId: supplierStorePolicy.id,
+            state: loc.state,
+            lgas: loc.lgas,
+            fee: loc.fee,
+            duration: loc.duration,
+          })),
+        });
+      }
+
+      // 3️⃣ Return updated record with nested locations
+      const updatedPolicy = await tx.supplierStorePolicy.findUnique({
+        where: { id: supplierStorePolicy.id },
+        include: { deliveryLocations: true },
+      });
+
+      return updatedPolicy;
     });
+
     res.status(200).json({
       message: existing
         ? "Policy updated successfully!"
-        : "Policy set successfully!",
-      data: supplierStorePolicy
+        : "Policy created successfully!",
+      data: policy,
     });
   } catch (error) {
+    console.error("Error in upsertSupplierStorePolicy:", error);
     next(error);
   }
 };
+
 
 
 export const getSupplierStorePolicy = async (
@@ -391,6 +432,7 @@ export const getSupplierStorePolicy = async (
 
     const supplierStorePolicy = await prisma.supplierStorePolicy.findUnique({
       where: { supplierId },
+      include: { deliveryLocations: true },
     });
 
     if (!supplierStorePolicy) {

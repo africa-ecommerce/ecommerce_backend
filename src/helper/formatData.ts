@@ -77,45 +77,20 @@ export const formatPlugProduct = (plugProduct: any) => {
   return formattedProduct;
 };
 export const formatSupplierProduct = (supplierProduct: any) => {
-  // Destructure fields we might modify
-  // const {
-  //   // priceEffectiveAt: rawEffectiveDate,
-  //   // pendingPrice,
-  //   originalProduct,
-  // } = supplierProduct;
-
-  // Calculate days left formatting if needed
-  // let formattedEffectiveDate = null;
-  // if (pendingPrice && rawEffectiveDate) {
-  //   const now = new Date();
-  //   const effectiveDate = new Date(rawEffectiveDate);
-  //   const timeDiff = effectiveDate.getTime() - now.getTime();
-  //   const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
-  //   formattedEffectiveDate = daysLeft;
-  // }
-
-  // Process variations if they exist
   const variations = supplierProduct?.variations || [];
-  // For each variation, parse the dimensions string if it exists
-  const formattedVariations = variations.map((variation: any) => {
-    return {
-      ...variation,
-      dimensions: variation.dimensions
-        ? JSON.parse(variation.dimensions)
-        : null,
-      stocks: variation.stock,
-    };
-  });
+  const formattedVariations = variations.map((variation: any) => ({
+    ...variation,
+    dimensions: variation.dimensions ? JSON.parse(variation.dimensions) : null,
+    stocks: variation.stock,
+  }));
 
-  // Construct base response
   const formattedProduct: any = {
-    // Original product details
-    id: supplierProduct?.id,
+    ...supplierProduct, // keep all top-level product info
     supplierId: supplierProduct?.supplier?.id,
     name: supplierProduct?.name,
     description: supplierProduct?.description,
     category: supplierProduct?.category,
-    price: supplierProduct?.price,
+    originalPrice: supplierProduct?.price, // same naming as plug
     minPrice: supplierProduct?.minPrice,
     maxPrice: supplierProduct?.maxPrice,
     stocks: supplierProduct?.stock,
@@ -130,23 +105,16 @@ export const formatSupplierProduct = (supplierProduct: any) => {
     variations: formattedVariations,
   };
 
-  // Only add pricing fields if update is pending
-  // if (pendingPrice && rawEffectiveDate) {
-  //   formattedProduct.pendingPrice = pendingPrice;
-  //   formattedProduct.priceEffectiveAt = formattedEffectiveDate;
-  // }
-
   if (supplierProduct?.supplier?.pickupLocation) {
-    formattedProduct.pickupLocation = supplierProduct?.supplier.pickupLocation;
+    formattedProduct.pickupLocation = supplierProduct.supplier.pickupLocation;
   }
 
-  // Add user review if it exists (early check)
-  if (supplierProduct?.reviews && supplierProduct?.reviews.length > 0) {
-    const userReview = supplierProduct?.reviews[0]; // Only one review since we filtered by plugId
+  if (supplierProduct?.reviews?.length > 0) {
+    const review = supplierProduct.reviews[0];
     formattedProduct.review = {
-      rating: userReview.rating,
-      review: userReview.review,
-      createdAt: userReview.createdAt,
+      rating: review.rating,
+      review: review.review,
+      createdAt: review.createdAt,
     };
   }
 
