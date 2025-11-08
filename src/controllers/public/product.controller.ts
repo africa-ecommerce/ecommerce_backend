@@ -155,7 +155,16 @@ export const getStoreProductById = async (
           returnPolicyTerms: true,
           refundPolicy: true,
           returnShippingFee: true,
-          supplierShare: true
+          supplierShare: true,
+           deliveryLocations: {
+            select: {
+              id: true,
+              state: true,
+              lgas: true,
+              fee: true,
+              duration: true
+            },
+          },
         },
       });
 
@@ -197,6 +206,15 @@ export const getStoreProductById = async (
           refundPolicy: true,
           returnShippingFee: true,
           supplierShare: true,
+          deliveryLocations: {
+            select: {
+              id: true,
+              state: true,
+              lgas: true,
+              fee: true,
+              duration: true,
+            },
+          },
         },
       });
 
