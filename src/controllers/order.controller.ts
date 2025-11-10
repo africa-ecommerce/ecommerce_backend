@@ -14,11 +14,11 @@ export async function stageOrder(
 ) {
   try {
     const parsed = StageOrderSchema.safeParse(req.body);
-    if (!parsed.success){
-       res.status(400).json({ error: "Invalid field data" });
-       return;
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid field data" });
+      return;
     }
-      
+
     const input = parsed.data;
 
     const result = await prisma.$transaction(async (tx) => {
@@ -217,12 +217,26 @@ export async function stageOrder(
         });
       }
 
+      // ✅ Return with businessName + storeUrl always (even for POD)
+      const businessName = plug?.businessName || supplier?.businessName || "";
+      const storeUrl = plug?.subdomain
+        ? `https://${plug.subdomain}.pluggn.store`
+        : supplier?.subdomain
+        ? `https://${supplier.subdomain}.pluggn.store`
+        : "";
+
       return hasPOD
         ? {
             message: "Orders placed successfully!",
-            totalOrders: ordersToCreate.length,
+            businessName,
+            storeUrl,
           }
-        : { authorization_url: paystackAuthUrl, reference: paystackReference };
+        : {
+            authorization_url: paystackAuthUrl,
+            reference: paystackReference,
+            businessName,
+            storeUrl,
+          };
     });
 
     res.status(201).json({ data: result });
@@ -321,7 +335,7 @@ export async function confirmOrder(
         ? `https://${firstOrder.supplier.subdomain}.pluggn.store`
         : "";
 
-      return { businessName, storeUrl, totalOrders: stagedOrders.length };
+      return { businessName, storeUrl};
     });
 
     res
