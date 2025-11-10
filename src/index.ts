@@ -17,7 +17,7 @@ import { cookieConfig } from "./helper/token";
 import { initializeBuckets } from "./config/minio";
 import marketPlaceRoutes from "./routes/marketplace.routes";
 import templateRoutes from "./routes/template.routes";
-import logisticsRoutes from "./routes/logistics.routes";
+// import logisticsRoutes from "./routes/logistics.routes";
 import orderRoutes from "./routes/order.routes";
 import linksRoutes from "./routes/links.routes";
 import analyticsRoutes from "./routes/analytics.routes";
@@ -26,10 +26,10 @@ import adminRoutes from "./routes/admin.routes";
 import path from "path";
 import dotenv from "dotenv";
 import rateLimit from "express-rate-limit";
-import {
-  initializePaymentProcessingScheduler,
-  shutdownPaymentProcessingScheduler,
-} from "./helper/workers/paymentProcessor";
+// import {
+//   initializePaymentProcessingScheduler,
+//   shutdownPaymentProcessingScheduler,
+// } from "./helper/workers/paymentProcessor";
 import { routeErrorCatcher } from "./middleware/error.middleware";
 import { errorMail } from "./helper/mail/dev/errorMail";
 import contactSupportRoutes from "./routes/contactSupport.routes";
@@ -268,15 +268,15 @@ initializeBuckets()
 //schedulers
 // Initialize the payment processing scheduler to handle any locked payments from before restart
 // This processes past-due payments and sets up schedule for future ones
-initializePaymentProcessingScheduler()
-  .then(() => {
-    console.log(
-      "Payment processing scheduler initialized to handle locked payments"
-    );
-  })
-  .catch((error) => {
-    console.error("Error initializing payment processing scheduler:", error);
-  });
+// initializePaymentProcessingScheduler()
+//   .then(() => {
+//     console.log(
+//       "Payment processing scheduler initialized to handle locked payments"
+//     );
+//   })
+//   .catch((error) => {
+//     console.error("Error initializing payment processing scheduler:", error);
+//   });
 
 
   //Mail transporters initialization
@@ -298,7 +298,7 @@ app.use("/plug/products", plugProductRoutes, routeErrorCatcher);
 app.use("/template", corsStaticHeaders, templateRoutes, routeErrorCatcher);
 app.use("/site", storeRoutes, routeErrorCatcher); // ------------->
 app.use("/public", publicRoutes, routeErrorCatcher);
-app.use("/logistics", logisticsRoutes, routeErrorCatcher);
+// app.use("/logistics", logisticsRoutes, routeErrorCatcher);
 app.use("/orders", orderRoutes, routeErrorCatcher);
 app.use("/links", linksRoutes, routeErrorCatcher);
 app.use("/analytics", analyticsRoutes, routeErrorCatcher);
@@ -335,7 +335,7 @@ process.on("SIGTERM", () => {
   console.log("SIGTERM signal received: closing HTTP server");
 
   // First shut down the scheduler
-  shutdownPaymentProcessingScheduler();
+  // shutdownPaymentProcessingScheduler();
   closeAllTransporters();
 
   // Then close the server
@@ -349,7 +349,7 @@ process.on("SIGINT", () => {
   console.log("SIGINT signal received: closing HTTP server");
 
   // First shut down the scheduler
-  shutdownPaymentProcessingScheduler();
+  // shutdownPaymentProcessingScheduler();
 
   // Then close the server
   server.close(() => {

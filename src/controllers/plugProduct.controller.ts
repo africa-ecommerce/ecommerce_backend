@@ -172,14 +172,14 @@ addProductToPlug: async (
         },
         update: {
           price: parsedPrice,
-          commission: commissionRate,
+          // commission: commissionRate,
           updatedAt: now,
         },
         create: {
           originalId: product.id,
           plugId: plug.id,
           price: parsedPrice,
-          commission: commissionRate,
+          // commission: commissionRate,
         },
       });
 
@@ -326,7 +326,7 @@ addProductToPlug: async (
       const updatedProduct = await prisma.plugProduct.update({
         where: { id: productId, plugId: plug.id },
         data: {
-          commission: commissionRate,
+          // commission: commissionRate,
           price,
           updatedAt: new Date(),
         },
