@@ -64,23 +64,23 @@ model WithdrawalVerificationToken {
 model Supplier {
   id                     String            @id @default(cuid())
   businessName           String            @unique
-  normalizedBusinessName String            @unique
-  subdomain              String?       @unique
-  configUrl              String?
   businessType           String?
   phone                  String
   avatar                 String?
   userId                 String            @unique
   addressId              String            @unique
-  verified               Boolean           @default(false)
-  subscribers            String[]          @default([])
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
+  subscribers            String[]          @default([])
+  normalizedBusinessName String            @unique
+  configUrl              String?
+  subdomain              String?           @unique
+  links                  Link[]
   Product                Product[]
   pickupLocation         SupplierAddress   @relation(fields: [addressId], references: [id], onDelete: Cascade)
   user                   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   supplierPayments       SupplierPayment[]
-  links                  Link[]
+   orders                 Order[]
 
   @@index([businessName])
   @@index([normalizedBusinessName])
@@ -89,7 +89,6 @@ model Supplier {
 model Plug {
   id                     String        @id @default(cuid())
   businessName           String        @unique
-  normalizedBusinessName String        @unique
   phone                  String?
   state                  String?
   aboutBusiness          String?
@@ -97,11 +96,12 @@ model Plug {
   generalMerchant        Boolean
   subdomain              String?       @unique
   configUrl              String?
-  subscribedTo           String[]      @default([])
   userId                 String        @unique
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
   avatar                 String?
+  subscribedTo           String[]      @default([])
+  normalizedBusinessName String        @unique
   links                  Link[]
   orders                 Order[]
   user                   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -115,18 +115,17 @@ model Plug {
 }
 
 model Buyer {
-  id              String   @id @default(cuid())
-  name            String
-  email           String
-  phone           String
-  streetAddress   String?
-  lga             String?
-  state           String?
-  directions      String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  terminalAddress String?
-  orders          Order[]
+  id            String   @id @default(cuid())
+  name          String
+  email         String
+  phone         String
+  streetAddress String?
+  lga           String?
+  state         String?
+  directions    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  orders        Order[]
 
   @@unique([email, phone], name: "email_phone")
 }
@@ -137,13 +136,9 @@ model SupplierAddress {
   lga           String
   state         String
   directions    String?
-  // latitude      Float
-  // longitude     Float
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   supplier      Supplier?
-
-  // @@index([latitude, longitude])
 }
 
 model SupplierPayment {
@@ -225,16 +220,14 @@ model Product {
   images         String
   supplierId     String
   size           String?
-  colors         String[]           @default([])
   sold           Int                @default(0)
   stock          Int?               @default(0)
-  moq            Int?              
   plugsCount     Int                @default(0)
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
-  maxPrice       Float              @default(0)
-  minPrice       Float              @default(0)
+  colors         String[]           @default([])
   priceUpdatedAt DateTime           @default(now())
+  moq            Int?
   plugProducts   PlugProduct[]
   supplier       Supplier           @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   variations     ProductVariation[]
@@ -256,7 +249,6 @@ model PlugProduct {
   price           Float
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  commission      Float
   originalProduct Product  @relation(fields: [originalId], references: [id], onDelete: Cascade)
   plug            Plug     @relation(fields: [plugId], references: [id], onDelete: Cascade)
 
@@ -266,14 +258,11 @@ model PlugProduct {
   @@index([price])
 }
 
-//restructure how order is done
-
 model Order {
   id                 String            @id @default(cuid())
   orderNumber        String            @unique
   buyerId            String
-  plugId             String
-  supplierId          String?
+  plugId             String?
   totalAmount        Float             @default(0)
   deliveryFee        Float             @default(0)
   status             OrderStatus       @default(PENDING)
@@ -290,15 +279,16 @@ model Order {
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
   platform           String?           @default("Unknown")
-  deliveryType       String
-  terminalAddress    String?
+  supplierId         String?
   buyer              Buyer             @relation(fields: [buyerId], references: [id])
-  plug               Plug              @relation(fields: [plugId], references: [id])
+  plug               Plug?             @relation(fields: [plugId], references: [id])
+  supplier           Supplier?             @relation(fields: [supplierId], references: [id])
   orderItems         OrderItem[]
   plugPayment        PlugPayment?
   supplierPayment    SupplierPayment[]
 
   @@index([plugId])
+  @@index([supplierId])
   @@index([status])
   @@index([createdAt])
   @@index([orderNumber])
@@ -318,11 +308,12 @@ model OrderItem {
   updatedAt         DateTime           @updatedAt
   productName       String
   plugPrice         Float
-  commission        Float?
   supplierId        String
   supplierPrice     Float
-  plugId            String
+  plugId            String?
   recieved          Boolean            @default(false)
+  deliveryFee       Float              @default(0)
+  paymentMethod     String?
   order             Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
   PausedOrderItem   PausedOrderItem?
   ReturnedOrderItem ReturnedOrderItem?
@@ -371,8 +362,8 @@ model Link {
   targetUrl  String
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
-  supplierId String?
   plugId     String?
+  supplierId String?
   plug       Plug?           @relation(fields: [plugId], references: [id], onDelete: Cascade)
   supplier   Supplier?       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   analytics  LinkAnalytics[]
@@ -396,9 +387,9 @@ model LinkAnalytics {
 
 model StoreAnalytics {
   id         String  @id @default(cuid())
+  count      Int     @default(0)
   plugId     String? @unique
   supplierId String? @unique
-  count      Int     @default(0)
 }
 
 model MailQueue {
@@ -442,43 +433,14 @@ model ShareAnalytics {
 model ProductVariation {
   id        String   @id @default(cuid())
   size      String?
-  colors    String[] @default([])
-  stock          Int?               @default(0)
-   moq            Int?             
+  stock     Int?     @default(0)
   productId String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  colors    String[] @default([])
+  moq       Int?
   Product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
-
-enum UserType {
-  UNSET
-  SUPPLIER
-  PLUG
-}
-
-enum PaymentStatus {
-  LOCKED
-  OPENED
-  PAID
-}
-
-enum OrderStatus {
-  STAGED // New status for staged orders before payment
-  PENDING // After payment confirmation
-  //   CONFIRMED  //supplier confirmed order for pickup
-  CANCELLED //  order was cancelled
-  SHIPPED // order is on the way to customer
-  DELIVERED // order delivered to customer
-}
-
-enum MailStatus {
-  PENDING
-  SENT
-  FAILED
-}
-
-
 
 model PlugCategoryRating {
   id        String   @id @default(cuid())
@@ -510,7 +472,7 @@ model RejectedProduct {
   id        String   @id @default(cuid())
   plugId    String
   productId String
-  count     Int      @default(1) // how many times user rejected
+  count     Int      @default(1)
   lastAt    DateTime @default(now())
   createdAt DateTime @default(now())
 
@@ -533,69 +495,86 @@ model AcceptedProduct {
   @@index([productId])
 }
 
-
 model SupplierStorePolicy {
-  id                  String   @id @default(cuid())
-  supplierId          String   @unique
-  payOnDelivery       Boolean
-  returnPolicy        Boolean
-  returnWindow        Int?
-  returnPolicyTerms   String?
-  refundPolicy        Boolean?
-  returnShippingFee   ReturnShippingFee?
-  supplierShare       Float?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-
-  deliveryLocations   StoreDeliveryLocation[] // ✅ Relation
+  id                String                  @id @default(cuid())
+  supplierId        String                  @unique
+  payOnDelivery     Boolean
+  returnPolicy      Boolean
+  returnWindow      Int?
+  returnPolicyTerms String?
+  refundPolicy      Boolean?
+  returnShippingFee ReturnShippingFee?
+  supplierShare     Float?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  deliveryLocations StoreDeliveryLocation[]
 }
 
 model StoreDeliveryLocation {
-  id          String   @id @default(cuid())
-  policyId    String
-  state       String
-  lgas        String[]
-  fee         Float
-  duration    String
-
-  policy      SupplierStorePolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  id       String              @id @default(cuid())
+  policyId String
+  state    String
+  lgas     String[]
+  fee      Float
+  duration String
+  policy   SupplierStorePolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
 }
 
-
-
 model Channel {
-  id                  String   @id @default(cuid())
-  supplierId          String   @unique
-  channelId           String   @unique
-  payOnDelivery       Boolean
-  returnPolicy        Boolean
-  returnWindow        Int?
-  returnPolicyTerms   String?
-  refundPolicy        Boolean?
-  returnShippingFee   ReturnShippingFee?
-  supplierShare       Float?
-  phone               String?
-  whatsapp            String?
-  telegram            String?
-  instagram           String?
-  disabled            Boolean  @default(false)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-
-  deliveryLocations   ChannelDeliveryLocation[]   // ✅ Relation
+  id                String                    @id @default(cuid())
+  supplierId        String                    @unique
+  payOnDelivery     Boolean
+  returnPolicy      Boolean
+  returnWindow      Int?
+  returnPolicyTerms String?
+  refundPolicy      Boolean?
+  returnShippingFee ReturnShippingFee?
+  supplierShare     Float?
+  phone             String?
+  whatsapp          String?
+  telegram          String?
+  instagram         String?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  channelId         String                    @unique
+  disabled          Boolean                   @default(false)
+  deliveryLocations ChannelDeliveryLocation[]
 }
 
 model ChannelDeliveryLocation {
-  id          String   @id @default(cuid())
-  channelId   String
-  state       String
-  lgas        String[] // Array of LGAs (use `ALL` if applicable)
-  fee         Float
-  duration    String
-  channel     Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  channelId String
+  state     String
+  lgas      String[]
+  fee       Float
+  duration  String
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
 }
 
+enum UserType {
+  UNSET
+  SUPPLIER
+  PLUG
+}
 
+enum PaymentStatus {
+  LOCKED
+  OPENED
+  PAID
+}
+
+enum OrderStatus {
+  STAGED
+  PENDING
+  PROCESSED
+  CANCELLED
+}
+
+enum MailStatus {
+  PENDING
+  SENT
+  FAILED
+}
 
 enum ReturnShippingFee {
   BUYER

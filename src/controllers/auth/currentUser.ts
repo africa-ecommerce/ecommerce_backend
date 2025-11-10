@@ -40,7 +40,6 @@ export const getCurrentUser = async (
             },
             phone: true,
             avatar: true,
-            verified: true,
             subdomain: true,
             configUrl: true,
           },

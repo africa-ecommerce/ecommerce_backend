@@ -56,7 +56,7 @@ BASED ON SCENARIOS IF ORDER WAS PLACED AND PROBABLY THE SUPPLIER DOES NOT HAVE A
 
 
 
-
+//how do we update sold and quantityis it on immediate buy or processing
 
 
 # Make sure you're on main
@@ -94,6 +94,7 @@ pg_dump -U your_user -h your_host -d your_dbname -F p -f backup.sql
 pg_dump -h your_host -U your_user  -d your_dbname -F c -b -v -f backup.dump
 
 
+pg_dump -h 67.217.77.999 -p 1132 -U postgres -d pluggn -F c -f pluggn_backup_$(date +%Y%m%d_%H%M%S).dump
 🧪 Development Environment
 In development, your goal is to define, test, and version your schema changes safely and iteratively.
 
@@ -263,6 +264,8 @@ Change your environment variables or SDK configs to use AWS credentials and poin
 Ensure files are accessible.
 
 Validate upload and download behavior.
+
+ psql "postgresql://postgres:yMtAx6eT5aoTR@89.117.63.109:5432/pluggn?sslmode=require"
 
 Check permissions (e.g., public access or IAM roles).
 

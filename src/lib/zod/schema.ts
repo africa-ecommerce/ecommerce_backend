@@ -167,25 +167,31 @@ const OrderItemSchema = z.object({
   variantSize: z.string().optional(),
   variantColor: z.string().optional(),
   supplierId: z.string(),
-});
-
-
-export const StageOrderSchema = z.object({
-  buyerName: z.string().min(1),
-  buyerEmail: z.string().email(),
-  buyerPhone: z.string().min(1),
-  buyerAddress: z.string().optional(),
-  buyerState: z.string().min(1),
-  buyerLga: z.string().optional(),
-  buyerDirections: z.string().optional(),
-  buyerInstructions: z.string().optional(),
-  deliveryType: z.string(),
-  terminalAddress: z.string().optional(),
-  platform: z.string().min(1).optional(),
   plugId: z.string().optional(),
-  subdomain: z.string().optional(),
-  orderItems: z.array(OrderItemSchema).min(1),
+  deliveryFee: z.number().positive(),
+  paymentMethod:  z.string()
 });
+
+
+export const StageOrderSchema = z
+  .object({
+    buyerName: z.string().min(1),
+    buyerEmail: z.string().email(),
+    buyerPhone: z.string().min(1),
+    buyerAddress: z.string().optional(),
+    buyerState: z.string().min(1),
+    buyerLga: z.string().optional(),
+    buyerDirections: z.string().optional(),
+    buyerInstructions: z.string().optional(),
+    platform: z.string().min(1).optional(),
+    plugId: z.string().optional(),
+    supplierId: z.string().optional(),
+    subdomain: z.string().optional(),
+    orderItems: z.array(OrderItemSchema).min(1),
+  })
+  .refine((data) => data.plugId || data.subdomain || data.supplierId, {
+    message: "Either plugId, subdomain, or supplierId must be provided",
+  });
 
 export const ConfirmOrderSchema = z.object({
   reference: z.string().min(1),

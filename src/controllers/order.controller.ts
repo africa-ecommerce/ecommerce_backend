@@ -1,18 +1,11 @@
 import { NextFunction, Request, Response } from "express";
-import {
-  BuyerInfoSchema,
-  ConfirmOrderSchema,
-  StageOrderSchema,
-} from "../lib/zod/schema";
+import { StageOrderSchema, ConfirmOrderSchema, BuyerInfoSchema } from "../lib/zod/schema";
 import { paystackSecretKey, prisma } from "../config";
+import { customAlphabet } from "nanoid";
+import { OrderStatus } from "@prisma/client";
+import { successOrderMail } from "../helper/mail/order/successOrderMail";
 import { AuthRequest } from "../types";
 import { formatPlugOrders, formatSupplierOrders } from "../helper/formatData";
-import { OrderStatus } from "@prisma/client";
-import { customAlphabet } from "nanoid";
-import { getTerminalInfo } from "../helper/logistics";
-import { successOrderMail } from "../helper/mail/order/successOrderMail";
-
-
 
 export async function stageOrder(
   req: Request,
@@ -23,60 +16,78 @@ export async function stageOrder(
     const fieldData = StageOrderSchema.safeParse(req.body);
     if (!fieldData.success) {
        res.status(400).json({ error: "Invalid field data!" });
-       return
-    }
-
-    const formattedInput = fieldData.data;
-
-    if (!formattedInput.plugId && !formattedInput.subdomain) {
-       res.status(400).json({ error: "Missing plug ID or subdomain" });
        return;
     }
+    const input = fieldData.data;
 
     const response = await prisma.$transaction(async (tx) => {
-      // Get plug
-      const plug = await tx.plug.findFirst({
-        where: formattedInput.plugId
-          ? { id: formattedInput.plugId }
-          : { subdomain: formattedInput.subdomain },
-        select: { id: true, businessName: true, subdomain: true },
-      });
-      if (!plug) throw new Error("Plug not found");
+      let plug: any = null;
+      let supplier: any = null;
+      let orderSource: "plug" | "supplier" = "plug";
 
-      // ====================================
-      // 1. Calculate prices per order item
-      // ====================================
+      if (input.plugId || input.subdomain) {
+        plug = await tx.plug.findFirst({
+          where: input.plugId
+            ? { id: input.plugId }
+            : { subdomain: input.subdomain },
+          select: { id: true, businessName: true, subdomain: true },
+        });
+        if (!plug) throw new Error("Plug not found");
+      } else if (input.supplierId) {
+        orderSource = "supplier";
+        supplier = await tx.supplier.findUnique({
+          where: { id: input.supplierId },
+          select: { id: true, businessName: true, subdomain: true },
+        });
+        if (!supplier) throw new Error("Supplier not found");
+      }
+
+      // Calculate subtotal & delivery
       let subtotal = 0;
       const orderItemsData: any[] = [];
+      const supplierDeliveryMap: Record<string, number> = {};
 
-      for (const item of formattedInput.orderItems) {
-        // Plug price
-        const plugProduct = await tx.plugProduct.findUnique({
-          where: {
-            plugId_originalId: {
-              plugId: plug.id,
-              originalId: item.productId,
-            },
-          },
-          select: { price: true, commission: true },
-        });
-        if (!plugProduct)
-          throw new Error(
-            `PlugProduct not found for product ${item.productId}`
-          );
+      for (const item of input.orderItems) {
+        let plugPrice = 0;
+        let supplierPrice = 0;
 
-        // Supplier price
         const product = await tx.product.findUnique({
           where: { id: item.productId },
-          select: { id: true, price: true, name: true, supplierId: true },
+          select: {
+            id: true,
+            price: true,
+            name: true,
+            supplierId: true,
+            stock: true,
+          },
         });
         if (!product) throw new Error(`Product ${item.productId} not found`);
 
-        const plugPrice = plugProduct.price;
-        const commission = plugProduct.commission;
-        const supplierPrice = product.price;
-        const itemTotal = plugPrice * item.quantity;
-        subtotal += itemTotal;
+        supplierPrice = product.price;
+
+        if (orderSource === "plug") {
+          const plugProduct = await tx.plugProduct.findUnique({
+            where: {
+              plugId_originalId: {
+                plugId: plug.id,
+                originalId: item.productId,
+              },
+            },
+            select: { price: true },
+          });
+          if (!plugProduct)
+            throw new Error(`PlugProduct not found for ${item.productId}`);
+          plugPrice = plugProduct.price;
+          subtotal += plugPrice * item.quantity;
+        } else {
+          subtotal += supplierPrice * item.quantity;
+        }
+
+
+        //get the first delivery price for a supplier
+        if (!supplierDeliveryMap[product.supplierId]) {
+          supplierDeliveryMap[product.supplierId] = item.deliveryFee;
+        }
 
         orderItemsData.push({
           productId: item.productId,
@@ -88,153 +99,146 @@ export async function stageOrder(
           variantColor: item.variantColor || null,
           productName: product.name,
           plugPrice,
-          commission,
           supplierPrice,
-          supplierId: product.supplierId,
-          plugId: plug.id,
+          plugId: plug?.id || null,
+          supplierId: supplier?.id || product.supplierId,
+          deliveryFee: item.deliveryFee,
+          paymentMethod: item.paymentMethod,
         });
       }
 
-      // ====================================
-      // 2. Calculate delivery fee
-      // ====================================
-      let deliveryFee = 0;
-      let terminalAddress: string | null = null;
-
-      if (formattedInput.deliveryType === "terminal") {
-        const terminalInfo = getTerminalInfo(
-          formattedInput.terminalAddress as any
-        );
-        deliveryFee = terminalInfo.price;
-        terminalAddress = terminalInfo.address;
-      } else if (formattedInput.deliveryType === "home") {
-        // deliveryFee = calculateHomeDeliveryFee(
-        //   formattedInput.buyerAddress || "",
-        //   formattedInput.buyerState,
-        //   formattedInput.buyerLga
-        // );
-      }
-
-      // ====================================
-      // 3. Total amount
-      // ====================================
-      const totalAmount = subtotal + deliveryFee;
-
-      // ====================================
-      // 4. Initialize Paystack
-      // ====================================
-      const paystackResponse = await fetch(
-        "https://api.paystack.co/transaction/initialize",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${paystackSecretKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: formattedInput.buyerEmail,
-            amount: totalAmount * 100, // in kobo
-            metadata: {
-              buyerName: formattedInput.buyerName,
-              buyerPhone: formattedInput.buyerPhone,
-              plugId: plug.id,
-              orderItems: orderItemsData.map(
-                (i) => `${i.productName} x${i.quantity}`
-              ),
-            },
-          }),
-        }
+      const deliveryFeeTotal = Object.values(supplierDeliveryMap).reduce(
+        (a, b) => a + b,
+        0
       );
-      const paystackData = await paystackResponse.json();
-      if (!paystackData.status) throw new Error("Paystack init failed");
+      const totalAmount = subtotal + deliveryFeeTotal;
+      const hasPOD = input.orderItems.some(
+        (it) => it.paymentMethod === "P_O_D"
+      );
 
-      // ====================================
-      // 5. Generate order number
-      // ====================================
+      const nanoid6 = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
+      const orderNumber = `ORD-${new Date()
+        .toISOString()
+        .slice(2, 10)
+        .replace(/-/g, "")}-${nanoid6()}`;
 
-      // Generate order number
-      const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-      const nanoid6 = customAlphabet(alphabet, 6);
-      const datePart = new Date().toISOString().slice(2, 10).replace(/-/g, "");
-      const orderNumber = `ORD-${datePart}-${nanoid6()}`;
-
-      // ====================================
-      // 6. Upsert buyer
-      // ====================================
-      const buyerUpdateData: any = {
-        name: formattedInput.buyerName,
-      };
-
-      if (formattedInput.deliveryType === "home") {
-        buyerUpdateData.streetAddress = formattedInput.buyerAddress;
-        buyerUpdateData.state = formattedInput.buyerState;
-        buyerUpdateData.lga = formattedInput.buyerLga;
-        buyerUpdateData.directions = formattedInput.buyerDirections;
-      } else if (formattedInput.deliveryType === "terminal") {
-        buyerUpdateData.terminalAddress = terminalAddress;
-      }
-
+      // Upsert buyer
       const buyer = await tx.buyer.upsert({
         where: {
-          email_phone: {
-            email: formattedInput.buyerEmail,
-            phone: formattedInput.buyerPhone,
-          },
+          email_phone: { email: input.buyerEmail, phone: input.buyerPhone },
         },
-        update: buyerUpdateData,
+        update: {
+          name: input.buyerName,
+          streetAddress: input.buyerAddress || null,
+          state: input.buyerState || null,
+          lga: input.buyerLga || null,
+          directions: input.buyerDirections || null,
+        },
         create: {
-          name: formattedInput.buyerName,
-          email: formattedInput.buyerEmail,
-          phone: formattedInput.buyerPhone,
-          streetAddress: formattedInput.buyerAddress,
-          terminalAddress: terminalAddress,
-          state: formattedInput.buyerState,
-          lga: formattedInput.buyerLga,
-          directions: formattedInput.buyerDirections,
+          name: input.buyerName,
+          email: input.buyerEmail,
+          phone: input.buyerPhone,
+          streetAddress: input.buyerAddress || null,
+          state: input.buyerState,
+          lga: input.buyerLga || null,
+          directions: input.buyerDirections || null,
         },
       });
 
-      // ====================================
-      // 7. Create order
-      // ====================================
+      let paystackReference: string | null = null;
+      let paystackAuthUrl: string | null = null;
+
+      if (!hasPOD) {
+        const paystackResponse = await fetch(
+          "https://api.paystack.co/transaction/initialize",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${paystackSecretKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: input.buyerEmail,
+              amount: Math.round(totalAmount * 100),
+              metadata: {
+                buyerName: input.buyerName,
+                buyerPhone: input.buyerPhone,
+                plugId: plug?.id || null,
+                supplierId: supplier?.id || null,
+              },
+            }),
+          }
+        );
+        const paystackData = await paystackResponse.json();
+        if (!paystackData.status)
+          throw new Error("Paystack initialization failed");
+        paystackReference = paystackData.data.reference;
+        paystackAuthUrl = paystackData.data.authorization_url;
+      }
+
+      // Create order
       const order = await tx.order.create({
         data: {
           orderNumber,
           buyerId: buyer.id,
-          plugId: plug.id,
+          plugId: plug?.id || null,
+          supplierId: supplier?.id || null,
           totalAmount,
-          deliveryFee,
-          platform: formattedInput.platform || "Unknown",
-          buyerName: formattedInput.buyerName,
-          buyerEmail: formattedInput.buyerEmail,
-          buyerPhone: formattedInput.buyerPhone,
-          buyerAddress: formattedInput.buyerAddress,
-          buyerState: formattedInput.buyerState,
-          buyerLga: formattedInput.buyerLga,
-          buyerDirections: formattedInput.buyerDirections,
-          buyerInstructions: formattedInput.buyerInstructions,
-          paymentReference: paystackData.data.reference,
-          terminalAddress,
-          deliveryType: formattedInput.deliveryType,
-          status: "STAGED",
+          deliveryFee: deliveryFeeTotal,
+          platform: input.platform || "Unknown",
+          buyerName: input.buyerName,
+          buyerEmail: input.buyerEmail,
+          buyerPhone: input.buyerPhone,
+          buyerAddress: input.buyerAddress || null,
+          buyerState: input.buyerState,
+          buyerLga: input.buyerLga || null,
+          buyerDirections: input.buyerDirections || null,
+          buyerInstructions: input.buyerInstructions || null,
+          paymentReference: paystackReference,
+          status: hasPOD ? OrderStatus.PENDING : OrderStatus.STAGED,
         },
       });
 
-      // ====================================
-      // 8. Create order items
-      // ====================================
       await tx.orderItem.createMany({
-        data: orderItemsData.map((i) => ({
-          ...i,
-          orderId: order.id,
-        })),
+        data: orderItemsData.map((i) => ({ ...i, orderId: order.id })),
       });
 
-      return {
-        authorization_url: paystackData.data.authorization_url,
-        reference: paystackData.data.reference,
-        orderNumber,
-      };
+      // Handle POD stock deduction
+      if (hasPOD) {
+        await Promise.all(
+          orderItemsData.map(async (item) => {
+            const product = await tx.product.findUnique({
+              where: { id: item.productId },
+            });
+            if (!product)
+              throw new Error(`Product ${item.productId} not found`);
+
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: Math.max(product.stock! - item.quantity, 0) },
+            });
+
+            if (item.variantId) {
+              const variant = await tx.productVariation.findUnique({
+                where: { id: item.variantId },
+              });
+              if (variant)
+                await tx.productVariation.update({
+                  where: { id: item.variantId },
+                  data: { stock: Math.max(variant.stock! - item.quantity, 0) },
+                });
+            }
+          })
+        );
+      }
+
+      return hasPOD
+        ? { orderNumber, message: "Order placed successfully!" }
+        : {
+            authorization_url: paystackAuthUrl,
+            reference: paystackReference,
+            orderNumber,
+          };
     });
 
     res.status(201).json({ data: response });
@@ -243,7 +247,8 @@ export async function stageOrder(
   }
 }
 
-// sold: { increment: item.quantity },  THE SOLD PRODUCT ITEM INCREASED  WHEN DELIVERED SO MAPPING THROUGH
+
+// sold: { increment: item.quantity },  THE SOLD PRODUCT ITEM INCREASED  WHEN DELIVERED SO MAPPING THROUGH // sold and quantity
 
 export async function confirmOrder(
   req: Request,
@@ -271,6 +276,8 @@ export async function confirmOrder(
           plug: {
             select: { businessName: true, subdomain: true },
           },
+        supplier: { select: { businessName: true, subdomain: true } },
+
         },
       });
 
@@ -298,7 +305,6 @@ export async function confirmOrder(
       if (!paymentData.status) {
         throw new Error(paymentData.message || "Payment verification failed");
       }
-
 
       if (paymentData.data.status !== "success") {
         throw new Error("Payment was not successful");
@@ -333,7 +339,7 @@ export async function confirmOrder(
           await tx.product.update({
             where: { id: item.productId },
             data: {
-              stock: Math.max(product.stock - item.quantity, 0),
+              stock: Math.max(product.stock! - item.quantity, 0),
             },
           });
 
@@ -347,7 +353,7 @@ export async function confirmOrder(
             // Update variant stock
             await tx.productVariation.update({
               where: { id: item.variantId, productId: item.productId },
-              data: { stock: Math.max(variant.stock - item.quantity, 0) },
+              data: { stock: Math.max(variant.stock! - item.quantity, 0) },
             });
           }
         })
@@ -359,30 +365,33 @@ export async function confirmOrder(
         data: { status: "PENDING" },
       });
 
-      const plugStoreUrl = order.plug?.subdomain
-        ? `https://${order.plug.subdomain}.pluggn.store`
-        : null;
+      const storeUrl =
+        order.plug?.subdomain
+          ? `https://${order.plug.subdomain}.pluggn.store`
+          : order.supplier?.subdomain
+          ? `https://${order.supplier.subdomain}.pluggn.store`
+          : null;
+
+          // Always get business name
+      const businessName = order.plug?.businessName || order.supplier?.businessName;
+
 
       try {
-        await successOrderMail(
-          order.buyerEmail,
-          order.buyerName,
-          order.plug?.businessName,
-          plugStoreUrl,
-          order.orderNumber,
-          order.deliveryType,
-          order.terminalAddress
-        );
+      //  await successOrderMail(
+      //    order.buyerEmail,
+      //    order.buyerName,
+      //    businessName,
+      //    storeUrl,
+      //    order.orderNumber
+      //  );
       } catch (error) {
         console.error("Failed to send success order email:", error);
       }
 
       return {
-        plugBusinessName: order.plug?.businessName,
-        plugStoreUrl,
+        businessName,
+        storeUrl,
         buyerName: order.buyerName,
-        terminalAddress: order.terminalAddress,
-        deliveryType: order.deliveryType,
         orderNumber: order.orderNumber,
       };
     });

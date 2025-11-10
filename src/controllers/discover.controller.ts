@@ -539,8 +539,8 @@ export const getAcceptedProducts = async (
         name: true,
         price: true,
         images: true,
-        minPrice: true,
-        maxPrice: true,
+        // minPrice: true,
+        // maxPrice: true,
       },
     });
 
