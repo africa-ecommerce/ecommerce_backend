@@ -263,6 +263,7 @@ model Order {
   orderNumber        String            @unique
   buyerId            String
   plugId             String?
+  supplierId         String?
   totalAmount        Float             @default(0)
   deliveryFee        Float             @default(0)
   status             OrderStatus       @default(PENDING)
@@ -276,13 +277,13 @@ model Order {
   buyerInstructions  String?
   paymentReference   String?
   deliveryTrackingId String            @default("")
+  platform           String?           @default("Unknown")
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
-  platform           String?           @default("Unknown")
-  supplierId         String?
+
   buyer              Buyer             @relation(fields: [buyerId], references: [id])
   plug               Plug?             @relation(fields: [plugId], references: [id])
-  supplier           Supplier?             @relation(fields: [supplierId], references: [id])
+  supplier           Supplier?         @relation(fields: [supplierId], references: [id])
   orderItems         OrderItem[]
   plugPayment        PlugPayment?
   supplierPayment    SupplierPayment[]
@@ -295,49 +296,47 @@ model Order {
 }
 
 model OrderItem {
-  id                String             @id @default(cuid())
-  orderId           String
-  productId         String
-  variantId         String?
-  quantity          Int
-  productSize       String?
-  productColor      String?
-  variantSize       String?
-  variantColor      String?
+  id                 String             @id @default(cuid())
+  orderId            String
+  productId          String
+  variantId          String?
+  quantity           Int
+  productSize        String?
+  productColor       String?
+  variantSize        String?
+  variantColor       String?
   deliveryLocationId String?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  productName       String
-  plugPrice         Float
-  supplierId        String
-  supplierPrice     Float
-  plugId            String?
-  recieved          Boolean            @default(false)
-  deliveryFee       Float              @default(0)
-  paymentMethod     String?
-  order             Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  PausedOrderItem   PausedOrderItem?
-  ReturnedOrderItem ReturnedOrderItem?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  productName        String
+  plugPrice          Float
+  supplierPrice      Float
+  supplierId         String
+  plugId             String?
+  recieved           Boolean            @default(false)
+  deliveryFee        Float              @default(0)
+  paymentMethod      String?
+  order              Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
   @@index([productId])
 }
 
-model PausedOrderItem {
-  id          String    @id @default(cuid())
-  orderItemId String    @unique
-  quantity    Int
-  createdAt   DateTime  @default(now())
-  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
-}
+// model PausedOrderItem {
+//   id          String    @id @default(cuid())
+//   orderItemId String    @unique
+//   quantity    Int
+//   createdAt   DateTime  @default(now())
+//   orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
+// }
 
-model ReturnedOrderItem {
-  id          String    @id @default(cuid())
-  orderItemId String    @unique
-  quantity    Int
-  createdAt   DateTime  @default(now())
-  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
-}
+// model ReturnedOrderItem {
+//   id          String    @id @default(cuid())
+//   orderItemId String    @unique
+//   quantity    Int
+//   createdAt   DateTime  @default(now())
+//   orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
+// }
 
 model Review {
   id        String   @id @default(cuid())
