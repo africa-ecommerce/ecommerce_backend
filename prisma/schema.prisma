@@ -266,7 +266,9 @@ model Order {
   supplierId         String?
   totalAmount        Float             @default(0)
   deliveryFee        Float             @default(0)
-  status             OrderStatus       @default(PENDING)
+  deliveryLocationId String?
+  paymentMethod      String?
+  status             OrderStatus       @default(STAGED)
   buyerName          String
   buyerEmail         String
   buyerPhone         String
@@ -275,7 +277,7 @@ model Order {
   buyerLga           String?
   buyerDirections    String?
   buyerInstructions  String?
-  paymentReference   String?
+  paymentReference   String?           
   deliveryTrackingId String            @default("")
   platform           String?           @default("Unknown")
   createdAt          DateTime          @default(now())
@@ -293,30 +295,28 @@ model Order {
   @@index([status])
   @@index([createdAt])
   @@index([orderNumber])
+  @@index([paymentReference])
 }
 
 model OrderItem {
-  id                 String             @id @default(cuid())
-  orderId            String
-  productId          String
-  variantId          String?
-  quantity           Int
-  productSize        String?
-  productColor       String?
-  variantSize        String?
-  variantColor       String?
-  deliveryLocationId String?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  productName        String
-  plugPrice          Float
-  supplierPrice      Float
-  supplierId         String
-  plugId             String?
-  recieved           Boolean            @default(false)
-  deliveryFee        Float              @default(0)
-  paymentMethod      String?
-  order              Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id           String    @id @default(cuid())
+  orderId      String
+  productId    String
+  variantId    String?
+  quantity     Int
+  productSize  String?
+  productColor String?
+  variantSize  String?
+  variantColor String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  productName  String
+  plugPrice    Float
+  supplierPrice Float
+  supplierId   String
+  plugId       String?
+  recieved     Boolean   @default(false)
+  order        Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
   @@index([productId])
