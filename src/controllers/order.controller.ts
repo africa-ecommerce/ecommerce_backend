@@ -8,7 +8,7 @@ import { AuthRequest } from "../types";
 import { formatPlugOrders, formatSupplierOrders } from "../helper/formatData";
 
 // Helper to build store url
-const buildStoreUrl = (plug: any, supplier: any ) =>
+const buildStoreUrl = (plug: any, supplier: any) =>
   plug?.subdomain
     ? `https://${plug.subdomain}.pluggn.store`
     : supplier?.subdomain
@@ -19,8 +19,8 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
   try {
     const parsed = StageOrderSchema.safeParse(req.body);
     if (!parsed.success) {
-       res.status(400).json({ error: "Invalid field data" });
-       return
+      res.status(400).json({ error: "Invalid field data" });
+      return;
     }
     const input = parsed.data;
 
@@ -28,10 +28,50 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
     const nanoid6 = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
     const paymentReference = `REF-${nanoid6()}-${Date.now()}`;
 
+    // ---------- CHECK: if this reference already exists in DB, return it (prevents duplicate initialization) ----------
+    const existingOrders = await prisma.order.findMany({
+      where: { paymentReference, status: "STAGED" },
+      select: { id: true, paymentMethod: true },
+      take: 1,
+    });
+
+    if (existingOrders.length > 0) {
+      // Reference already staged - check if we need to fetch Paystack URL
+      const hasOnlineExisting = existingOrders.some((o) => o.paymentMethod !== "P_O_D");
+      
+      if (hasOnlineExisting) {
+        // Fetch the authorization_url from Paystack (or store it in DB - see alternative below)
+        const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${paymentReference}`, {
+          headers: { Authorization: `Bearer ${paystackSecretKey}` },
+        });
+        const verifyJson = await verifyRes.json();
+        
+        if (verifyJson?.status && verifyJson.data?.authorization_url) {
+           res.status(200).json({
+            data: {
+              authorization_url: verifyJson.data.authorization_url,
+              reference: paymentReference,
+            },
+          });
+          return;
+        }
+      }
+      
+      // If P_O_D only or couldn't fetch URL, just return reference
+       res.status(200).json({
+        data: {
+          authorization_url: null,
+          reference: paymentReference,
+        },
+      });
+      return;
+    }
+
     // ---------- group incoming items by supplierId + paymentMethod ----------
     const groups = input.orderItems.reduce((acc: Record<string, any>, item) => {
       const key = `${item.supplierId}_${item.paymentMethod}`;
-      if (!acc[key]) acc[key] = { supplierId: item.supplierId, paymentMethod: item.paymentMethod, items: [] };
+      if (!acc[key])
+        acc[key] = { supplierId: item.supplierId, paymentMethod: item.paymentMethod, items: [] };
       acc[key].items.push(item);
       return acc;
     }, {} as Record<string, { supplierId: string; paymentMethod: string; items: any[] }>);
@@ -40,8 +80,7 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
     let totalOnlineAmount = 0;
     let hasOnline = false;
 
-    // We compute sums using product prices — but we need product price lookup.
-    // To avoid multiple DB calls we will fetch all involved products first.
+    // Fetch all products first
     const productIds = Array.from(new Set(input.orderItems.map((i: any) => i.productId)));
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } },
@@ -58,14 +97,9 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
       for (const it of group.items) {
         const prod = productMap.get(it.productId);
         if (!prod) {
-          // product not found — fail early before creating reference in DB
-           res.status(400).json({ error: `Product ${it.productId} not found` });
-           return;
+          res.status(400).json({ error: `Product ${it.productId} not found` });
+          return;
         }
-
-        // price used for checkout depends on whether it's a plug or supplier source;
-        // but at this stage we don't know plug price yet. We'll use supplier price (product.price)
-        // and adjust later when we create orders inside the transaction (we will re-check plugProduct).
         subtotal += prod.price * it.quantity;
       }
 
@@ -95,8 +129,8 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
 
       const initJson = await initRes.json();
       if (!initJson || !initJson.status) {
-         res.status(500).json({ error: "Paystack initialization failed" });
-         return
+        res.status(500).json({ error: "Paystack initialization failed" });
+        return;
       }
       authorizationUrl = initJson.data.authorization_url;
     }
@@ -109,15 +143,24 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
       let orderSource: "plug" | "supplier";
 
       if (input.id) {
-        plug = await tx.plug.findUnique({ where: { id: input.id }, select: { id: true, businessName: true, subdomain: true } });
+        plug = await tx.plug.findUnique({
+          where: { id: input.id },
+          select: { id: true, businessName: true, subdomain: true },
+        });
         if (plug) orderSource = "plug";
         else {
-          supplier = await tx.supplier.findUnique({ where: { id: input.id }, select: { id: true, businessName: true, subdomain: true } });
+          supplier = await tx.supplier.findUnique({
+            where: { id: input.id },
+            select: { id: true, businessName: true, subdomain: true },
+          });
           if (!supplier) throw new Error("Invalid id: not a plug or supplier");
           orderSource = "supplier";
         }
       } else {
-        plug = await tx.plug.findUnique({ where: { subdomain: input.subdomain }, select: { id: true, businessName: true, subdomain: true } });
+        plug = await tx.plug.findUnique({
+          where: { subdomain: input.subdomain },
+          select: { id: true, businessName: true, subdomain: true },
+        });
         if (!plug) throw new Error("Plug not found by subdomain");
         orderSource = "plug";
       }
@@ -147,15 +190,16 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
 
       for (const [key, group] of Object.entries(groups)) {
         const { supplierId, paymentMethod, items } = group;
-        // compute subtotal but with correct plugPrice if needed
         let subtotal = 0;
         const orderItemsToCreate: any[] = [];
         const deliveryFee = items[0]?.deliveryFee ?? 0;
         const deliveryLocationId = items[0]?.deliveryLocationId ?? null;
 
         for (const it of items) {
-          // fetch product and possibly plugProduct
-          const prod = await tx.product.findUnique({ where: { id: it.productId }, select: { id: true, price: true, name: true, supplierId: true, stock: true } });
+          const prod = await tx.product.findUnique({
+            where: { id: it.productId },
+            select: { id: true, price: true, name: true, supplierId: true, stock: true },
+          });
           if (!prod) throw new Error(`Product ${it.productId} not found`);
 
           let plugPrice = prod.price;
@@ -187,7 +231,9 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
         }
 
         const totalAmount = subtotal + deliveryFee;
-        const orderNumber = `ORD-${new Date().toISOString().slice(2, 10)
+        const orderNumber = `ORD-${new Date()
+          .toISOString()
+          .slice(2, 10)
           .replace(/-/g, "")}-${customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6)()}`;
 
         const createdOrder = await tx.order.create({
@@ -221,15 +267,13 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
         createdOrders.push({ id: createdOrder.id, supplierId, paymentMethod });
       }
 
-     
       return {
         authorization_url: authorizationUrl,
         reference: paymentReference,
-        
       };
     });
 
-     res.status(201).json({ data: txResult });
+    res.status(201).json({ data: txResult });
   } catch (err) {
     next(err);
   }
@@ -239,8 +283,8 @@ export async function confirmOrder(req: Request, res: Response, next: NextFuncti
   try {
     const parsed = ConfirmOrderSchema.safeParse(req.body);
     if (!parsed.success) {
-       res.status(400).json({ error: "Invalid field data!" });
-       return;
+      res.status(400).json({ error: "Invalid field data!" });
+      return;
     }
     const { reference } = parsed.data;
 
@@ -260,7 +304,7 @@ export async function confirmOrder(req: Request, res: Response, next: NextFuncti
       // Determine online orders (paymentMethod !== P_O_D)
       const onlineOrders = stagedOrders.filter((o) => o.paymentMethod && o.paymentMethod !== "P_O_D");
 
-      // If there are online orders -> verify Paystack once
+      // If there are online orders -> verify Paystack ONCE
       if (onlineOrders.length > 0) {
         const totalOnline = onlineOrders.reduce((s, o) => s + o.totalAmount, 0);
 
@@ -320,7 +364,6 @@ export async function confirmOrder(req: Request, res: Response, next: NextFuncti
     next(err);
   }
 }
-
 
 /**
  * @dev PUBLIC ENDPOINT
