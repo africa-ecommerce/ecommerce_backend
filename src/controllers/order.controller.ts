@@ -7,49 +7,124 @@ import { successOrderMail } from "../helper/mail/order/successOrderMail";
 import { AuthRequest } from "../types";
 import { formatPlugOrders, formatSupplierOrders } from "../helper/formatData";
 
-export async function stageOrder(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
+// Helper to build store url
+const buildStoreUrl = (plug: any, supplier: any ) =>
+  plug?.subdomain
+    ? `https://${plug.subdomain}.pluggn.store`
+    : supplier?.subdomain
+    ? `https://${supplier.subdomain}.pluggn.store`
+    : "";
+
+export async function stageOrder(req: Request, res: Response, next: NextFunction) {
   try {
     const parsed = StageOrderSchema.safeParse(req.body);
-    if (!parsed.success){
-     res.status(400).json({ error: "Invalid field data" });
-      return
+    if (!parsed.success) {
+       res.status(400).json({ error: "Invalid field data" });
+       return
     }
-       
-
     const input = parsed.data;
 
-    const result = await prisma.$transaction(async (tx) => {
+    // ---------- generate single shared payment reference ----------
+    const nanoid6 = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
+    const paymentReference = `REF-${nanoid6()}-${Date.now()}`;
+
+    // ---------- group incoming items by supplierId + paymentMethod ----------
+    const groups = input.orderItems.reduce((acc: Record<string, any>, item) => {
+      const key = `${item.supplierId}_${item.paymentMethod}`;
+      if (!acc[key]) acc[key] = { supplierId: item.supplierId, paymentMethod: item.paymentMethod, items: [] };
+      acc[key].items.push(item);
+      return acc;
+    }, {} as Record<string, { supplierId: string; paymentMethod: string; items: any[] }>);
+
+    // ---------- determine if any online payments exist and total amount for those ----------
+    let totalOnlineAmount = 0;
+    let hasOnline = false;
+
+    // We compute sums using product prices — but we need product price lookup.
+    // To avoid multiple DB calls we will fetch all involved products first.
+    const productIds = Array.from(new Set(input.orderItems.map((i: any) => i.productId)));
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, price: true },
+    });
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
+    // Precompute group totals for online items
+    for (const [key, group] of Object.entries(groups)) {
+      const paymentMethod = group.paymentMethod;
+      let subtotal = 0;
+      const firstDeliveryFee = group.items[0]?.deliveryFee ?? 0;
+
+      for (const it of group.items) {
+        const prod = productMap.get(it.productId);
+        if (!prod) {
+          // product not found — fail early before creating reference in DB
+           res.status(400).json({ error: `Product ${it.productId} not found` });
+           return;
+        }
+
+        // price used for checkout depends on whether it's a plug or supplier source;
+        // but at this stage we don't know plug price yet. We'll use supplier price (product.price)
+        // and adjust later when we create orders inside the transaction (we will re-check plugProduct).
+        subtotal += prod.price * it.quantity;
+      }
+
+      const groupTotal = subtotal + firstDeliveryFee;
+      if (paymentMethod !== "P_O_D") {
+        hasOnline = true;
+        totalOnlineAmount += groupTotal;
+      }
+    }
+
+    // ---------- If there are online items, initialize Paystack once (outside DB tx) ----------
+    let authorizationUrl: string | null = null;
+    if (hasOnline) {
+      const initRes = await fetch("https://api.paystack.co/transaction/initialize", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${paystackSecretKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: input.buyerEmail,
+          amount: Math.round(totalOnlineAmount * 100), // kobo
+          reference: paymentReference,
+          metadata: { id: input.id || null, source: "pluggn" },
+        }),
+      });
+
+      const initJson = await initRes.json();
+      if (!initJson || !initJson.status) {
+         res.status(500).json({ error: "Paystack initialization failed" });
+         return
+      }
+      authorizationUrl = initJson.data.authorization_url;
+    }
+
+    // ---------- Create orders inside a single transaction (assign same paymentReference) ----------
+    const txResult = await prisma.$transaction(async (tx) => {
+      // identify plug or supplier once (based on input.id or subdomain)
       let plug: any = null;
       let supplier: any = null;
       let orderSource: "plug" | "supplier";
 
       if (input.id) {
-        plug = await tx.plug.findUnique({ where: { id: input.id } });
+        plug = await tx.plug.findUnique({ where: { id: input.id }, select: { id: true, businessName: true, subdomain: true } });
         if (plug) orderSource = "plug";
         else {
-          supplier = await tx.supplier.findUnique({ where: { id: input.id } });
+          supplier = await tx.supplier.findUnique({ where: { id: input.id }, select: { id: true, businessName: true, subdomain: true } });
           if (!supplier) throw new Error("Invalid id: not a plug or supplier");
           orderSource = "supplier";
         }
-      } else if (input.subdomain) {
-        plug = await tx.plug.findUnique({
-          where: { subdomain: input.subdomain },
-        });
+      } else {
+        plug = await tx.plug.findUnique({ where: { subdomain: input.subdomain }, select: { id: true, businessName: true, subdomain: true } });
         if (!plug) throw new Error("Plug not found by subdomain");
         orderSource = "plug";
-      } else {
-        throw new Error("Either id or subdomain must be provided");
       }
 
-      // Buyer
+      // upsert buyer
       const buyer = await tx.buyer.upsert({
-        where: {
-          email_phone: { email: input.buyerEmail, phone: input.buyerPhone },
-        },
+        where: { email_phone: { email: input.buyerEmail, phone: input.buyerPhone } },
         update: {
           name: input.buyerName,
           streetAddress: input.buyerAddress || null,
@@ -68,137 +143,64 @@ export async function stageOrder(
         },
       });
 
-      // Group by supplier
-      const itemsBySupplier = input.orderItems.reduce((acc, item) => {
-        if (!acc[item.supplierId]) acc[item.supplierId] = [];
-        acc[item.supplierId].push(item);
-        return acc;
-      }, {} as Record<string, typeof input.orderItems>);
+      const createdOrders: { id: string; supplierId: string; paymentMethod: string }[] = [];
 
-      const nanoid6 = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
-      const paymentReference = `REF-${nanoid6()}-${Date.now()}`;
-
-      const ordersToCreate = [];
-      let totalOnlineAmount = 0;
-      let hasOnline = false;
-
-      for (const [supplierId, items] of Object.entries(itemsBySupplier)) {
+      for (const [key, group] of Object.entries(groups)) {
+        const { supplierId, paymentMethod, items } = group;
+        // compute subtotal but with correct plugPrice if needed
         let subtotal = 0;
-        const orderItemsData: any[] = [];
+        const orderItemsToCreate: any[] = [];
+        const deliveryFee = items[0]?.deliveryFee ?? 0;
+        const deliveryLocationId = items[0]?.deliveryLocationId ?? null;
 
-        const deliveryFee = items[0].deliveryFee || 0;
-        const deliveryLocationId = items[0].deliveryLocationId || null;
-        const paymentMethod = items[0].paymentMethod || "P_O_D";
+        for (const it of items) {
+          // fetch product and possibly plugProduct
+          const prod = await tx.product.findUnique({ where: { id: it.productId }, select: { id: true, price: true, name: true, supplierId: true, stock: true } });
+          if (!prod) throw new Error(`Product ${it.productId} not found`);
 
-        for (const item of items) {
-          const product = await tx.product.findUnique({
-            where: { id: item.productId },
-            select: {
-              id: true,
-              price: true,
-              name: true,
-              supplierId: true,
-              stock: true,
-            },
-          });
-          if (!product) throw new Error(`Product ${item.productId} not found`);
-
-          const supplierPrice = product.price;
-          let plugPrice = supplierPrice;
-
+          let plugPrice = prod.price;
           if (orderSource === "plug" && plug) {
             const plugProduct = await tx.plugProduct.findUnique({
-              where: {
-                plugId_originalId: {
-                  plugId: plug.id,
-                  originalId: item.productId,
-                },
-              },
+              where: { plugId_originalId: { plugId: plug.id, originalId: it.productId } },
               select: { price: true },
             });
-            if (plugProduct) plugPrice = plugProduct.price;
+            if (!plugProduct) throw new Error(`PlugProduct not found for ${it.productId}`);
+            plugPrice = plugProduct.price;
           }
 
-          subtotal +=
-            (orderSource === "plug" ? plugPrice : supplierPrice) *
-            item.quantity;
+          subtotal += (orderSource === "plug" ? plugPrice : prod.price) * it.quantity;
 
-          orderItemsData.push({
-            productId: item.productId,
-            variantId: item.variantId || null,
-            quantity: item.quantity,
-            productSize: item.productSize || null,
-            productColor: item.productColor || null,
-            variantSize: item.variantSize || null,
-            variantColor: item.variantColor || null,
-            productName: product.name,
+          orderItemsToCreate.push({
+            productId: it.productId,
+            variantId: it.variantId || null,
+            quantity: it.quantity,
+            productSize: it.productSize || null,
+            productColor: it.productColor || null,
+            variantSize: it.variantSize || null,
+            variantColor: it.variantColor || null,
+            productName: prod.name,
             plugPrice,
-            supplierPrice,
-            supplierId: product.supplierId,
+            supplierPrice: prod.price,
+            supplierId: prod.supplierId,
             plugId: plug?.id || null,
           });
         }
 
         const totalAmount = subtotal + deliveryFee;
-        if (paymentMethod !== "P_O_D") {
-          hasOnline = true;
-          totalOnlineAmount += totalAmount;
-        }
+        const orderNumber = `ORD-${new Date().toISOString().slice(2, 10)
+          .replace(/-/g, "")}-${customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6)()}`;
 
-        const orderNumber = `ORD-${new Date()
-          .toISOString()
-          .slice(2, 10)
-          .replace(/-/g, "")}-${nanoid6()}`;
-
-        ordersToCreate.push({
-          supplierId,
-          totalAmount,
-          deliveryFee,
-          deliveryLocationId,
-          paymentMethod,
-          orderItemsData,
-          orderNumber,
-        });
-      }
-
-      let paystackAuthUrl: string | null = null;
-
-      if (hasOnline) {
-        const paystackRes = await fetch(
-          "https://api.paystack.co/transaction/initialize",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${paystackSecretKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              email: input.buyerEmail,
-              amount: Math.round(totalOnlineAmount * 100),
-              reference: paymentReference, // same reference
-              metadata: { id: input.id, source: orderSource },
-            }),
-          }
-        );
-        const paystackData = await paystackRes.json();
-        if (!paystackData.status)
-          throw new Error("Paystack initialization failed");
-        paystackAuthUrl = paystackData.data.authorization_url;
-      }
-
-      // Create all supplier orders
-      for (const o of ordersToCreate) {
         const createdOrder = await tx.order.create({
           data: {
-            orderNumber: o.orderNumber,
+            orderNumber,
             buyerId: buyer.id,
             plugId: plug?.id || null,
-            supplierId: o.supplierId,
-            totalAmount: o.totalAmount,
-            deliveryFee: o.deliveryFee,
-            deliveryLocationId: o.deliveryLocationId,
-            paymentMethod: o.paymentMethod,
-            paymentReference, // single shared reference
+            supplierId,
+            totalAmount,
+            deliveryFee,
+            deliveryLocationId,
+            paymentMethod,
+            paymentReference, // shared
             platform: input.platform || "Unknown",
             buyerName: input.buyerName,
             buyerEmail: input.buyerEmail,
@@ -208,65 +210,42 @@ export async function stageOrder(
             buyerLga: input.buyerLga || null,
             buyerDirections: input.buyerDirections || null,
             buyerInstructions: input.buyerInstructions || null,
+            status: OrderStatus.STAGED,
           },
         });
 
         await tx.orderItem.createMany({
-          data: o.orderItemsData.map((i) => ({
-            ...i,
-            orderId: createdOrder.id,
-          })),
+          data: orderItemsToCreate.map((oi) => ({ ...oi, orderId: createdOrder.id })),
         });
+
+        createdOrders.push({ id: createdOrder.id, supplierId, paymentMethod });
       }
 
-      const businessName = plug?.businessName || supplier?.businessName || "";
-      const storeUrl = plug?.subdomain
-        ? `https://${plug.subdomain}.pluggn.store`
-        : supplier?.subdomain
-        ? `https://${supplier.subdomain}.pluggn.store`
-        : "";
-
-      return hasOnline
-        ? {
-            authorization_url: paystackAuthUrl,
-            reference: paymentReference,
-            businessName,
-            storeUrl,
-          }
-        : {
-            message: "Order staged successfully!",
-            reference: paymentReference,
-            businessName,
-            storeUrl,
-          };
+     
+      return {
+        authorization_url: authorizationUrl,
+        reference: paymentReference,
+        
+      };
     });
 
-    res.status(201).json({ data: result });
+     res.status(201).json({ data: txResult });
   } catch (err) {
     next(err);
   }
 }
 
-
-
-// sold: { increment: item.quantity },  THE SOLD PRODUCT ITEM INCREASED  WHEN DELIVERED SO MAPPING THROUGH // sold and quantity
-
-export async function confirmOrder(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
+export async function confirmOrder(req: Request, res: Response, next: NextFunction) {
   try {
     const parsed = ConfirmOrderSchema.safeParse(req.body);
     if (!parsed.success) {
-    res.status(400).json({ error: "Invalid field data!" });
-    return
+       res.status(400).json({ error: "Invalid field data!" });
+       return;
     }
-     
     const { reference } = parsed.data;
 
     const result = await prisma.$transaction(async (tx) => {
-      // Get all staged orders with same payment reference
+      // find staged orders with this reference
       const stagedOrders = await tx.order.findMany({
         where: { paymentReference: reference, status: "STAGED" },
         include: {
@@ -276,94 +255,67 @@ export async function confirmOrder(
         },
       });
 
-      if (!stagedOrders.length)
-        throw new Error("No staged orders found for reference");
+      if (!stagedOrders.length) throw new Error("No staged orders found for reference");
 
-      // Cache verification result if already done
-      let paystackVerified = false;
-      let paystackData: any = null;
+      // Determine online orders (paymentMethod !== P_O_D)
+      const onlineOrders = stagedOrders.filter((o) => o.paymentMethod && o.paymentMethod !== "P_O_D");
 
-      // Loop through all staged orders individually
-      for (const order of stagedOrders) {
-        if (order.paymentMethod !== "P_O_D") {
-          // Verify Paystack only once (cached)
-          if (!paystackVerified) {
-            const verifyRes = await fetch(
-              `https://api.paystack.co/transaction/verify/${reference}`,
-              {
-                headers: { Authorization: `Bearer ${paystackSecretKey}` },
-              }
-            );
-            paystackData = await verifyRes.json();
+      // If there are online orders -> verify Paystack once
+      if (onlineOrders.length > 0) {
+        const totalOnline = onlineOrders.reduce((s, o) => s + o.totalAmount, 0);
 
-            if (!paystackData.status)
-              throw new Error("Payment verification failed");
-            if (paystackData.data.status !== "success")
-              throw new Error("Payment not successful");
-
-            paystackVerified = true;
-          }
-
-          // Validate amount consistency for this order
-          if (
-            paystackData &&
-            paystackData.data.amount < Math.round(order.totalAmount * 100)
-          ) {
-            throw new Error(
-              `Payment amount mismatch for order ${order.orderNumber}`
-            );
-          }
-        }
-
-        // Update order to pending
-        await tx.order.update({
-          where: { id: order.id },
-          data: { status: "PENDING" },
+        const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+          headers: { Authorization: `Bearer ${paystackSecretKey}` },
         });
 
-        // Reduce product stock
-        for (const item of order.orderItems) {
-          const product = await tx.product.findUnique({
-            where: { id: item.productId },
-          });
+        const verifyJson = await verifyRes.json();
+        if (!verifyJson || !verifyJson.status) throw new Error("Payment verification failed");
+        if (verifyJson.data.status !== "success") throw new Error("Payment not successful");
+
+        // Paystack amount is in kobo
+        if (Math.round(totalOnline * 100) !== verifyJson.data.amount) {
+          throw new Error("Payment amount mismatch");
+        }
+      }
+
+      // Now loop through all orders and mark as PENDING and decrement stock
+      for (const order of stagedOrders) {
+        await tx.order.update({
+          where: { id: order.id },
+          data: { status: OrderStatus.PENDING },
+        });
+
+        // decrease stock for items
+        for (const it of order.orderItems) {
+          const product = await tx.product.findUnique({ where: { id: it.productId } });
           if (product) {
             await tx.product.update({
-              where: { id: item.productId },
-              data: { stock: Math.max(product.stock! - item.quantity, 0) },
+              where: { id: it.productId },
+              data: { stock: Math.max(product.stock! - it.quantity, 0) },
             });
           }
 
-          if (item.variantId) {
-            const variant = await tx.productVariation.findUnique({
-              where: { id: item.variantId },
-            });
+          if (it.variantId) {
+            const variant = await tx.productVariation.findUnique({ where: { id: it.variantId } });
             if (variant) {
               await tx.productVariation.update({
-                where: { id: item.variantId },
-                data: { stock: Math.max(variant.stock! - item.quantity, 0) },
+                where: { id: it.variantId },
+                data: { stock: Math.max(variant.stock! - it.quantity, 0) },
               });
             }
           }
         }
       }
 
-      // Return basic info
+      // return business info (use any order as source)
       const anyOrder = stagedOrders.find((o) => o.plug || o.supplier);
-      const businessName =
-        anyOrder?.plug?.businessName || anyOrder?.supplier?.businessName || "";
-      const storeUrl = anyOrder?.plug?.subdomain
-        ? `https://${anyOrder.plug.subdomain}.pluggn.store`
-        : anyOrder?.supplier?.subdomain
-        ? `https://${anyOrder.supplier.subdomain}.pluggn.store`
-        : "";
+      const businessName = anyOrder?.plug?.businessName || anyOrder?.supplier?.businessName || "";
+      const storeUrl = buildStoreUrl(anyOrder?.plug!, anyOrder?.supplier!);
 
-      return { businessName, storeUrl };
+      return { businessName, storeUrl, reference };
     });
 
-    res.status(200).json({
-      message: "Orders confirmed successfully!",
-      data: result,
-    });
+    res.status(200).json({ message: "Orders confirmed successfully!", data: result });
   } catch (err) {
     next(err);
   }
