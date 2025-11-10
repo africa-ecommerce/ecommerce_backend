@@ -209,6 +209,8 @@ export async function stageOrder(
           },
         });
 
+        console.log("createdOrder", createdOrder);
+
         await tx.orderItem.createMany({
           data: o.orderItemsData.map((i) => ({
             ...i,
@@ -262,6 +264,8 @@ export async function confirmOrder(
       
 
     const { reference } = parsed.data;
+
+    console.log("parsed.data", parsed.data);
 
     const result = await prisma.$transaction(async (tx) => {
       const stagedOrders = await tx.order.findMany({
