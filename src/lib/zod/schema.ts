@@ -167,9 +167,9 @@ const OrderItemSchema = z.object({
   variantSize: z.string().optional(),
   variantColor: z.string().optional(),
   supplierId: z.string(),
-  plugId: z.string().optional(),
   deliveryFee: z.number().positive(),
-  paymentMethod:  z.string()
+  paymentMethod:  z.string(),
+  deliveryLocationId: z.string()
 });
 
 
@@ -184,12 +184,11 @@ export const StageOrderSchema = z
     buyerDirections: z.string().optional(),
     buyerInstructions: z.string().optional(),
     platform: z.string().min(1).optional(),
-    plugId: z.string().optional(),
-    supplierId: z.string().optional(),
+    id: z.string().optional(),
     subdomain: z.string().optional(),
     orderItems: z.array(OrderItemSchema).min(1),
   })
-  .refine((data) => data.plugId || data.subdomain || data.supplierId, {
+  .refine((data) => data.id || data.subdomain, {
     message: "Either plugId, subdomain, or supplierId must be provided",
   });
 

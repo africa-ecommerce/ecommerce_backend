@@ -304,6 +304,7 @@ model OrderItem {
   productColor      String?
   variantSize       String?
   variantColor      String?
+   deliveryLocationId String?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   productName       String

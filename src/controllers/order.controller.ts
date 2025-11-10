@@ -13,44 +13,52 @@ export async function stageOrder(
   next: NextFunction
 ) {
   try {
-    const fieldData = StageOrderSchema.safeParse(req.body);
-    if (!fieldData.success) {
-       res.status(400).json({ error: "Invalid field data!" });
-       return;
+    const parseResult = StageOrderSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({ error: "Invalid field data!" });
     }
-    const input = fieldData.data;
+    const input = parseResult.data;
 
     const response = await prisma.$transaction(async (tx) => {
       let plug: any = null;
       let supplier: any = null;
-      let orderSource: "plug" | "supplier" = "plug";
+      let orderSource: "plug" | "supplier";
 
-      if (input.plugId || input.subdomain) {
-        plug = await tx.plug.findFirst({
-          where: input.plugId
-            ? { id: input.plugId }
-            : { subdomain: input.subdomain },
+      // Determine whether id is plug or supplier
+      if (input.id) {
+        plug = await tx.plug.findUnique({
+          where: { id: input.id },
           select: { id: true, businessName: true, subdomain: true },
         });
-        if (!plug) throw new Error("Plug not found");
-      } else if (input.supplierId) {
-        orderSource = "supplier";
-        supplier = await tx.supplier.findUnique({
-          where: { id: input.supplierId },
+
+        if (plug) {
+          orderSource = "plug";
+        } else {
+          supplier = await tx.supplier.findUnique({
+            where: { id: input.id },
+            select: { id: true, businessName: true, subdomain: true },
+          });
+          if (!supplier) throw new Error("Invalid id: not a plug or supplier");
+          orderSource = "supplier";
+        }
+      } else if (input.subdomain) {
+        // fallback to subdomain for plug
+        plug = await tx.plug.findUnique({
+          where: { subdomain: input.subdomain },
           select: { id: true, businessName: true, subdomain: true },
         });
-        if (!supplier) throw new Error("Supplier not found");
+        if (!plug) throw new Error("Plug not found by subdomain");
+        orderSource = "plug";
+      } else {
+        throw new Error("Either id or subdomain must be provided");
       }
 
-      // Calculate subtotal & delivery
+      // Calculate subtotal and delivery
       let subtotal = 0;
       const orderItemsData: any[] = [];
       const supplierDeliveryMap: Record<string, number> = {};
 
       for (const item of input.orderItems) {
-        let plugPrice = 0;
-        let supplierPrice = 0;
-
         const product = await tx.product.findUnique({
           where: { id: item.productId },
           select: {
@@ -63,7 +71,8 @@ export async function stageOrder(
         });
         if (!product) throw new Error(`Product ${item.productId} not found`);
 
-        supplierPrice = product.price;
+        const supplierPrice = product.price;
+        let plugPrice = 0;
 
         if (orderSource === "plug") {
           const plugProduct = await tx.plugProduct.findUnique({
@@ -83,8 +92,7 @@ export async function stageOrder(
           subtotal += supplierPrice * item.quantity;
         }
 
-
-        //get the first delivery price for a supplier
+        // Use first delivery fee per supplier
         if (!supplierDeliveryMap[product.supplierId]) {
           supplierDeliveryMap[product.supplierId] = item.deliveryFee;
         }
@@ -100,9 +108,9 @@ export async function stageOrder(
           productName: product.name,
           plugPrice,
           supplierPrice,
-          plugId: plug?.id || null,
-          supplierId: supplier?.id || product.supplierId,
+          supplierId: product.supplierId,
           deliveryFee: item.deliveryFee,
+          deliveryLocationId: item.deliveryLocationId || null,
           paymentMethod: item.paymentMethod,
         });
       }
@@ -116,6 +124,7 @@ export async function stageOrder(
         (it) => it.paymentMethod === "P_O_D"
       );
 
+      // Generate order number
       const nanoid6 = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
       const orderNumber = `ORD-${new Date()
         .toISOString()
@@ -149,7 +158,7 @@ export async function stageOrder(
       let paystackAuthUrl: string | null = null;
 
       if (!hasPOD) {
-        const paystackResponse = await fetch(
+        const paystackRes = await fetch(
           "https://api.paystack.co/transaction/initialize",
           {
             method: "POST",
@@ -163,13 +172,13 @@ export async function stageOrder(
               metadata: {
                 buyerName: input.buyerName,
                 buyerPhone: input.buyerPhone,
-                plugId: plug?.id || null,
-                supplierId: supplier?.id || null,
+                id: input.id,
+                source: orderSource,
               },
             }),
           }
         );
-        const paystackData = await paystackResponse.json();
+        const paystackData = await paystackRes.json();
         if (!paystackData.status)
           throw new Error("Paystack initialization failed");
         paystackReference = paystackData.data.reference;
@@ -199,11 +208,12 @@ export async function stageOrder(
         },
       });
 
+      // Create order items
       await tx.orderItem.createMany({
         data: orderItemsData.map((i) => ({ ...i, orderId: order.id })),
       });
 
-      // Handle POD stock deduction
+      // POD stock deduction
       if (hasPOD) {
         await Promise.all(
           orderItemsData.map(async (item) => {
@@ -242,8 +252,8 @@ export async function stageOrder(
     });
 
     res.status(201).json({ data: response });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 }
 
