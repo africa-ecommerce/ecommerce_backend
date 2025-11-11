@@ -356,6 +356,11 @@ export async function getPlugPayment(
     const paidAmount = paid._sum.amount || 0;
     const totalEarnings = unPaidAmount + paidAmount;
 
+
+      console.log("unPaidAmount", unPaidAmount);
+      console.log("paidAmount", paidAmount);
+      console.log("totalEarnings", totalEarnings);
+
     res.status(200).json({
       message: "Plug payments fetched successfully!",
       data: {
@@ -396,6 +401,10 @@ export async function getSupplierPayment(
     const unPaidAmount = unpaid._sum.amount || 0;
     const paidAmount = paid._sum.amount || 0;
     const totalEarnings = unPaidAmount + paidAmount;
+
+    console.log("unPaidAmount", unPaidAmount)
+    console.log("paidAmount", paidAmount)
+    console.log("totalEarnings", totalEarnings)
 
     res.status(200).json({
       message: "Supplier payments fetched successfully!",
