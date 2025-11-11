@@ -83,23 +83,27 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
     let paymentReference: string | null = null;
 
     if (hasOnline && totalOnlineAmount > 0) {
-      const initRes = await fetch("https://api.paystack.co/transaction/initialize", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${paystackSecretKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: input.buyerEmail,
-          amount: Math.round(totalOnlineAmount * 100), // kobo - only online payments
-          // Don't send reference - let Paystack generate it
-          metadata: { 
-            id: input.id || input.subdomain || null, 
-            source: "pluggn",
-            platform: input.platform || "Unknown"
+      const initRes = await fetch(
+        "https://api.paystack.co/transaction/initialize",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${paystackSecretKey}`,
+            "Content-Type": "application/json",
           },
-        }),
-      });
+          body: JSON.stringify({
+            email: input.buyerEmail,
+            amount: Math.round(totalOnlineAmount * 100), // kobo - only online payments
+            // Don't send reference - let Paystack generate it
+            metadata: {
+              id: input.id || input.subdomain || null,
+              source: "pluggn",
+              platform: input.platform || "Unknown",
+              timestamp: Date.now(),
+            },
+          }),
+        }
+      );
 
       console.log("initRes", initRes);
 
