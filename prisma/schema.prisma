@@ -173,25 +173,6 @@ model PlugPayment {
   @@index([status])
 }
 
-// model ResolvePlugPayment {
-//   id            String        @id @default(cuid())
-//   orderItemId   String
-//   plugId        String
-//   orderId       String
-//   amount        Float
-//   paymentStatus PaymentStatus @default(OPENED)
-//   createdAt     DateTime      @default(now())
-// }
-
-// model ResolveSupplierPayment {
-//   id            String        @id @default(cuid())
-//   orderItemId   String
-//   supplierId    String
-//   orderId       String
-//   amount        Float
-//   paymentStatus PaymentStatus @default(OPENED)
-//   createdAt     DateTime      @default(now())
-// }
 
 model PlugWithdrawalHistory {
   id        String   @id @default(cuid())

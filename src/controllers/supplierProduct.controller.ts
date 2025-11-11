@@ -32,7 +32,6 @@ export const productController = {
           return;
         }
 
-        console.log("productData", productData)
         // Validate main product data
         const validatedData = productSchema.safeParse({
           name: productData.name,

@@ -633,59 +633,67 @@ export async function processSupplierOrder(
       return;
     }
 
-    // Run transactional update
     await prisma.$transaction(async (tx) => {
       for (const item of order.orderItems) {
-        // Skip any items with invalid quantity
         if (item.quantity <= 0) continue;
 
-        // Update product stock and sold counts safely
-        const product = await tx.product.findUnique({
-          where: { id: item.productId },
-          select: { id: true, stock: true, sold: true },
-        });
-
-        if (product && product.stock) {
-          const newStock = Math.max((product.stock ?? 0) - item.quantity, 0);
-          const newSold = (product.sold ?? 0) + item.quantity;
-
-          await tx.product.update({
-            where: { id: item.productId },
-            data: {
-              stock: newStock,
-              sold: newSold,
-            },
-          });
-        }
-
-        // If product has variation, also update it
         if (item.variantId) {
+          // Update the variation stock
           const variant = await tx.productVariation.findUnique({
             where: { id: item.variantId },
             select: { id: true, stock: true },
           });
 
           if (variant) {
-            const newStock = Math.max((variant.stock ?? 0) - item.quantity, 0);
             await tx.productVariation.update({
-              where: { id: item.variantId },
-              data: { stock: newStock },
+              where: { id: variant.id },
+              data: {
+                stock: Math.max((variant.stock ?? 0) - item.quantity, 0),
+              },
+            });
+          }
+
+          // Optional: also increment sold on the parent product
+          const parentProduct = await tx.product.findUnique({
+            where: { id: item.productId },
+            select: { id: true, sold: true },
+          });
+
+          if (parentProduct) {
+            await tx.product.update({
+              where: { id: parentProduct.id },
+              data: {
+                sold: (parentProduct.sold ?? 0) + item.quantity,
+              },
+            });
+          }
+        } else {
+          // No variant: update product stock and sold
+          const product = await tx.product.findUnique({
+            where: { id: item.productId },
+            select: { id: true, stock: true, sold: true },
+          });
+
+          if (product) {
+            await tx.product.update({
+              where: { id: product.id },
+              data: {
+                stock: Math.max((product.stock ?? 0) - item.quantity, 0),
+                sold: (product.sold ?? 0) + item.quantity,
+              },
             });
           }
         }
       }
 
-      // Update order status
+      // Update order status to processed
       await tx.order.update({
         where: { id: orderId },
         data: { status: OrderStatus.PROCESSED },
       });
     });
 
-    res.status(200).json({
-      message: "Order processed successfully!",
-    });
-    return;
+    res.status(200).json({ message: "Order processed successfully!" });
   } catch (error) {
     next(error);
   }
