@@ -25,6 +25,7 @@ export async function stageOrder(
   next: NextFunction
 ) {
   try {
+    console.log("body", req.body);
     const parsed = StageOrderSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: "Invalid field data" });
@@ -137,11 +138,9 @@ export async function stageOrder(
         if (orderSource === "plug" && plug) {
           const pp = plugProductMap.get(it.productId);
           if (!pp) {
-            res
-              .status(400)
-              .json({
-                error: `Plug product price not found for ${it.productId}`,
-              });
+            res.status(400).json({
+              error: `Plug product price not found for ${it.productId}`,
+            });
             return;
           }
           unitPrice = pp.price;
@@ -150,11 +149,17 @@ export async function stageOrder(
         subtotal += unitPrice * it.quantity;
       }
 
-      const groupTotal = subtotal + firstDeliveryFee;
-
+      // If this group is pay on delivery, don't include delivery fee or subtotal in online payment
       if (group.paymentMethod !== "P_O_D") {
         hasOnline = true;
-        totalOnlineAmount += groupTotal;
+        // Include both subtotal and delivery fee (since it's online)
+        totalOnlineAmount += subtotal + firstDeliveryFee;
+      } else {
+        // For P_O_D, do not add anything to paystack total
+        // You can still log it if needed for tracking
+        console.log(
+          `Skipping P_O_D group ${group.supplierId} from paystack total`
+        );
       }
     }
 
