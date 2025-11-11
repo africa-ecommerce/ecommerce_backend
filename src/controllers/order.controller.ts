@@ -8,6 +8,7 @@ import { AuthRequest } from "../types";
 import { formatPlugOrders, formatSupplierOrders } from "../helper/formatData";
 
 // Helper to build store url
+// Helper to build store url
 const buildStoreUrl = (plug: any, supplier: any) =>
   plug?.subdomain
     ? `https://${plug.subdomain}.pluggn.store`
@@ -24,17 +25,13 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
     }
     const input = parsed.data;
 
-    // ---------- Generate single shared payment reference (unique every time) ----------
-    const nanoid6 = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
-    const paymentReference = `REF-${nanoid6()}-${Date.now()}`;
-
-    // ---------- Group incoming items by supplierId (NOT by paymentMethod - each supplier has one payment method) ----------
+    // ---------- Group incoming items by supplierId ----------
     const groups = input.orderItems.reduce((acc: Record<string, any>, item) => {
       const key = item.supplierId;
       if (!acc[key]) {
         acc[key] = { 
           supplierId: item.supplierId, 
-          paymentMethod: item.paymentMethod, // Same for all items from this supplier
+          paymentMethod: item.paymentMethod,
           items: [] 
         };
       }
@@ -78,7 +75,10 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
     }
 
     // ---------- Initialize Paystack ONCE if there are any online payments ----------
+    // Let Paystack generate the reference for us
     let authorizationUrl: string | null = null;
+    let paymentReference: string | null = null;
+
     if (hasOnline && totalOnlineAmount > 0) {
       const initRes = await fetch("https://api.paystack.co/transaction/initialize", {
         method: "POST",
@@ -89,7 +89,7 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
         body: JSON.stringify({
           email: input.buyerEmail,
           amount: Math.round(totalOnlineAmount * 100), // kobo - only online payments
-          reference: paymentReference,
+          // Don't send reference - let Paystack generate it
           metadata: { 
             id: input.id || input.subdomain || null, 
             source: "pluggn",
@@ -106,7 +106,14 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
         });
         return;
       }
+      
+      // Get the reference that Paystack generated
       authorizationUrl = initJson.data.authorization_url;
+      paymentReference = initJson.data.reference; // Paystack's generated reference
+    } else {
+      // For P_O_D only orders, generate our own reference
+      const nanoid6 = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
+      paymentReference = `POD-${nanoid6()}-${Date.now()}`;
     }
 
     // ---------- Create orders inside a single transaction ----------
@@ -231,8 +238,8 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
             totalAmount,
             deliveryFee,
             deliveryLocationId,
-            paymentMethod: group.paymentMethod, // Single payment method per supplier
-            paymentReference, // Shared across all orders
+            paymentMethod: group.paymentMethod,
+            paymentReference, // Use Paystack's generated reference (or our POD reference)
             platform: input.platform || "Unknown",
             buyerName: input.buyerName,
             buyerEmail: input.buyerEmail,
@@ -256,7 +263,6 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
       return {
         authorization_url: authorizationUrl,
         reference: paymentReference,
-        orderNumbers: createdOrders.map(o => o.orderNumber),
       };
     });
 
@@ -364,10 +370,6 @@ export async function confirmOrder(req: Request, res: Response, next: NextFuncti
       return { 
         businessName, 
         storeUrl, 
-        reference,
-        totalOrders: stagedOrders.length,
-        onlineOrders: onlineOrders.length,
-        podOrders: podOrders.length,
       };
     });
 
@@ -379,6 +381,8 @@ export async function confirmOrder(req: Request, res: Response, next: NextFuncti
     next(err);
   }
 }
+
+
 /**
  * @dev PUBLIC ENDPOINT
  */
