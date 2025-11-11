@@ -146,9 +146,10 @@ model SupplierPayment {
   orderId    String
   supplierId String
   amount     Float
-  status     PaymentStatus @default(LOCKED)
+  status     PaymentStatus  @default(UNPAID)
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
+  paidAt     DateTime?
   order      Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   supplier   Supplier      @relation(fields: [supplierId], references: [id], onDelete: Cascade)
 
@@ -161,9 +162,10 @@ model PlugPayment {
   orderId   String        @unique
   plugId    String
   amount    Float
-  status    PaymentStatus @default(LOCKED)
+  status    PaymentStatus @default(UNPAID)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
+   paidAt     DateTime?
   order     Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   plug      Plug          @relation(fields: [plugId], references: [id], onDelete: Cascade)
 
@@ -171,25 +173,25 @@ model PlugPayment {
   @@index([status])
 }
 
-model ResolvePlugPayment {
-  id            String        @id @default(cuid())
-  orderItemId   String
-  plugId        String
-  orderId       String
-  amount        Float
-  paymentStatus PaymentStatus @default(OPENED)
-  createdAt     DateTime      @default(now())
-}
+// model ResolvePlugPayment {
+//   id            String        @id @default(cuid())
+//   orderItemId   String
+//   plugId        String
+//   orderId       String
+//   amount        Float
+//   paymentStatus PaymentStatus @default(OPENED)
+//   createdAt     DateTime      @default(now())
+// }
 
-model ResolveSupplierPayment {
-  id            String        @id @default(cuid())
-  orderItemId   String
-  supplierId    String
-  orderId       String
-  amount        Float
-  paymentStatus PaymentStatus @default(OPENED)
-  createdAt     DateTime      @default(now())
-}
+// model ResolveSupplierPayment {
+//   id            String        @id @default(cuid())
+//   orderItemId   String
+//   supplierId    String
+//   orderId       String
+//   amount        Float
+//   paymentStatus PaymentStatus @default(OPENED)
+//   createdAt     DateTime      @default(now())
+// }
 
 model PlugWithdrawalHistory {
   id        String   @id @default(cuid())
@@ -311,32 +313,16 @@ model OrderItem {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   productName  String
-  plugPrice    Float
+  plugPrice    Float?
   supplierPrice Float
   supplierId   String
   plugId       String?
-  recieved     Boolean   @default(false)
   order        Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
   @@index([productId])
 }
 
-// model PausedOrderItem {
-//   id          String    @id @default(cuid())
-//   orderItemId String    @unique
-//   quantity    Int
-//   createdAt   DateTime  @default(now())
-//   orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
-// }
-
-// model ReturnedOrderItem {
-//   id          String    @id @default(cuid())
-//   orderItemId String    @unique
-//   quantity    Int
-//   createdAt   DateTime  @default(now())
-//   orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
-// }
 
 model Review {
   id        String   @id @default(cuid())
@@ -558,8 +544,7 @@ enum UserType {
 }
 
 enum PaymentStatus {
-  LOCKED
-  OPENED
+  UNPAID
   PAID
 }
 

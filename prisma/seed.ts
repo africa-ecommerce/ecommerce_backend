@@ -1,32 +1,29 @@
-// import { prisma } from "../src/config";
+import { prisma } from "../src/config";
 
-// async function main() {
-//   console.log("🧩 Fixing NOT NULL constraints before migration...");
+async function main() {
+  console.log("🧹 Cleaning up orders, order items, and related payments...");
 
-//   const queries = [
-//     `ALTER TABLE "PlugProduct" ALTER COLUMN "commission" DROP NOT NULL;`,
-//     `ALTER TABLE "Product" ALTER COLUMN "minPrice" DROP NOT NULL;`,
-//     `ALTER TABLE "Product" ALTER COLUMN "maxPrice" DROP NOT NULL;`,
-//     `ALTER TABLE "Supplier" ALTER COLUMN "verified" DROP NOT NULL;`,
-//     `ALTER TABLE "OrderItem" ALTER COLUMN "commission" DROP NOT NULL;`,
-//   ];
+  // Order of deletion matters due to relations
+  await prisma.orderItem.deleteMany({});
+  console.log("✅ Deleted all OrderItems");
 
-//   for (const query of queries) {
-//     try {
-//       await prisma.$executeRawUnsafe(query);
-//       console.log(`✅ Executed: ${query}`);
-//     } catch (e) {
-//       console.warn(`⚠️ Skipped: ${query}`, (e as Error).message);
-//     }
-//   }
+  await prisma.plugPayment.deleteMany({});
+  console.log("✅ Deleted all PlugPayments");
 
-//   console.log("✅ Constraint fixes complete.");
-// }
+  await prisma.supplierPayment.deleteMany({});
+  console.log("✅ Deleted all SupplierPayments");
 
-// main()
-//   .catch((e) => {
-//     console.error("❌ Error during constraint fix:", e);
-//   })
-//   .finally(async () => {
-//     await prisma.$disconnect();
-//   });
+  await prisma.order.deleteMany({});
+  console.log("✅ Deleted all Orders");
+
+  console.log("🎉 Cleanup completed successfully!");
+}
+
+main()
+  .catch((error) => {
+    console.error("❌ Error during cleanup:", error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

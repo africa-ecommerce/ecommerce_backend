@@ -5,8 +5,6 @@ import {
   getPlugPayment,
   getSupplierPayment,
   resolveAccountWithBank,
-  getPlugPendingPayments,
-  getSupplierPendingPayments,
   resendWithdrawalVerificationToken,
   processWithdrawal
 } from "../controllers/payment.controller";
@@ -50,13 +48,7 @@ router.get(
 );
 router.post("/withdraw", authenticateJWT, withdrawalLimiter, processWithdrawal);
 
-router.get("/plug/pending", authenticateJWT, isPlug, getPlugPendingPayments);
-router.get(
-  "/supplier/pending",
-  authenticateJWT,
-  isSupplier,
-  getSupplierPendingPayments
-);
+
 
 
 

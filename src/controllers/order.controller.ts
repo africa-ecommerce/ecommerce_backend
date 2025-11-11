@@ -248,7 +248,7 @@ export async function stageOrder(
           });
           if (!prod) throw new Error(`Product ${it.productId} not found`);
 
-          let plugPrice = prod.price;
+          let plugPrice = 0;
           if (orderSource === "plug" && plug) {
             const pp = await tx.plugProduct.findUnique({
               where: {
@@ -271,7 +271,7 @@ export async function stageOrder(
             productId: it.productId,
             quantity: it.quantity,
             productName: prod.name,
-            plugPrice,
+            plugPrice: plugPrice > 0 ? plugPrice : null,
             supplierPrice: prod.price,
             supplierId: prod.supplierId,
             plugId: plug?.id || null,
@@ -339,111 +339,128 @@ export async function confirmOrder(
   try {
     const parsed = ConfirmOrderSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: "Invalid field data!" });
-      return;
+       res.status(400).json({ error: "Invalid field data!" });
+       return
     }
     const { reference } = parsed.data;
 
     const result = await prisma.$transaction(async (tx) => {
-      // Find staged orders with this reference
+      // Find all staged orders that share this reference
       const stagedOrders = await tx.order.findMany({
         where: { paymentReference: reference, status: "STAGED" },
         include: {
           orderItems: true,
-          plug: { select: { businessName: true, subdomain: true } },
-          supplier: { select: { businessName: true, subdomain: true } },
+          plug: { select: { id: true, businessName: true, subdomain: true } },
+          supplier: { select: { id: true, businessName: true, subdomain: true } },
         },
       });
 
-      if (!stagedOrders.length)
-        throw new Error("No staged orders found for reference");
+      if (!stagedOrders.length) throw new Error("No staged orders found for reference");
 
-      // Separate online and P_O_D orders
-      const onlineOrders = stagedOrders.filter(
-        (o) => o.paymentMethod !== "P_O_D"
-      );
-      const podOrders = stagedOrders.filter((o) => o.paymentMethod === "P_O_D");
+      // Separate online vs POD orders
+      const onlineOrders = stagedOrders.filter((o) => o.paymentMethod !== "P_O_D");
+      // POD orders = stagedOrders.filter((o) => o.paymentMethod === "P_O_D")
 
-      // If there are online orders, verify Paystack ONCE
+      // If there are online orders, verify Paystack once
       if (onlineOrders.length > 0) {
-        const totalOnline = onlineOrders.reduce(
-          (sum, o) => sum + o.totalAmount,
-          0
-        );
+        // total expected for online orders (kobo check will use *100)
+        const totalOnline = onlineOrders.reduce((sum, o) => sum + o.totalAmount, 0);
 
-        const verifyRes = await fetch(
-          `https://api.paystack.co/transaction/verify/${reference}`,
-          {
-            headers: { Authorization: `Bearer ${paystackSecretKey}` },
-          }
-        );
+        const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+          headers: { Authorization: `Bearer ${paystackSecretKey}` },
+        });
 
         const verifyJson = await verifyRes.json();
         if (!verifyJson || !verifyJson.status) {
           throw new Error("Payment verification failed");
         }
         if (verifyJson.data.status !== "success") {
-          throw new Error("Payment not successful");
+          throw new Error("Payment was not successful");
         }
 
-        // Verify amount matches (Paystack amount is in kobo)
+        // Paystack returns amount in kobo; compare against totalOnline * 100
         const paystackAmount = verifyJson.data.amount;
         const expectedAmount = Math.round(totalOnline * 100);
 
         if (paystackAmount !== expectedAmount) {
-          throw new Error(
-            `Payment amount mismatch: expected ${expectedAmount} kobo, got ${paystackAmount} kobo`
-          );
+          throw new Error(`Payment amount mismatch: expected ${expectedAmount} kobo, got ${paystackAmount} kobo`);
         }
+        // Note: we verify once for all onlineOrders; individual order amounts were used to construct init
       }
 
-      // Mark ALL orders (both online and P_O_D) as PENDING and decrement stock
+      // Now process each staged order: set to PENDING, adjust stock (commented), create payments records
       for (const order of stagedOrders) {
+        // Update order status to PENDING
         await tx.order.update({
           where: { id: order.id },
-          data: { status: OrderStatus.PENDING },
+          data: { status: "PENDING" },
         });
 
-        // Decrease stock for items
-        for (const item of order.orderItems) {
-          const product = await tx.product.findUnique({
-            where: { id: item.productId },
-            select: { id: true, stock: true },
+        // Decrease product stock (kept commented out as per your request)
+        // for (const item of order.orderItems) {
+        //   const product = await tx.product.findUnique({ where: { id: item.productId }, select: { id: true, stock: true } });
+        //   if (product && product.stock !== null) {
+        //     await tx.product.update({
+        //       where: { id: item.productId },
+        //       data: { stock: Math.max(product.stock - item.quantity, 0) },
+        //     });
+        //   }
+        //   if (item.variantId) {
+        //     const variant = await tx.productVariation.findUnique({ where: { id: item.variantId }, select: { id: true, stock: true } });
+        //     if (variant && variant.stock !== null) {
+        //       await tx.productVariation.update({
+        //         where: { id: item.variantId },
+        //         data: { stock: Math.max(variant.stock - item.quantity, 0) },
+        //       });
+        //     }
+        //   }
+        // }
+
+        // --- Create SupplierPayment if missing ---
+        const existingSupplierPayment = await tx.supplierPayment.findFirst({
+          where: { orderId: order.id, supplierId: order.supplierId! },
+        });
+
+        if (!existingSupplierPayment) {
+          await tx.supplierPayment.create({
+            data: {
+              orderId: order.id,
+              supplierId: order.supplierId!,
+              amount: order.totalAmount,
+              // status default UNPAID (in your schema)
+            },
+          });
+        }
+
+        // --- If order belongs to a plug (source was plug), create a PlugPayment record per order ---
+        if (order.plugId) {
+          const existingPlugPayment = await tx.plugPayment.findFirst({
+            where: { orderId: order.id, plugId: order.plugId },
           });
 
-          if (product && product.stock !== null) {
-            await tx.product.update({
-              where: { id: item.productId },
-              data: { stock: Math.max(product.stock - item.quantity, 0) },
+          if (!existingPlugPayment) {
+            await tx.plugPayment.create({
+              data: {
+                orderId: order.id,
+                plugId: order.plugId,
+                amount: order.totalAmount,
+                // status default UNPAID
+              },
             });
-          }
-
-          if (item.variantId) {
-            const variant = await tx.productVariation.findUnique({
-              where: { id: item.variantId },
-              select: { id: true, stock: true },
-            });
-
-            if (variant && variant.stock !== null) {
-              await tx.productVariation.update({
-                where: { id: item.variantId },
-                data: { stock: Math.max(variant.stock - item.quantity, 0) },
-              });
-            }
           }
         }
       }
 
-      // Return business info
-      const anyOrder = stagedOrders[0];
-      const businessName =
-        anyOrder?.plug?.businessName || anyOrder?.supplier?.businessName || "";
-      const storeUrl = buildStoreUrl(anyOrder?.plug, anyOrder?.supplier);
+      // Build store info from the first order (businessName should always exist per your requirement)
+      const first = stagedOrders[0];
+      const businessName = first.plug?.businessName || first.supplier?.businessName || "";
+      const storeUrl = first.plug?.subdomain
+        ? `https://${first.plug.subdomain}.pluggn.store`
+        : first.supplier?.subdomain
+        ? `https://${first.supplier.subdomain}.pluggn.store`
+        : "";
 
-      return {
-        businessName,
-        storeUrl,
-      };
+      return { businessName, storeUrl };
     });
 
     res.status(200).json({
@@ -454,6 +471,7 @@ export async function confirmOrder(
     next(err);
   }
 }
+
 
 /**
  * @dev PUBLIC ENDPOINT
@@ -536,7 +554,7 @@ export async function getPlugOrders(
       orderBy: { createdAt: "desc" },
     });
 
-    const data = orders ? formatPlugOrders(orders) : [];
+    const data = orders;
     res.status(200).json({
       message: "Orders fetched successfully!",
       data,
@@ -561,18 +579,18 @@ export async function getSupplierOrders(
     //typecast statusParam to OrderStatus or undefined
     const status = statusParam as OrderStatus | undefined;
 
-    const orderItems = await prisma.orderItem.findMany({
+    const orders = await prisma.order.findMany({
       where: {
         supplierId,
         ...(status ? { order: { status } } : {}),
       },
       include: {
-        order: true,
+        orderItems: true,
       },
       orderBy: { createdAt: "desc" },
     });
 
-    const data = orderItems ? formatSupplierOrders(orderItems) : [];
+    const data = orders;
 
     res.status(200).json({
       message: "Orders fetched successfully!",
@@ -583,170 +601,138 @@ export async function getSupplierOrders(
   }
 }
 
-// export const getPlugPausedOrderItems = async (
-//   req: AuthRequest,
-//   res: Response,
-//   next: NextFunction
-// ) => {
-//   try {
-//     const plugId = req.plug?.id!;
-//     const pausedItems = await prisma.pausedOrderItem.findMany({
-//       where: {
-//         orderItem: {
-//           plugId,
-//         },
-//       },
-//       include: {
-//         orderItem: {
-//           include: {
-//             order: {
-//               select: {
-//                 orderNumber: true,
-//               },
-//             },
-//           },
-//         },
-//       },
-//     });
 
-//     const data = pausedItems.map((p) => ({
-//       orderNumber: p.orderItem.order.orderNumber,
-//       pausedQuantity: p.quantity,
-//       productName: p.orderItem.productName,
-//       originalQuantity: p.orderItem.quantity,
-//       productSize: p.orderItem.productSize,
-//       productColor: p.orderItem.productColor,
-//       variantSize: p.orderItem.variantSize,
-//       variantColor: p.orderItem.variantColor,
-//     }));
-//     res.status(200).json({ message: "Paused order items fetched", data });
-//   } catch (err) {
-//     next(err);
-//   }
-// };
-// export const getSupplierPausedOrderItems = async (
-//   req: AuthRequest,
-//   res: Response,
-//   next: NextFunction
-// ) => {
-//   try {
-//     const supplierId = req.supplier?.id;
-//     const pausedItems = await prisma.pausedOrderItem.findMany({
-//       where: {
-//         orderItem: {
-//           supplierId,
-//         },
-//       },
-//       include: {
-//         orderItem: {
-//           include: {
-//             order: {
-//               select: {
-//                 orderNumber: true,
-//               },
-//             },
-//           },
-//         },
-//       },
-//     });
 
-//     const data = pausedItems.map((p) => ({
-//       orderNumber: p.orderItem.order.orderNumber,
-//       pausedQuantity: p.quantity,
-//       productName: p.orderItem.productName,
-//       originalQuantity: p.orderItem.quantity,
-//       productSize: p.orderItem.productSize,
-//       productColor: p.orderItem.productColor,
-//       variantSize: p.orderItem.variantSize,
-//       variantColor: p.orderItem.variantColor,
-//     }));
-//     res.status(200).json({ message: "Paused order items fetched", data });
-//   } catch (err) {
-//     next(err);
-//   }
-// };
+export async function processSupplierOrder(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const supplierId = req.supplier?.id!;
+    const { orderId } = req.body;
 
-// export const getPlugReturnedOrderItems = async (
-//   req: AuthRequest,
-//   res: Response,
-//   next: NextFunction
-// ) => {
-//   const plugId = req.plug?.id;
-//   try {
-//     const returnedItems = await prisma.returnedOrderItem.findMany({
-//       where: {
-//         orderItem: {
-//           plugId,
-//         },
-//       },
-//       include: {
-//         orderItem: {
-//           include: {
-//             order: {
-//               select: {
-//                 orderNumber: true,
-//               },
-//             },
-//           },
-//         },
-//       },
-//     });
+    if (!orderId) {
+      res.status(400).json({ message: "Order ID is required." });
+      return;
+    }
 
-//     const data = returnedItems.map((r) => ({
-//       orderNumber: r.orderItem.order.orderNumber,
-//       pausedQuantity: r.quantity,
-//       productName: r.orderItem.productName,
-//       originalQuantity: r.orderItem.quantity,
-//       productSize: r.orderItem.productSize,
-//       productColor: r.orderItem.productColor,
-//       variantSize: r.orderItem.variantSize,
-//       variantColor: r.orderItem.variantColor,
-//     }));
+    // Fetch order with items
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { orderItems: true },
+    });
 
-//     res.status(200).json({ message: "Returned order items fetched", data });
-//   } catch (err) {
-//     next(err);
-//   }
-// };
-// export const getSupplierReturnedOrderItems = async (
-//   req: AuthRequest,
-//   res: Response,
-//   next: NextFunction
-// ) => {
-//   const supplierId = req.supplier?.id;
-//   try {
-//     const returnedItems = await prisma.returnedOrderItem.findMany({
-//       where: {
-//         orderItem: {
-//           supplierId,
-//         },
-//       },
-//       include: {
-//         orderItem: {
-//           include: {
-//             order: {
-//               select: {
-//                 orderNumber: true,
-//               },
-//             },
-//           },
-//         },
-//       },
-//     });
+    if (!order || order.supplierId !== supplierId) {
+      res.status(404).json({ message: "Order not found for this supplier." });
+      return;
+    }
 
-//     const data = returnedItems.map((r) => ({
-//       orderNumber: r.orderItem.order.orderNumber,
-//       pausedQuantity: r.quantity,
-//       productName: r.orderItem.productName,
-//       originalQuantity: r.orderItem.quantity,
-//       productSize: r.orderItem.productSize,
-//       productColor: r.orderItem.productColor,
-//       variantSize: r.orderItem.variantSize,
-//       variantColor: r.orderItem.variantColor,
-//     }));
+    if (order.status !== OrderStatus.PENDING) {
+      res
+        .status(400)
+        .json({ message: "Only pending orders can be processed." });
+      return;
+    }
 
-//     res.status(200).json({ message: "Returned order items fetched", data });
-//   } catch (err) {
-//     next(err);
-//   }
-// };
+    // Run transactional update
+    await prisma.$transaction(async (tx) => {
+      for (const item of order.orderItems) {
+        // Skip any items with invalid quantity
+        if (item.quantity <= 0) continue;
+
+        // Update product stock and sold counts safely
+        const product = await tx.product.findUnique({
+          where: { id: item.productId },
+          select: { id: true, stock: true, sold: true },
+        });
+
+        if (product && product.stock) {
+          const newStock = Math.max((product.stock ?? 0) - item.quantity, 0);
+          const newSold = (product.sold ?? 0) + item.quantity;
+
+          await tx.product.update({
+            where: { id: item.productId },
+            data: {
+              stock: newStock,
+              sold: newSold,
+            },
+          });
+        }
+
+        // If product has variation, also update it
+        if (item.variantId) {
+          const variant = await tx.productVariation.findUnique({
+            where: { id: item.variantId },
+            select: { id: true, stock: true },
+          });
+
+          if (variant) {
+            const newStock = Math.max((variant.stock ?? 0) - item.quantity, 0);
+            await tx.productVariation.update({
+              where: { id: item.variantId },
+              data: { stock: newStock },
+            });
+          }
+        }
+      }
+
+      // Update order status
+      await tx.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.PROCESSED },
+      });
+    });
+
+    res.status(200).json({
+      message: "Order processed successfully!",
+    });
+    return;
+  } catch (error) {
+    next(error);
+  }
+}
+
+// -------------------- CANCEL SUPPLIER ORDER --------------------
+export async function cancelSupplierOrder(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const supplierId = req.supplier?.id!;
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      res.status(400).json({ message: "Order ID is required." });
+      return;
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { id: true, supplierId: true, status: true },
+    });
+
+    if (!order || order.supplierId !== supplierId) {
+      res.status(404).json({ message: "Order not found for this supplier." });
+      return;
+    }
+
+    if (order.status === OrderStatus.CANCELLED) {
+      res.status(400).json({ message: "Order already cancelled." });
+      return;
+    }
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { status: OrderStatus.CANCELLED },
+    });
+
+    res.status(200).json({
+      message: "Order cancelled successfully!",
+    });
+    return;
+  } catch (error) {
+    next(error);
+  }
+}

@@ -124,7 +124,11 @@ export async function resendWithdrawalVerificationToken(
     next(error);
   }
 }
-export async function processWithdrawal(req: AuthRequest, res: Response, next: NextFunction) {
+export async function processWithdrawal(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
   const { account_number, bank_code, token, account_name } = req.body;
 
   try {
@@ -143,7 +147,7 @@ export async function processWithdrawal(req: AuthRequest, res: Response, next: N
       return;
     }
 
-    // Validate token
+    // ✅ Validate token
     const withdrawalToken = await prisma.withdrawalVerificationToken.findFirst({
       where: {
         token,
@@ -157,50 +161,31 @@ export async function processWithdrawal(req: AuthRequest, res: Response, next: N
       return;
     }
 
-    let withdrawalAmount;
+    // ✅ Compute available withdrawal amount
+    let withdrawalAmount = 0;
 
     if (plugId) {
-      const [plugPayments, resolvePlugPayments] = await Promise.all([
-        prisma.plugPayment.aggregate({
-          _sum: { amount: true },
-          where: { plugId, status: PaymentStatus.OPENED },
-        }),
-        prisma.resolvePlugPayment.aggregate({
-          _sum: { amount: true },
-          where: { plugId, paymentStatus: PaymentStatus.OPENED },
-        }),
-      ]);
-
-      withdrawalAmount =
-        (plugPayments._sum.amount || 0) +
-        (resolvePlugPayments._sum.amount || 0);
+      const plugPayments = await prisma.plugPayment.aggregate({
+        _sum: { amount: true },
+        where: { plugId, status: PaymentStatus.UNPAID },
+      });
+      withdrawalAmount = plugPayments._sum.amount || 0;
     }
 
     if (supplierId) {
-      const [supplierPayments, resolveSupplierPayments] = await Promise.all([
-        prisma.supplierPayment.aggregate({
-          _sum: { amount: true },
-          where: { supplierId, status: PaymentStatus.OPENED },
-        }),
-        prisma.resolveSupplierPayment.aggregate({
-          _sum: { amount: true },
-          where: { supplierId, paymentStatus: PaymentStatus.OPENED },
-        }),
-      ]);
-
-      withdrawalAmount =
-        (supplierPayments._sum.amount || 0) +
-        (resolveSupplierPayments._sum.amount || 0);
+      const supplierPayments = await prisma.supplierPayment.aggregate({
+        _sum: { amount: true },
+        where: { supplierId, status: PaymentStatus.UNPAID },
+      });
+      withdrawalAmount = supplierPayments._sum.amount || 0;
     }
 
-    if (withdrawalAmount! <= 0) {
-       res
-        .status(400)
-        .json({ error: "No funds available for withdrawal!" });
-        return;
+    if (Number(withdrawalAmount) <= 0) {
+      res.status(400).json({ error: "No funds available for withdrawal!" });
+      return;
     }
 
-    // Create Paystack recipient
+    // ✅ Create Paystack recipient
     const recipientResponse = await fetch(
       "https://api.paystack.co/transferrecipient",
       {
@@ -213,7 +198,7 @@ export async function processWithdrawal(req: AuthRequest, res: Response, next: N
           type: "nuban",
           name: account_name,
           account_number,
-          bank_code: bank_code,
+          bank_code,
           currency: "NGN",
         }),
       }
@@ -226,7 +211,7 @@ export async function processWithdrawal(req: AuthRequest, res: Response, next: N
       return;
     }
 
-    // Initiate transfer
+    // ✅ Initiate Paystack transfer
     const transferResponse = await fetch("https://api.paystack.co/transfer", {
       method: "POST",
       headers: {
@@ -235,21 +220,29 @@ export async function processWithdrawal(req: AuthRequest, res: Response, next: N
       },
       body: JSON.stringify({
         source: "balance",
-        amount: withdrawalAmount! * 100,
+        amount: Math.round(withdrawalAmount * 100),
         recipient: recipientData.data.recipient_code,
-        reason: "Withdrawal",
+        reason: plugId
+          ? "Plug withdrawal"
+          : supplierId
+          ? "Supplier withdrawal"
+          : "Withdrawal",
       }),
     });
 
     const transferData = await transferResponse.json();
-    if (!transferData.status || !transferData.data?.reference) {
-      // Log failed withdrawal
+    const transferSuccess =
+      transferData?.status && transferData?.data?.reference;
+    const reference = transferSuccess ? transferData.data.reference : "";
+
+    // ✅ Handle failed transfer
+    if (!transferSuccess) {
       if (plugId) {
         await prisma.plugWithdrawalHistory.create({
           data: {
             plugId,
-            amount: withdrawalAmount!,
-            reference: "",
+            amount: withdrawalAmount,
+            reference,
             status: "FAILED",
           },
         });
@@ -258,30 +251,28 @@ export async function processWithdrawal(req: AuthRequest, res: Response, next: N
         await prisma.supplierWithdrawalHistory.create({
           data: {
             supplierId,
-            amount: withdrawalAmount!,
-            reference: "",
+            amount: withdrawalAmount,
+            reference,
             status: "FAILED",
           },
         });
       }
+
       res.status(500).json({ error: "Withdrawal failed!" });
       return;
     }
 
-    const reference = transferData.data.reference;
-
-    // Update DB atomically
+    // ✅ Update DB atomically
     const tx: any[] = [];
 
     if (plugId) {
       tx.push(
         prisma.plugPayment.updateMany({
-          where: { plugId, status: PaymentStatus.OPENED },
-          data: { status: PaymentStatus.PAID },
-        }),
-        prisma.resolvePlugPayment.updateMany({
-          where: { plugId, paymentStatus: PaymentStatus.OPENED },
-          data: { paymentStatus: PaymentStatus.PAID },
+          where: { plugId, status: PaymentStatus.UNPAID },
+          data: {
+            status: PaymentStatus.PAID,
+            paidAt: new Date(),
+          },
         })
       );
     }
@@ -289,12 +280,11 @@ export async function processWithdrawal(req: AuthRequest, res: Response, next: N
     if (supplierId) {
       tx.push(
         prisma.supplierPayment.updateMany({
-          where: { supplierId, status: PaymentStatus.OPENED },
-          data: { status: PaymentStatus.PAID },
-        }),
-        prisma.resolveSupplierPayment.updateMany({
-          where: { supplierId, paymentStatus: PaymentStatus.OPENED },
-          data: { paymentStatus: PaymentStatus.PAID },
+          where: { supplierId, status: PaymentStatus.UNPAID },
+          data: {
+            status: PaymentStatus.PAID,
+            paidAt: new Date(),
+          },
         })
       );
     }
@@ -307,12 +297,12 @@ export async function processWithdrawal(req: AuthRequest, res: Response, next: N
 
     await prisma.$transaction(tx);
 
-    // Log successful withdrawal
+    // ✅ Log successful withdrawal
     if (plugId) {
       await prisma.plugWithdrawalHistory.create({
         data: {
           plugId,
-          amount: withdrawalAmount!,
+          amount: withdrawalAmount,
           reference,
           status: "SUCCESS",
         },
@@ -323,32 +313,38 @@ export async function processWithdrawal(req: AuthRequest, res: Response, next: N
       await prisma.supplierWithdrawalHistory.create({
         data: {
           supplierId,
-          amount: withdrawalAmount!,
+          amount: withdrawalAmount,
           reference,
           status: "SUCCESS",
         },
       });
     }
 
-    res.status(200).json({ message: "Withdrawal processed successfully!" });
+    res.status(200).json({
+      message: "Withdrawal processed successfully!",
+    });
     return;
   } catch (error) {
     next(error);
   }
 }
 
-export async function getPlugPayment(req: AuthRequest, res: Response, next: NextFunction) {
+export async function getPlugPayment(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
   try {
-    const plugId = req.plug?.id!;
-    // Regular plug payments
-    const [locked, opened, paid] = await Promise.all([
+    const plugId = req.plug?.id;
+    if (!plugId) {
+      res.status(403).json({ error: "Unauthorized!" });
+      return;
+    }
+
+    const [unpaid, paid] = await Promise.all([
       prisma.plugPayment.aggregate({
         _sum: { amount: true },
-        where: { plugId, status: PaymentStatus.LOCKED },
-      }),
-      prisma.plugPayment.aggregate({
-        _sum: { amount: true },
-        where: { plugId, status: PaymentStatus.OPENED },
+        where: { plugId, status: PaymentStatus.UNPAID },
       }),
       prisma.plugPayment.aggregate({
         _sum: { amount: true },
@@ -356,50 +352,40 @@ export async function getPlugPayment(req: AuthRequest, res: Response, next: Next
       }),
     ]);
 
-    // Resolved plug payments
-    const [resolvedOpened, resolvedPaid] = await Promise.all([
-      prisma.resolvePlugPayment.aggregate({
-        _sum: { amount: true },
-        where: { plugId, paymentStatus: PaymentStatus.OPENED },
-      }),
-      prisma.resolvePlugPayment.aggregate({
-        _sum: { amount: true },
-        where: { plugId, paymentStatus: PaymentStatus.PAID },
-      }),
-    ]);
-
-    const lockedAmount = locked._sum.amount || 0;
-    const unlockedAmount =
-      (opened._sum.amount || 0) + (resolvedOpened._sum.amount || 0);
-    const paidAmount =
-      (paid._sum.amount || 0) + (resolvedPaid._sum.amount || 0);
-    const totalEarnings = unlockedAmount + paidAmount;
+    const unPaidAmount = unpaid._sum.amount || 0;
+    const paidAmount = paid._sum.amount || 0;
+    const totalEarnings = unPaidAmount + paidAmount;
 
     res.status(200).json({
-      message: "Plug earnings fetched successfully!",
+      message: "Plug payments fetched successfully!",
       data: {
-        lockedAmount,
-        unlockedAmount,
+        unPaidAmount,
         totalEarnings,
       },
     });
+    return;
   } catch (error) {
     next(error);
   }
 }
 
-export async function getSupplierPayment(req: AuthRequest, res: Response, next: NextFunction) {
+
+export async function getSupplierPayment(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
   try {
-    const supplierId = req.supplier?.id!;
-    // Regular supplier payments
-    const [locked, opened, paid] = await Promise.all([
+    const supplierId = req.supplier?.id;
+    if (!supplierId) {
+      res.status(403).json({ error: "Unauthorized!" });
+      return;
+    }
+
+    const [unpaid, paid] = await Promise.all([
       prisma.supplierPayment.aggregate({
         _sum: { amount: true },
-        where: { supplierId, status: PaymentStatus.LOCKED },
-      }),
-      prisma.supplierPayment.aggregate({
-        _sum: { amount: true },
-        where: { supplierId, status: PaymentStatus.OPENED },
+        where: { supplierId, status: PaymentStatus.UNPAID },
       }),
       prisma.supplierPayment.aggregate({
         _sum: { amount: true },
@@ -407,93 +393,21 @@ export async function getSupplierPayment(req: AuthRequest, res: Response, next: 
       }),
     ]);
 
-    // Resolved supplier payments
-    const [resolvedOpened, resolvedPaid] = await Promise.all([
-      prisma.resolveSupplierPayment.aggregate({
-        _sum: { amount: true },
-        where: { supplierId, paymentStatus: PaymentStatus.OPENED },
-      }),
-      prisma.resolveSupplierPayment.aggregate({
-        _sum: { amount: true },
-        where: { supplierId, paymentStatus: PaymentStatus.PAID },
-      }),
-    ]);
-
-    const lockedAmount = locked._sum.amount || 0;
-    const unlockedAmount =
-      (opened._sum.amount || 0) + (resolvedOpened._sum.amount || 0);
-    const paidAmount =
-      (paid._sum.amount || 0) + (resolvedPaid._sum.amount || 0);
-    const totalEarnings = unlockedAmount + paidAmount;
+    const unPaidAmount = unpaid._sum.amount || 0;
+    const paidAmount = paid._sum.amount || 0;
+    const totalEarnings = unPaidAmount + paidAmount;
 
     res.status(200).json({
-      message: "Supplier earnings fetched successfully!",
+      message: "Supplier payments fetched successfully!",
       data: {
-        lockedAmount,
-        unlockedAmount,
+        unPaidAmount,
         totalEarnings,
       },
     });
+    return;
   } catch (error) {
     next(error);
   }
 }
 
-export const getPlugPendingPayments = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const plugId = req.plug?.id!;
-    const payments = await prisma.plugPayment.findMany({
-      where: { status: PaymentStatus.LOCKED, plugId },
-      include: {
-        order: {
-          select: {
-            orderNumber: true,
-          },
-        },
-      },
-    });
 
-    const result = payments.map((payment) => ({
-            orderNumber: payment.order.orderNumber,
-            daysLeft: getReturnDaysLeft(payment.createdAt),
-            amount: payment.amount,
-          }));
-
-    res.status(200).json({ message: "Pending payments fetched", result });
-  } catch (err) {
-    next(err);
-  }
-};
-export const getSupplierPendingPayments = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const supplierId = req.plug?.id!;
-    const payments = await prisma.supplierPayment.findMany({
-      where: { status: PaymentStatus.LOCKED, supplierId },
-      include: {
-        order: {
-          select: {
-            orderNumber: true,
-          },
-        },
-      },
-    });
-
-    const result = payments.map((payment) => ({
-            orderNumber: payment.order.orderNumber,
-            daysLeft: getReturnDaysLeft(payment.createdAt),
-            amount: payment.amount,
-          }));
-
-    res.status(200).json({ message: "Pending payments fetched", result });
-  } catch (err) {
-    next(err);
-  }
-};

@@ -5,6 +5,8 @@ import {
   getSupplierOrders,
   stageOrder,
   confirmOrder,
+  processSupplierOrder,
+  cancelSupplierOrder,
   // getPlugPausedOrderItems,
   // getPlugReturnedOrderItems,
   // getSupplierPausedOrderItems,
@@ -19,6 +21,8 @@ router.post("/confirm-order", confirmOrder);
 router.get("/buyer-info", getBuyerInfo);
 router.get("/plug", authenticateJWT, isPlug, getPlugOrders);
 router.get("/supplier", authenticateJWT, isSupplier, getSupplierOrders);
+router.post("/supplier/process", authenticateJWT, isSupplier, processSupplierOrder);
+router.post("/supplier/cancel", authenticateJWT, isSupplier, cancelSupplierOrder);
 // router.get("/plug/paused", authenticateJWT, isPlug, getPlugPausedOrderItems);
 // router.get(
 //   "/plug/returned",
