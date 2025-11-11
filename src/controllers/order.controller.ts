@@ -25,7 +25,6 @@ export async function stageOrder(
   next: NextFunction
 ) {
   try {
-    console.log("body", req.body);
     const parsed = StageOrderSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: "Invalid field data" });
@@ -339,82 +338,80 @@ export async function confirmOrder(
   try {
     const parsed = ConfirmOrderSchema.safeParse(req.body);
     if (!parsed.success) {
-       res.status(400).json({ error: "Invalid field data!" });
-       return
+      res.status(400).json({ error: "Invalid field data!" });
+      return;
     }
+
     const { reference } = parsed.data;
 
     const result = await prisma.$transaction(async (tx) => {
-      // Find all staged orders that share this reference
+      // Find all staged orders for this payment reference
       const stagedOrders = await tx.order.findMany({
         where: { paymentReference: reference, status: "STAGED" },
         include: {
           orderItems: true,
           plug: { select: { id: true, businessName: true, subdomain: true } },
-          supplier: { select: { id: true, businessName: true, subdomain: true } },
+          supplier: {
+            select: { id: true, businessName: true, subdomain: true },
+          },
         },
       });
 
-      if (!stagedOrders.length) throw new Error("No staged orders found for reference");
+      if (!stagedOrders.length)
+        throw new Error("No staged orders found for reference");
 
       // Separate online vs POD orders
-      const onlineOrders = stagedOrders.filter((o) => o.paymentMethod !== "P_O_D");
-      // POD orders = stagedOrders.filter((o) => o.paymentMethod === "P_O_D")
+      const onlineOrders = stagedOrders.filter(
+        (o) => o.paymentMethod !== "P_O_D"
+      );
 
-      // If there are online orders, verify Paystack once
+      // Verify paystack only if there are online orders
       if (onlineOrders.length > 0) {
-        // total expected for online orders (kobo check will use *100)
-        const totalOnline = onlineOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+        const totalOnline = onlineOrders.reduce(
+          (sum, o) => sum + o.totalAmount,
+          0
+        );
 
-        const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
-          headers: { Authorization: `Bearer ${paystackSecretKey}` },
-        });
+        const verifyRes = await fetch(
+          `https://api.paystack.co/transaction/verify/${reference}`,
+          { headers: { Authorization: `Bearer ${paystackSecretKey}` } }
+        );
 
         const verifyJson = await verifyRes.json();
-        if (!verifyJson || !verifyJson.status) {
-          throw new Error("Payment verification failed");
-        }
-        if (verifyJson.data.status !== "success") {
+        if (!verifyJson?.status) throw new Error("Payment verification failed");
+        if (verifyJson.data.status !== "success")
           throw new Error("Payment was not successful");
-        }
 
-        // Paystack returns amount in kobo; compare against totalOnline * 100
         const paystackAmount = verifyJson.data.amount;
         const expectedAmount = Math.round(totalOnline * 100);
 
         if (paystackAmount !== expectedAmount) {
-          throw new Error(`Payment amount mismatch: expected ${expectedAmount} kobo, got ${paystackAmount} kobo`);
+          throw new Error(
+            `Payment amount mismatch: expected ${expectedAmount} kobo, got ${paystackAmount} kobo`
+          );
         }
-        // Note: we verify once for all onlineOrders; individual order amounts were used to construct init
       }
 
-      // Now process each staged order: set to PENDING, adjust stock (commented), create payments records
+      // Process each staged order
       for (const order of stagedOrders) {
-        // Update order status to PENDING
         await tx.order.update({
           where: { id: order.id },
           data: { status: "PENDING" },
         });
 
-        // Decrease product stock (kept commented out as per your request)
-        // for (const item of order.orderItems) {
-        //   const product = await tx.product.findUnique({ where: { id: item.productId }, select: { id: true, stock: true } });
-        //   if (product && product.stock !== null) {
-        //     await tx.product.update({
-        //       where: { id: item.productId },
-        //       data: { stock: Math.max(product.stock - item.quantity, 0) },
-        //     });
-        //   }
-        //   if (item.variantId) {
-        //     const variant = await tx.productVariation.findUnique({ where: { id: item.variantId }, select: { id: true, stock: true } });
-        //     if (variant && variant.stock !== null) {
-        //       await tx.productVariation.update({
-        //         where: { id: item.variantId },
-        //         data: { stock: Math.max(variant.stock - item.quantity, 0) },
-        //       });
-        //     }
-        //   }
-        // }
+        // ---- Compute supplier payout ----
+        let supplierPayoutAmount = 0;
+
+        if (order.plugId) {
+          // ✅ If this was a plug order, calculate supplier payout using supplierPrice from orderItems
+          supplierPayoutAmount = order.orderItems.reduce(
+            (sum, item) => sum + item.supplierPrice * item.quantity,
+            0
+          );
+        } else {
+          // ✅ If supplier order directly, use the order.totalAmount (already supplier-based)
+          supplierPayoutAmount = order.totalAmount;
+        }
 
         // --- Create SupplierPayment if missing ---
         const existingSupplierPayment = await tx.supplierPayment.findFirst({
@@ -426,13 +423,13 @@ export async function confirmOrder(
             data: {
               orderId: order.id,
               supplierId: order.supplierId!,
-              amount: order.totalAmount,
-              // status default UNPAID (in your schema)
+              amount: supplierPayoutAmount,
+              // status defaults to UNPAID
             },
           });
         }
 
-        // --- If order belongs to a plug (source was plug), create a PlugPayment record per order ---
+        // --- Create PlugPayment if applicable ---
         if (order.plugId) {
           const existingPlugPayment = await tx.plugPayment.findFirst({
             where: { orderId: order.id, plugId: order.plugId },
@@ -443,17 +440,18 @@ export async function confirmOrder(
               data: {
                 orderId: order.id,
                 plugId: order.plugId,
-                amount: order.totalAmount,
-                // status default UNPAID
+                amount: order.totalAmount, // plug’s revenue including markup
+                // status defaults to UNPAID
               },
             });
           }
         }
       }
 
-      // Build store info from the first order (businessName should always exist per your requirement)
+      // Return store info for redirect or confirmation
       const first = stagedOrders[0];
-      const businessName = first.plug?.businessName || first.supplier?.businessName || "";
+      const businessName =
+        first.plug?.businessName || first.supplier?.businessName || "";
       const storeUrl = first.plug?.subdomain
         ? `https://${first.plug.subdomain}.pluggn.store`
         : first.supplier?.subdomain
@@ -468,6 +466,7 @@ export async function confirmOrder(
       data: result,
     });
   } catch (err) {
+    console.error("ConfirmOrder Error:", err);
     next(err);
   }
 }
