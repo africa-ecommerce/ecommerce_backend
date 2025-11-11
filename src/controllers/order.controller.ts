@@ -576,13 +576,13 @@ export async function getSupplierOrders(
       req.query.orderStatus as string | undefined
     )?.toUpperCase();
 
-    //typecast statusParam to OrderStatus or undefined
+    // Typecast safely
     const status = statusParam as OrderStatus | undefined;
 
     const orders = await prisma.order.findMany({
       where: {
         supplierId,
-        ...(status ? { order: { status } } : {}),
+        ...(status ? { status } : {}), // ✅ FIXED: direct match
       },
       include: {
         orderItems: true,
@@ -590,12 +590,11 @@ export async function getSupplierOrders(
       orderBy: { createdAt: "desc" },
     });
 
-    const data = orders;
-
     res.status(200).json({
       message: "Orders fetched successfully!",
-      data,
+      data: orders,
     });
+    return; // ✅ prevents TypeScript complaining about missing return
   } catch (error) {
     next(error);
   }
