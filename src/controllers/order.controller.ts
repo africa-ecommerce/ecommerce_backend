@@ -82,6 +82,9 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
     let authorizationUrl: string | null = null;
     let paymentReference: string | null = null;
 
+    const nanoid6 = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
+const internalReference = `REF-${nanoid6()}-${Date.now()}`;
+
     if (hasOnline && totalOnlineAmount > 0) {
       const initRes = await fetch(
         "https://api.paystack.co/transaction/initialize",
@@ -100,6 +103,7 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
               source: "pluggn",
               platform: input.platform || "Unknown",
               timestamp: Date.now(),
+              internalReference,
             },
           }),
         }
@@ -121,9 +125,8 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
       authorizationUrl = initJson.data.authorization_url;
       paymentReference = initJson.data.reference; // Paystack's generated reference
     } else {
-      // For P_O_D only orders, generate our own reference
-      const nanoid6 = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
-      paymentReference = `POD-${nanoid6()}-${Date.now()}`;
+      
+      paymentReference = internalReference;
     }
 
     // ---------- Create orders inside a single transaction ----------
