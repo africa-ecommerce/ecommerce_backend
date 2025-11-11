@@ -240,42 +240,64 @@ export async function stageOrder(
         const deliveryLocationId = group.items[0]?.deliveryLocationId ?? null;
         const paymentMethod = group.paymentMethod;
 
-        for (const it of group.items) {
-          const prod = await tx.product.findUnique({
-            where: { id: it.productId },
-            select: { id: true, price: true, name: true, supplierId: true },
-          });
-          if (!prod) throw new Error(`Product ${it.productId} not found`);
+      for (const it of group.items) {
+        // Always find parent product
+        const prod = await tx.product.findUnique({
+          where: { id: it.productId },
+          select: { id: true, name: true, price: true, supplierId: true },
+        });
+        if (!prod) throw new Error(`Product ${it.productId} not found`);
 
-          let plugPrice = 0;
-          if (orderSource === "plug" && plug) {
-            const pp = await tx.plugProduct.findUnique({
-              where: {
-                plugId_originalId: {
-                  plugId: plug.id,
-                  originalId: it.productId,
-                },
+        let plugPrice = 0;
+        if (orderSource === "plug" && plug) {
+          const pp = await tx.plugProduct.findUnique({
+            where: {
+              plugId_originalId: {
+                plugId: plug.id,
+                originalId: it.productId,
               },
-              select: { price: true },
-            });
-            if (!pp)
-              throw new Error(`PlugProduct not found for ${it.productId}`);
-            plugPrice = pp.price;
-          }
-
-          subtotal +=
-            (orderSource === "plug" ? plugPrice : prod.price) * it.quantity;
-
-          orderItemsToCreate.push({
-            productId: it.productId,
-            quantity: it.quantity,
-            productName: prod.name,
-            plugPrice: plugPrice > 0 ? plugPrice : null,
-            supplierPrice: prod.price,
-            supplierId: prod.supplierId,
-            plugId: plug?.id || null,
+            },
+            select: { price: true },
           });
+          if (!pp) throw new Error(`PlugProduct not found for ${it.productId}`);
+          plugPrice = pp.price;
         }
+
+        // 🔍 Variant logic
+        let variantData: any = null;
+        if (it.variantId) {
+          variantData = await tx.productVariation.findUnique({
+            where: { id: it.variantId },
+            select: { id: true, size: true, colors: true, stock: true },
+          });
+          if (!variantData) {
+            throw new Error(
+              `Variant ${it.variantId} not found for product ${it.productId}`
+            );
+          }
+        }
+
+        // Compute subtotal correctly
+        const unitPrice = orderSource === "plug" ? plugPrice : prod.price;
+        subtotal += unitPrice * it.quantity;
+
+        // ✅ Push to create list with full variant info if present
+        orderItemsToCreate.push({
+          productId: it.productId,
+          variantId: variantData?.id || null,
+          quantity: it.quantity,
+          productName: prod.name,
+          plugPrice: plugPrice > 0 ? plugPrice : null,
+          supplierPrice: prod.price,
+          supplierId: prod.supplierId,
+          plugId: plug?.id || null,
+          productSize: variantData ? null : it.size || null, // fallback if no variant
+          productColor: variantData ? null : it.color || null,
+          variantSize: variantData?.size || null,
+          variantColor: variantData?.colors?.[0] || null, // if color array exists
+        });
+      }
+
 
         const totalAmount = subtotal + deliveryFee;
         const orderNumber = `ORD-${new Date()
