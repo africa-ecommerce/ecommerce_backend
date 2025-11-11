@@ -17,45 +17,106 @@ const buildStoreUrl = (plug: any, supplier: any) =>
 
 export async function stageOrder(req: Request, res: Response, next: NextFunction) {
   try {
-    
     const parsed = StageOrderSchema.safeParse(req.body);
+    console.log("body", req.body);
     if (!parsed.success) {
       res.status(400).json({ error: "Invalid field data" });
       return;
     }
     const input = parsed.data;
 
+    // ---------- DETERMINE ORDER SOURCE (plug or supplier) UPFRONT ----------
+    let plug: any = null;
+    let supplierFallback: any = null;
+    let orderSource: "plug" | "supplier";
+
+    if (input.id) {
+      plug = await prisma.plug.findUnique({
+        where: { id: input.id },
+        select: { id: true, businessName: true, subdomain: true },
+      });
+      if (plug) {
+        orderSource = "plug";
+      } else {
+        supplierFallback = await prisma.supplier.findUnique({
+          where: { id: input.id },
+          select: { id: true, businessName: true, subdomain: true },
+        });
+        if (!supplierFallback) {
+          res.status(400).json({ error: "Invalid id: not a plug or supplier" });
+          return;
+        }
+        orderSource = "supplier";
+      }
+    } else if (input.subdomain) {
+      plug = await prisma.plug.findUnique({
+        where: { subdomain: input.subdomain },
+        select: { id: true, businessName: true, subdomain: true },
+      });
+      if (plug) {
+        orderSource = "plug";
+      } else {
+        // fallback check supplier by subdomain (if you support that)
+        supplierFallback = await prisma.supplier.findUnique({
+          where: { subdomain: input.subdomain },
+          select: { id: true, businessName: true, subdomain: true },
+        });
+        if (!supplierFallback) {
+          res.status(400).json({ error: "Store not found by subdomain" });
+          return;
+        }
+        orderSource = "supplier";
+      }
+    } else {
+      res.status(400).json({ error: "Either id or subdomain must be provided" });
+      return;
+    }
+
     // ---------- Group incoming items by supplierId ----------
     const groups = input.orderItems.reduce((acc: Record<string, any>, item) => {
       const key = item.supplierId;
       if (!acc[key]) {
-        acc[key] = { 
-          supplierId: item.supplierId, 
+        acc[key] = {
+          supplierId: item.supplierId,
           paymentMethod: item.paymentMethod,
-          items: [] 
+          items: [],
         };
       }
       acc[key].items.push(item);
       return acc;
     }, {} as Record<string, { supplierId: string; paymentMethod: string; items: any[] }>);
 
-    // ---------- Calculate total online payment amount ----------
-    let totalOnlineAmount = 0;
-    let hasOnline = false;
-
-    // Fetch all products first
+    // ---------- Fetch all products needed ----------
     const productIds = Array.from(new Set(input.orderItems.map((i: any) => i.productId)));
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } },
-      select: { id: true, price: true },
+      select: { id: true, price: true, name: true, supplierId: true },
     });
     const productMap = new Map(products.map((p) => [p.id, p]));
 
-    // Calculate totals for ONLINE payments only
+    // ---------- If plug source, fetch plugProduct prices for those productIds ----------
+    const plugProductMap = new Map<string, { price: number }>();
+    if (orderSource === "plug" && plug) {
+      const plugProducts = await prisma.plugProduct.findMany({
+        where: {
+          plugId: plug.id,
+          originalId: { in: productIds },
+        },
+        select: { originalId: true, price: true },
+      });
+      for (const pp of plugProducts) {
+        plugProductMap.set(pp.originalId, { price: pp.price });
+      }
+      // Note: if a plugProduct is missing for some product, we'll throw later when computing totals
+    }
+
+    // ---------- Compute per-group totals using the correct price (plugPrice or supplier price) ----------
+    let totalOnlineAmount = 0;
+    let hasOnline = false;
+
     for (const [supplierId, group] of Object.entries(groups)) {
       let subtotal = 0;
-      // Delivery fee is charged ONCE per supplier, not per item
-      const deliveryFee = group.items[0]?.deliveryFee ?? 0;
+      const firstDeliveryFee = group.items[0]?.deliveryFee ?? 0;
 
       for (const it of group.items) {
         const prod = productMap.get(it.productId);
@@ -63,13 +124,23 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
           res.status(400).json({ error: `Product ${it.productId} not found` });
           return;
         }
-        subtotal += prod.price * it.quantity;
+
+        // Choose price depending on orderSource
+        let unitPrice = prod.price; // supplier price by default
+        if (orderSource === "plug" && plug) {
+          const pp = plugProductMap.get(it.productId);
+          if (!pp) {
+            // If plug source but plugProduct missing, that's a data problem — fail fast
+            res.status(400).json({ error: `Plug product price not found for product ${it.productId}` });
+            return;
+          }
+          unitPrice = pp.price;
+        }
+
+        subtotal += unitPrice * it.quantity;
       }
 
-      // Total for this supplier = subtotal of all items + ONE delivery fee
-      const groupTotal = subtotal + deliveryFee;
-      
-      // Only add to online total if payment method is NOT P_O_D
+      const groupTotal = subtotal + firstDeliveryFee;
       if (group.paymentMethod !== "P_O_D") {
         hasOnline = true;
         totalOnlineAmount += groupTotal;
@@ -81,89 +152,81 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
     const internalReference = `REF-${nanoid6()}-${Date.now()}`;
 
     let authorizationUrl: string | null = null;
-    let paymentReference: string = internalReference;
+    let paymentReference: string = internalReference; // fallback to internal ref if no Paystack init
     let accessCode: string | null = null;
 
     if (hasOnline && totalOnlineAmount > 0) {
-      const initRes = await fetch(
-        "https://api.paystack.co/transaction/initialize",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${paystackSecretKey}`,
-            "Content-Type": "application/json",
+      const initRes = await fetch("https://api.paystack.co/transaction/initialize", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${paystackSecretKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: input.buyerEmail,
+          amount: Math.round(totalOnlineAmount * 100), // kobo
+          callback_url: `${process.env.FRONTEND_URL}/payment/callback`,
+          metadata: {
+            id: input.id || input.subdomain || null,
+            source: "pluggn",
+            platform: input.platform || "Unknown",
+            timestamp: Date.now(),
+            internalReference,
+            buyerName: input.buyerName,
+            buyerPhone: input.buyerPhone,
           },
-          body: JSON.stringify({
-            email: input.buyerEmail,
-            amount: Math.round(totalOnlineAmount * 100), // kobo - only online payments
-            callback_url: `${frontendUrl}/payment/callback`, // Paystack will add ?reference=xxx automatically
-            // Let Paystack generate the reference
-            metadata: {
-              id: input.id || input.subdomain || null,
-              source: "pluggn",
-              platform: input.platform || "Unknown",
-              timestamp: Date.now(),
-              internalReference,
-              buyerName: input.buyerName,
-              buyerPhone: input.buyerPhone,
-            },
-          }),
-        }
-      );
-
+        }),
+      });
 
       const initJson = await initRes.json();
       if (!initJson || !initJson.status) {
-        console.error("Paystack error:", initJson);
-        res.status(500).json({ 
+        console.error("Paystack init error:", initJson);
+        res.status(500).json({
           error: "Paystack initialization failed",
-          details: initJson?.message || "Unknown error"
+          details: initJson?.message || "Unknown error",
         });
         return;
       }
-      
-      // Get the reference that Paystack generated
+
       authorizationUrl = initJson.data.authorization_url;
-      paymentReference = initJson.data.reference; // Use Paystack's generated reference
-      accessCode = initJson.data.access_code;
+      paymentReference = initJson.data.reference;
+      accessCode = initJson.data.access_code ?? null;
     }
 
-    // ---------- Create orders inside a single transaction ----------
+    // ---------- Create orders inside a single transaction (use the computed paymentReference) ----------
     const txResult = await prisma.$transaction(async (tx) => {
-      // Identify plug or supplier once
-      let plug: any = null;
-      let supplier: any = null;
-      let orderSource: "plug" | "supplier";
+      // Re-identify plug/supplier inside transaction (for consistent selected fields)
+      let txPlug: any = null;
+      let txSupplier: any = null;
+      let txOrderSource: "plug" | "supplier";
 
       if (input.id) {
-        plug = await tx.plug.findUnique({
+        txPlug = await tx.plug.findUnique({
           where: { id: input.id },
           select: { id: true, businessName: true, subdomain: true },
         });
-        if (plug) {
-          orderSource = "plug";
-        } else {
-          supplier = await tx.supplier.findUnique({
+        if (txPlug) txOrderSource = "plug";
+        else {
+          txSupplier = await tx.supplier.findUnique({
             where: { id: input.id },
             select: { id: true, businessName: true, subdomain: true },
           });
-          if (!supplier) throw new Error("Invalid id: not a plug or supplier");
-          orderSource = "supplier";
+          if (!txSupplier) throw new Error("Invalid id: not a plug or supplier");
+          txOrderSource = "supplier";
         }
       } else if (input.subdomain) {
-        plug = await tx.plug.findUnique({
+        txPlug = await tx.plug.findUnique({
           where: { subdomain: input.subdomain },
           select: { id: true, businessName: true, subdomain: true },
         });
-        if (!plug) {
-          supplier = await tx.supplier.findUnique({
+        if (txPlug) txOrderSource = "plug";
+        else {
+          txSupplier = await tx.supplier.findUnique({
             where: { subdomain: input.subdomain },
             select: { id: true, businessName: true, subdomain: true },
           });
-          if (!supplier) throw new Error("Store not found by subdomain");
-          orderSource = "supplier";
-        } else {
-          orderSource = "plug";
+          if (!txSupplier) throw new Error("Store not found by subdomain");
+          txOrderSource = "supplier";
         }
       } else {
         throw new Error("Either id or subdomain must be provided");
@@ -192,12 +255,13 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
 
       const createdOrders: { id: string; orderNumber: string }[] = [];
 
-      // Create one order per supplier
+      // For each group create an order and orderItems (again fetch product/plugProduct to ensure canonical prices)
       for (const [supplierId, group] of Object.entries(groups)) {
         let subtotal = 0;
         const orderItemsToCreate: any[] = [];
         const deliveryFee = group.items[0]?.deliveryFee ?? 0;
         const deliveryLocationId = group.items[0]?.deliveryLocationId ?? null;
+        const paymentMethod = group.paymentMethod;
 
         for (const it of group.items) {
           const prod = await tx.product.findUnique({
@@ -206,18 +270,18 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
           });
           if (!prod) throw new Error(`Product ${it.productId} not found`);
 
+          // compute plugPrice if source is plug
           let plugPrice = prod.price;
-          if (orderSource === "plug" && plug) {
-            const plugProduct = await tx.plugProduct.findUnique({
-              where: { plugId_originalId: { plugId: plug.id, originalId: it.productId } },
+          if (txOrderSource === "plug" && txPlug) {
+            const pp = await tx.plugProduct.findUnique({
+              where: { plugId_originalId: { plugId: txPlug.id, originalId: it.productId } },
               select: { price: true },
             });
-            if (plugProduct) {
-              plugPrice = plugProduct.price;
-            }
+            if (!pp) throw new Error(`PlugProduct not found for ${it.productId}`);
+            plugPrice = pp.price;
           }
 
-          subtotal += (orderSource === "plug" ? plugPrice : prod.price) * it.quantity;
+          subtotal += (txOrderSource === "plug" ? plugPrice : prod.price) * it.quantity;
 
           orderItemsToCreate.push({
             productId: it.productId,
@@ -231,27 +295,27 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
             plugPrice,
             supplierPrice: prod.price,
             supplierId: prod.supplierId,
-            plugId: plug?.id || null,
+            plugId: txPlug?.id || null,
           });
         }
 
         const totalAmount = subtotal + deliveryFee;
-        const orderNumber = `ORD-${new Date()
-          .toISOString()
-          .slice(2, 10)
-          .replace(/-/g, "")}-${customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6)()}`;
+        const orderNumber = `ORD-${new Date().toISOString().slice(2, 10).replace(/-/g, "")}-${customAlphabet(
+          "ABCDEFGHJKLMNPQRSTUVWXYZ23456789",
+          6
+        )()}`;
 
         const createdOrder = await tx.order.create({
           data: {
             orderNumber,
             buyerId: buyer.id,
-            plugId: plug?.id || null,
+            plugId: txPlug?.id || null,
             supplierId,
             totalAmount,
             deliveryFee,
             deliveryLocationId,
-            paymentMethod: group.paymentMethod,
-            paymentReference, // Use Paystack's generated reference (or our POD reference)
+            paymentMethod,
+            paymentReference, // Use Paystack's generated reference (or internal)
             platform: input.platform || "Unknown",
             buyerName: input.buyerName,
             buyerEmail: input.buyerEmail,
@@ -278,11 +342,13 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
       };
     });
 
+    
     res.status(201).json({ data: txResult });
   } catch (err) {
     next(err);
   }
 }
+
 
 export async function confirmOrder(req: Request, res: Response, next: NextFunction) {
   try {
