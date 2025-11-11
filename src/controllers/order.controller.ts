@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { StageOrderSchema, ConfirmOrderSchema, BuyerInfoSchema } from "../lib/zod/schema";
-import { paystackSecretKey, prisma } from "../config";
+import { frontendUrl, paystackSecretKey, prisma } from "../config";
 import { customAlphabet } from "nanoid";
 import { OrderStatus } from "@prisma/client";
 import { successOrderMail } from "../helper/mail/order/successOrderMail";
@@ -17,7 +17,6 @@ const buildStoreUrl = (plug: any, supplier: any) =>
 
 export async function stageOrder(req: Request, res: Response, next: NextFunction) {
   try {
- console.log("body", req.body)
     
     const parsed = StageOrderSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -78,12 +77,12 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
     }
 
     // ---------- Initialize Paystack ONCE if there are any online payments ----------
-    // Let Paystack generate the reference for us
-    let authorizationUrl: string | null = null;
-    let paymentReference: string | null = null;
-
     const nanoid6 = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
-const internalReference = `REF-${nanoid6()}-${Date.now()}`;
+    const internalReference = `REF-${nanoid6()}-${Date.now()}`;
+
+    let authorizationUrl: string | null = null;
+    let paymentReference: string = internalReference;
+    let accessCode: string | null = null;
 
     if (hasOnline && totalOnlineAmount > 0) {
       const initRes = await fetch(
@@ -97,22 +96,25 @@ const internalReference = `REF-${nanoid6()}-${Date.now()}`;
           body: JSON.stringify({
             email: input.buyerEmail,
             amount: Math.round(totalOnlineAmount * 100), // kobo - only online payments
-            // Don't send reference - let Paystack generate it
+            callback_url: `${frontendUrl}/payment/callback`, // Paystack will add ?reference=xxx automatically
+            // Let Paystack generate the reference
             metadata: {
               id: input.id || input.subdomain || null,
               source: "pluggn",
               platform: input.platform || "Unknown",
               timestamp: Date.now(),
               internalReference,
+              buyerName: input.buyerName,
+              buyerPhone: input.buyerPhone,
             },
           }),
         }
       );
 
-      console.log("initRes", initRes);
 
       const initJson = await initRes.json();
       if (!initJson || !initJson.status) {
+        console.error("Paystack error:", initJson);
         res.status(500).json({ 
           error: "Paystack initialization failed",
           details: initJson?.message || "Unknown error"
@@ -120,13 +122,10 @@ const internalReference = `REF-${nanoid6()}-${Date.now()}`;
         return;
       }
       
-       console.log("initJson", initJson);
       // Get the reference that Paystack generated
       authorizationUrl = initJson.data.authorization_url;
-      paymentReference = initJson.data.reference; // Paystack's generated reference
-    } else {
-      
-      paymentReference = internalReference;
+      paymentReference = initJson.data.reference; // Use Paystack's generated reference
+      accessCode = initJson.data.access_code;
     }
 
     // ---------- Create orders inside a single transaction ----------
@@ -279,7 +278,6 @@ const internalReference = `REF-${nanoid6()}-${Date.now()}`;
       };
     });
 
-    console.log("done")
     res.status(201).json({ data: txResult });
   } catch (err) {
     next(err);
