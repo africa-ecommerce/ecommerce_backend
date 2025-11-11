@@ -124,6 +124,7 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
           res.status(400).json({ error: `Product ${it.productId} not found` });
           return;
         }
+        
 
         // Choose price depending on orderSource
         let unitPrice = prod.price; // supplier price by default
@@ -165,7 +166,7 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
         body: JSON.stringify({
           email: input.buyerEmail,
           amount: Math.round(totalOnlineAmount * 100), // kobo
-          callback_url: `${process.env.FRONTEND_URL}/payment/callback`,
+          callback_url: `${frontendUrl}/payment/callback`,
           metadata: {
             id: input.id || input.subdomain || null,
             source: "pluggn",
