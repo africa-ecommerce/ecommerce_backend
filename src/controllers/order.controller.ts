@@ -637,6 +637,8 @@ export async function processSupplierOrder(
       for (const item of order.orderItems) {
         if (item.quantity <= 0) continue;
 
+
+        console.log("yes")
         if (item.variantId) {
           // Update the variation stock
           const variant = await tx.productVariation.findUnique({
@@ -644,13 +646,16 @@ export async function processSupplierOrder(
             select: { id: true, stock: true },
           });
 
+           console.log("variant", variant)
           if (variant) {
-            await tx.productVariation.update({
+           const updatedProductVariation =  await tx.productVariation.update({
               where: { id: variant.id },
               data: {
                 stock: Math.max((variant.stock ?? 0) - item.quantity, 0),
               },
             });
+
+             console.log("updatedProductVariation", updatedProductVariation)
           }
 
           // Optional: also increment sold on the parent product
@@ -659,13 +664,16 @@ export async function processSupplierOrder(
             select: { id: true, sold: true },
           });
 
+          console.log("parentProduct", parentProduct)
+
           if (parentProduct) {
-            await tx.product.update({
+          const updatedProduct =  await tx.product.update({
               where: { id: parentProduct.id },
               data: {
                 sold: (parentProduct.sold ?? 0) + item.quantity,
               },
             });
+            console.log("updatedProduct", updatedProduct)
           }
         } else {
           // No variant: update product stock and sold
@@ -673,15 +681,17 @@ export async function processSupplierOrder(
             where: { id: item.productId },
             select: { id: true, stock: true, sold: true },
           });
+          console.log("product", product)
 
           if (product) {
-            await tx.product.update({
+          const updated =   await tx.product.update({
               where: { id: product.id },
               data: {
                 stock: Math.max((product.stock ?? 0) - item.quantity, 0),
                 sold: (product.sold ?? 0) + item.quantity,
               },
             });
+            console.log("updated", updated)
           }
         }
       }
