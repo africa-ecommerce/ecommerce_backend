@@ -425,11 +425,15 @@ export async function confirmOrder(
         let supplierPayoutAmount = 0;
 
         if (order.plugId) {
-          // ✅ If this was a plug order, calculate supplier payout using supplierPrice from orderItems
+          // ✅ If it's a plug order, supplier gets only their product base prices (no markup)
           supplierPayoutAmount = order.orderItems.reduce(
             (sum, item) => sum + item.supplierPrice * item.quantity,
             0
           );
+
+          // 🔹 If the plug order was fulfilled by a supplier directly, 
+          // we still add the delivery fee for supplier payout
+          supplierPayoutAmount += order.deliveryFee || 0;
         } else {
           // ✅ If supplier order directly, use the order.totalAmount (already supplier-based)
           supplierPayoutAmount = order.totalAmount;
