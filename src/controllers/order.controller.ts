@@ -18,6 +18,7 @@ const buildStoreUrl = (plug: any, supplier: any) =>
 
 export async function stageOrder(req: Request, res: Response, next: NextFunction) {
   try {
+    console.log("body", req.body)
     const parsed = StageOrderSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: "Invalid field data" });
@@ -80,6 +81,7 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
     let paymentReference: string | null = null;
 
     if (hasOnline && totalOnlineAmount > 0) {
+      console.log("yes")
       const initRes = await fetch("https://api.paystack.co/transaction/initialize", {
         method: "POST",
         headers: {
@@ -98,6 +100,7 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
         }),
       });
 
+      console.log("initRes", initRes);
       const initJson = await initRes.json();
       if (!initJson || !initJson.status) {
         res.status(500).json({ 
@@ -260,6 +263,7 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
         createdOrders.push({ id: createdOrder.id, orderNumber: createdOrder.orderNumber });
       }
 
+      console.log("done");
       return {
         authorization_url: authorizationUrl,
         reference: paymentReference,
@@ -280,6 +284,8 @@ export async function confirmOrder(req: Request, res: Response, next: NextFuncti
       return;
     }
     const { reference } = parsed.data;
+
+     console.log("req", req.body);
 
     const result = await prisma.$transaction(async (tx) => {
       // Find staged orders with this reference
