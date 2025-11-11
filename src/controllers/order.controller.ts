@@ -8,7 +8,6 @@ import { AuthRequest } from "../types";
 import { formatPlugOrders, formatSupplierOrders } from "../helper/formatData";
 
 // Helper to build store url
-// Helper to build store url
 const buildStoreUrl = (plug: any, supplier: any) =>
   plug?.subdomain
     ? `https://${plug.subdomain}.pluggn.store`
@@ -18,7 +17,8 @@ const buildStoreUrl = (plug: any, supplier: any) =>
 
 export async function stageOrder(req: Request, res: Response, next: NextFunction) {
   try {
-    console.log("body", req.body)
+ console.log("body", req.body)
+    
     const parsed = StageOrderSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: "Invalid field data" });
@@ -55,7 +55,8 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
     // Calculate totals for ONLINE payments only
     for (const [supplierId, group] of Object.entries(groups)) {
       let subtotal = 0;
-      const firstDeliveryFee = group.items[0]?.deliveryFee ?? 0;
+      // Delivery fee is charged ONCE per supplier, not per item
+      const deliveryFee = group.items[0]?.deliveryFee ?? 0;
 
       for (const it of group.items) {
         const prod = productMap.get(it.productId);
@@ -66,7 +67,8 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
         subtotal += prod.price * it.quantity;
       }
 
-      const groupTotal = subtotal + firstDeliveryFee;
+      // Total for this supplier = subtotal of all items + ONE delivery fee
+      const groupTotal = subtotal + deliveryFee;
       
       // Only add to online total if payment method is NOT P_O_D
       if (group.paymentMethod !== "P_O_D") {
@@ -81,7 +83,6 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
     let paymentReference: string | null = null;
 
     if (hasOnline && totalOnlineAmount > 0) {
-      console.log("yes")
       const initRes = await fetch("https://api.paystack.co/transaction/initialize", {
         method: "POST",
         headers: {
@@ -101,6 +102,7 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
       });
 
       console.log("initRes", initRes);
+
       const initJson = await initRes.json();
       if (!initJson || !initJson.status) {
         res.status(500).json({ 
@@ -110,6 +112,7 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
         return;
       }
       
+       console.log("initJson", initJson);
       // Get the reference that Paystack generated
       authorizationUrl = initJson.data.authorization_url;
       paymentReference = initJson.data.reference; // Paystack's generated reference
@@ -263,13 +266,13 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
         createdOrders.push({ id: createdOrder.id, orderNumber: createdOrder.orderNumber });
       }
 
-      console.log("done");
       return {
         authorization_url: authorizationUrl,
         reference: paymentReference,
       };
     });
 
+    console.log("done")
     res.status(201).json({ data: txResult });
   } catch (err) {
     next(err);
@@ -284,8 +287,6 @@ export async function confirmOrder(req: Request, res: Response, next: NextFuncti
       return;
     }
     const { reference } = parsed.data;
-
-     console.log("req", req.body);
 
     const result = await prisma.$transaction(async (tx) => {
       // Find staged orders with this reference
@@ -387,6 +388,8 @@ export async function confirmOrder(req: Request, res: Response, next: NextFuncti
     next(err);
   }
 }
+
+
 
 
 /**
