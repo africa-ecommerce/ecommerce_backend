@@ -1,5 +1,9 @@
 import { NextFunction, Request, Response } from "express";
-import { StageOrderSchema, ConfirmOrderSchema, BuyerInfoSchema } from "../lib/zod/schema";
+import {
+  StageOrderSchema,
+  ConfirmOrderSchema,
+  BuyerInfoSchema,
+} from "../lib/zod/schema";
 import { frontendUrl, paystackSecretKey, prisma } from "../config";
 import { customAlphabet } from "nanoid";
 import { OrderStatus } from "@prisma/client";
@@ -136,7 +140,7 @@ export async function stageOrder(
             res
               .status(400)
               .json({
-                error: `Plug product price not found for product ${it.productId}`,
+                error: `Plug product price not found for ${it.productId}`,
               });
             return;
           }
@@ -148,7 +152,6 @@ export async function stageOrder(
 
       const groupTotal = subtotal + firstDeliveryFee;
 
-      // only include online payments
       if (group.paymentMethod !== "P_O_D") {
         hasOnline = true;
         totalOnlineAmount += groupTotal;
@@ -174,7 +177,7 @@ export async function stageOrder(
           },
           body: JSON.stringify({
             email: input.buyerEmail,
-            amount: Math.round(totalOnlineAmount * 100), // kobo
+            amount: Math.round(totalOnlineAmount * 100),
             callback_url: `${frontendUrl}/payment/callback`,
             metadata: {
               id: input.id || input.subdomain || null,
@@ -192,12 +195,7 @@ export async function stageOrder(
       const initJson = await initRes.json();
       if (!initJson?.status) {
         console.error("Paystack init error:", initJson);
-        res
-          .status(500)
-          .json({
-            error: "Paystack initialization failed",
-            details: initJson?.message || "Unknown",
-          });
+        res.status(500).json({ error: "Paystack initialization failed" });
         return;
       }
 
@@ -279,12 +277,10 @@ export async function stageOrder(
         const orderNumber = `ORD-${new Date()
           .toISOString()
           .slice(2, 10)
-          .replace(/-/g, "")}-${customAlphabet(
-          "ABCDEFGHJKLMNPQRSTUVWXYZ23456789",
-          6
-        )()}`;
+          .replace(/-/g, "")}-${nanoid6()}`;
 
-        await tx.order.create({
+        // ✅ Create the order first
+        const createdOrder = await tx.order.create({
           data: {
             orderNumber,
             buyerId: buyer.id,
@@ -308,8 +304,12 @@ export async function stageOrder(
           },
         });
 
+        // ✅ Then create the order items with that orderId
         await tx.orderItem.createMany({
-          data: orderItemsToCreate.map((oi) => ({ ...oi, orderId: undefined })), // fixed structure
+          data: orderItemsToCreate.map((oi) => ({
+            ...oi,
+            orderId: createdOrder.id,
+          })),
         });
       }
 
@@ -321,14 +321,16 @@ export async function stageOrder(
 
     res.status(201).json({ data: txResult });
   } catch (err) {
+    console.error("Route Error:", err);
     next(err);
   }
 }
 
-
-
-
-export async function confirmOrder(req: Request, res: Response, next: NextFunction) {
+export async function confirmOrder(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const parsed = ConfirmOrderSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -348,19 +350,28 @@ export async function confirmOrder(req: Request, res: Response, next: NextFuncti
         },
       });
 
-      if (!stagedOrders.length) throw new Error("No staged orders found for reference");
+      if (!stagedOrders.length)
+        throw new Error("No staged orders found for reference");
 
       // Separate online and P_O_D orders
-      const onlineOrders = stagedOrders.filter((o) => o.paymentMethod !== "P_O_D");
+      const onlineOrders = stagedOrders.filter(
+        (o) => o.paymentMethod !== "P_O_D"
+      );
       const podOrders = stagedOrders.filter((o) => o.paymentMethod === "P_O_D");
 
       // If there are online orders, verify Paystack ONCE
       if (onlineOrders.length > 0) {
-        const totalOnline = onlineOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+        const totalOnline = onlineOrders.reduce(
+          (sum, o) => sum + o.totalAmount,
+          0
+        );
 
-        const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
-          headers: { Authorization: `Bearer ${paystackSecretKey}` },
-        });
+        const verifyRes = await fetch(
+          `https://api.paystack.co/transaction/verify/${reference}`,
+          {
+            headers: { Authorization: `Bearer ${paystackSecretKey}` },
+          }
+        );
 
         const verifyJson = await verifyRes.json();
         if (!verifyJson || !verifyJson.status) {
@@ -373,7 +384,7 @@ export async function confirmOrder(req: Request, res: Response, next: NextFuncti
         // Verify amount matches (Paystack amount is in kobo)
         const paystackAmount = verifyJson.data.amount;
         const expectedAmount = Math.round(totalOnline * 100);
-        
+
         if (paystackAmount !== expectedAmount) {
           throw new Error(
             `Payment amount mismatch: expected ${expectedAmount} kobo, got ${paystackAmount} kobo`
@@ -390,11 +401,11 @@ export async function confirmOrder(req: Request, res: Response, next: NextFuncti
 
         // Decrease stock for items
         for (const item of order.orderItems) {
-          const product = await tx.product.findUnique({ 
+          const product = await tx.product.findUnique({
             where: { id: item.productId },
-            select: { id: true, stock: true }
+            select: { id: true, stock: true },
           });
-          
+
           if (product && product.stock !== null) {
             await tx.product.update({
               where: { id: item.productId },
@@ -403,11 +414,11 @@ export async function confirmOrder(req: Request, res: Response, next: NextFuncti
           }
 
           if (item.variantId) {
-            const variant = await tx.productVariation.findUnique({ 
+            const variant = await tx.productVariation.findUnique({
               where: { id: item.variantId },
-              select: { id: true, stock: true }
+              select: { id: true, stock: true },
             });
-            
+
             if (variant && variant.stock !== null) {
               await tx.productVariation.update({
                 where: { id: item.variantId },
@@ -420,26 +431,24 @@ export async function confirmOrder(req: Request, res: Response, next: NextFuncti
 
       // Return business info
       const anyOrder = stagedOrders[0];
-      const businessName = anyOrder?.plug?.businessName || anyOrder?.supplier?.businessName || "";
+      const businessName =
+        anyOrder?.plug?.businessName || anyOrder?.supplier?.businessName || "";
       const storeUrl = buildStoreUrl(anyOrder?.plug, anyOrder?.supplier);
 
-      return { 
-        businessName, 
-        storeUrl, 
+      return {
+        businessName,
+        storeUrl,
       };
     });
 
-    res.status(200).json({ 
-      message: "Orders confirmed successfully!", 
-      data: result 
+    res.status(200).json({
+      message: "Orders confirmed successfully!",
+      data: result,
     });
   } catch (err) {
     next(err);
   }
 }
-
-
-
 
 /**
  * @dev PUBLIC ENDPOINT
