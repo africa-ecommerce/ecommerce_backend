@@ -15,17 +15,21 @@ const buildStoreUrl = (plug: any, supplier: any) =>
     ? `https://${supplier.subdomain}.pluggn.store`
     : "";
 
-export async function stageOrder(req: Request, res: Response, next: NextFunction) {
+export async function stageOrder(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const parsed = StageOrderSchema.safeParse(req.body);
-    console.log("body", req.body);
     if (!parsed.success) {
       res.status(400).json({ error: "Invalid field data" });
       return;
     }
+
     const input = parsed.data;
 
-    // ---------- DETERMINE ORDER SOURCE (plug or supplier) UPFRONT ----------
+    // ---------- DETERMINE ORDER SOURCE ----------
     let plug: any = null;
     let supplierFallback: any = null;
     let orderSource: "plug" | "supplier";
@@ -35,9 +39,8 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
         where: { id: input.id },
         select: { id: true, businessName: true, subdomain: true },
       });
-      if (plug) {
-        orderSource = "plug";
-      } else {
+      if (plug) orderSource = "plug";
+      else {
         supplierFallback = await prisma.supplier.findUnique({
           where: { id: input.id },
           select: { id: true, businessName: true, subdomain: true },
@@ -53,10 +56,8 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
         where: { subdomain: input.subdomain },
         select: { id: true, businessName: true, subdomain: true },
       });
-      if (plug) {
-        orderSource = "plug";
-      } else {
-        // fallback check supplier by subdomain (if you support that)
+      if (plug) orderSource = "plug";
+      else {
         supplierFallback = await prisma.supplier.findUnique({
           where: { subdomain: input.subdomain },
           select: { id: true, businessName: true, subdomain: true },
@@ -68,53 +69,56 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
         orderSource = "supplier";
       }
     } else {
-      res.status(400).json({ error: "Either id or subdomain must be provided" });
+      res
+        .status(400)
+        .json({ error: "Either id or subdomain must be provided" });
       return;
     }
 
-    // ---------- Group incoming items by supplierId ----------
-    const groups = input.orderItems.reduce((acc: Record<string, any>, item) => {
-      const key = item.supplierId;
-      if (!acc[key]) {
-        acc[key] = {
-          supplierId: item.supplierId,
-          paymentMethod: item.paymentMethod,
-          items: [],
-        };
-      }
-      acc[key].items.push(item);
-      return acc;
-    }, {} as Record<string, { supplierId: string; paymentMethod: string; items: any[] }>);
+    // ---------- GROUP ITEMS BY SUPPLIER ----------
+    const groups = input.orderItems.reduce(
+      (acc: Record<string, any>, item: any) => {
+        const key = item.supplierId;
+        if (!acc[key]) {
+          acc[key] = {
+            supplierId: item.supplierId,
+            paymentMethod: item.paymentMethod,
+            items: [],
+          };
+        }
+        acc[key].items.push(item);
+        return acc;
+      },
+      {}
+    );
 
-    // ---------- Fetch all products needed ----------
-    const productIds = Array.from(new Set(input.orderItems.map((i: any) => i.productId)));
+    // ---------- FETCH PRODUCTS ----------
+    const productIds = Array.from(
+      new Set(input.orderItems.map((i: any) => i.productId))
+    );
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } },
       select: { id: true, price: true, name: true, supplierId: true },
     });
     const productMap = new Map(products.map((p) => [p.id, p]));
 
-    // ---------- If plug source, fetch plugProduct prices for those productIds ----------
+    // ---------- FETCH PLUG PRODUCTS ----------
     const plugProductMap = new Map<string, { price: number }>();
     if (orderSource === "plug" && plug) {
       const plugProducts = await prisma.plugProduct.findMany({
-        where: {
-          plugId: plug.id,
-          originalId: { in: productIds },
-        },
+        where: { plugId: plug.id, originalId: { in: productIds } },
         select: { originalId: true, price: true },
       });
-      for (const pp of plugProducts) {
+      for (const pp of plugProducts)
         plugProductMap.set(pp.originalId, { price: pp.price });
-      }
-      // Note: if a plugProduct is missing for some product, we'll throw later when computing totals
     }
 
-    // ---------- Compute per-group totals using the correct price (plugPrice or supplier price) ----------
+    // ---------- COMPUTE TOTALS ----------
     let totalOnlineAmount = 0;
     let hasOnline = false;
 
-    for (const [supplierId, group] of Object.entries(groups)) {
+    for (const [_, groupRaw] of Object.entries(groups)) {
+      const group = groupRaw as any;
       let subtotal = 0;
       const firstDeliveryFee = group.items[0]?.deliveryFee ?? 0;
 
@@ -124,15 +128,16 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
           res.status(400).json({ error: `Product ${it.productId} not found` });
           return;
         }
-        
 
-        // Choose price depending on orderSource
-        let unitPrice = prod.price; // supplier price by default
+        let unitPrice = prod.price;
         if (orderSource === "plug" && plug) {
           const pp = plugProductMap.get(it.productId);
           if (!pp) {
-            // If plug source but plugProduct missing, that's a data problem — fail fast
-            res.status(400).json({ error: `Plug product price not found for product ${it.productId}` });
+            res
+              .status(400)
+              .json({
+                error: `Plug product price not found for product ${it.productId}`,
+              });
             return;
           }
           unitPrice = pp.price;
@@ -142,50 +147,57 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
       }
 
       const groupTotal = subtotal + firstDeliveryFee;
+
+      // only include online payments
       if (group.paymentMethod !== "P_O_D") {
         hasOnline = true;
         totalOnlineAmount += groupTotal;
       }
     }
 
-    // ---------- Initialize Paystack ONCE if there are any online payments ----------
+    // ---------- INITIALIZE PAYSTACK ONCE ----------
     const nanoid6 = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
     const internalReference = `REF-${nanoid6()}-${Date.now()}`;
 
     let authorizationUrl: string | null = null;
-    let paymentReference: string = internalReference; // fallback to internal ref if no Paystack init
+    let paymentReference: string = internalReference;
     let accessCode: string | null = null;
 
     if (hasOnline && totalOnlineAmount > 0) {
-      const initRes = await fetch("https://api.paystack.co/transaction/initialize", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${paystackSecretKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: input.buyerEmail,
-          amount: Math.round(totalOnlineAmount * 100), // kobo
-          callback_url: `${frontendUrl}/payment/callback`,
-          metadata: {
-            id: input.id || input.subdomain || null,
-            source: "pluggn",
-            platform: input.platform || "Unknown",
-            timestamp: Date.now(),
-            internalReference,
-            buyerName: input.buyerName,
-            buyerPhone: input.buyerPhone,
+      const initRes = await fetch(
+        "https://api.paystack.co/transaction/initialize",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${paystackSecretKey}`,
+            "Content-Type": "application/json",
           },
-        }),
-      });
+          body: JSON.stringify({
+            email: input.buyerEmail,
+            amount: Math.round(totalOnlineAmount * 100), // kobo
+            callback_url: `${frontendUrl}/payment/callback`,
+            metadata: {
+              id: input.id || input.subdomain || null,
+              source: "pluggn",
+              platform: input.platform || "Unknown",
+              timestamp: Date.now(),
+              internalReference,
+              buyerName: input.buyerName,
+              buyerPhone: input.buyerPhone,
+            },
+          }),
+        }
+      );
 
       const initJson = await initRes.json();
-      if (!initJson || !initJson.status) {
+      if (!initJson?.status) {
         console.error("Paystack init error:", initJson);
-        res.status(500).json({
-          error: "Paystack initialization failed",
-          details: initJson?.message || "Unknown error",
-        });
+        res
+          .status(500)
+          .json({
+            error: "Paystack initialization failed",
+            details: initJson?.message || "Unknown",
+          });
         return;
       }
 
@@ -194,48 +206,12 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
       accessCode = initJson.data.access_code ?? null;
     }
 
-    // ---------- Create orders inside a single transaction (use the computed paymentReference) ----------
+    // ---------- CREATE ORDERS ----------
     const txResult = await prisma.$transaction(async (tx) => {
-      // Re-identify plug/supplier inside transaction (for consistent selected fields)
-      let txPlug: any = null;
-      let txSupplier: any = null;
-      let txOrderSource: "plug" | "supplier";
-
-      if (input.id) {
-        txPlug = await tx.plug.findUnique({
-          where: { id: input.id },
-          select: { id: true, businessName: true, subdomain: true },
-        });
-        if (txPlug) txOrderSource = "plug";
-        else {
-          txSupplier = await tx.supplier.findUnique({
-            where: { id: input.id },
-            select: { id: true, businessName: true, subdomain: true },
-          });
-          if (!txSupplier) throw new Error("Invalid id: not a plug or supplier");
-          txOrderSource = "supplier";
-        }
-      } else if (input.subdomain) {
-        txPlug = await tx.plug.findUnique({
-          where: { subdomain: input.subdomain },
-          select: { id: true, businessName: true, subdomain: true },
-        });
-        if (txPlug) txOrderSource = "plug";
-        else {
-          txSupplier = await tx.supplier.findUnique({
-            where: { subdomain: input.subdomain },
-            select: { id: true, businessName: true, subdomain: true },
-          });
-          if (!txSupplier) throw new Error("Store not found by subdomain");
-          txOrderSource = "supplier";
-        }
-      } else {
-        throw new Error("Either id or subdomain must be provided");
-      }
-
-      // Upsert buyer
       const buyer = await tx.buyer.upsert({
-        where: { email_phone: { email: input.buyerEmail, phone: input.buyerPhone } },
+        where: {
+          email_phone: { email: input.buyerEmail, phone: input.buyerPhone },
+        },
         update: {
           name: input.buyerName,
           streetAddress: input.buyerAddress || null,
@@ -254,10 +230,8 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
         },
       });
 
-      const createdOrders: { id: string; orderNumber: string }[] = [];
-
-      // For each group create an order and orderItems (again fetch product/plugProduct to ensure canonical prices)
-      for (const [supplierId, group] of Object.entries(groups)) {
+      for (const [_, groupRaw] of Object.entries(groups)) {
+        const group = groupRaw as any;
         let subtotal = 0;
         const orderItemsToCreate: any[] = [];
         const deliveryFee = group.items[0]?.deliveryFee ?? 0;
@@ -267,56 +241,60 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
         for (const it of group.items) {
           const prod = await tx.product.findUnique({
             where: { id: it.productId },
-            select: { id: true, price: true, name: true, supplierId: true, stock: true },
+            select: { id: true, price: true, name: true, supplierId: true },
           });
           if (!prod) throw new Error(`Product ${it.productId} not found`);
 
-          // compute plugPrice if source is plug
           let plugPrice = prod.price;
-          if (txOrderSource === "plug" && txPlug) {
+          if (orderSource === "plug" && plug) {
             const pp = await tx.plugProduct.findUnique({
-              where: { plugId_originalId: { plugId: txPlug.id, originalId: it.productId } },
+              where: {
+                plugId_originalId: {
+                  plugId: plug.id,
+                  originalId: it.productId,
+                },
+              },
               select: { price: true },
             });
-            if (!pp) throw new Error(`PlugProduct not found for ${it.productId}`);
+            if (!pp)
+              throw new Error(`PlugProduct not found for ${it.productId}`);
             plugPrice = pp.price;
           }
 
-          subtotal += (txOrderSource === "plug" ? plugPrice : prod.price) * it.quantity;
+          subtotal +=
+            (orderSource === "plug" ? plugPrice : prod.price) * it.quantity;
 
           orderItemsToCreate.push({
             productId: it.productId,
-            variantId: it.variantId || null,
             quantity: it.quantity,
-            productSize: it.productSize || null,
-            productColor: it.productColor || null,
-            variantSize: it.variantSize || null,
-            variantColor: it.variantColor || null,
             productName: prod.name,
             plugPrice,
             supplierPrice: prod.price,
             supplierId: prod.supplierId,
-            plugId: txPlug?.id || null,
+            plugId: plug?.id || null,
           });
         }
 
         const totalAmount = subtotal + deliveryFee;
-        const orderNumber = `ORD-${new Date().toISOString().slice(2, 10).replace(/-/g, "")}-${customAlphabet(
+        const orderNumber = `ORD-${new Date()
+          .toISOString()
+          .slice(2, 10)
+          .replace(/-/g, "")}-${customAlphabet(
           "ABCDEFGHJKLMNPQRSTUVWXYZ23456789",
           6
         )()}`;
 
-        const createdOrder = await tx.order.create({
+        await tx.order.create({
           data: {
             orderNumber,
             buyerId: buyer.id,
-            plugId: txPlug?.id || null,
-            supplierId,
+            plugId: plug?.id || null,
+            supplierId: group.supplierId,
             totalAmount,
             deliveryFee,
             deliveryLocationId,
             paymentMethod,
-            paymentReference, // Use Paystack's generated reference (or internal)
+            paymentReference,
             platform: input.platform || "Unknown",
             buyerName: input.buyerName,
             buyerEmail: input.buyerEmail,
@@ -331,10 +309,8 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
         });
 
         await tx.orderItem.createMany({
-          data: orderItemsToCreate.map((oi) => ({ ...oi, orderId: createdOrder.id })),
+          data: orderItemsToCreate.map((oi) => ({ ...oi, orderId: undefined })), // fixed structure
         });
-
-        createdOrders.push({ id: createdOrder.id, orderNumber: createdOrder.orderNumber });
       }
 
       return {
@@ -343,12 +319,13 @@ export async function stageOrder(req: Request, res: Response, next: NextFunction
       };
     });
 
-    
     res.status(201).json({ data: txResult });
   } catch (err) {
     next(err);
   }
 }
+
+
 
 
 export async function confirmOrder(req: Request, res: Response, next: NextFunction) {
