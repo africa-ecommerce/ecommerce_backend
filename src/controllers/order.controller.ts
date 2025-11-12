@@ -363,11 +363,10 @@ export async function confirmOrder(
       res.status(400).json({ error: "Invalid field data!" });
       return;
     }
-
     const { reference } = parsed.data;
 
     const result = await prisma.$transaction(async (tx) => {
-      // Find all staged orders for this payment reference
+      // Find all staged orders sharing this payment reference
       const stagedOrders = await tx.order.findMany({
         where: { paymentReference: reference, status: "STAGED" },
         include: {
@@ -379,15 +378,17 @@ export async function confirmOrder(
         },
       });
 
-      if (!stagedOrders.length)
+      if (!stagedOrders.length) {
+        // consistent error response inside transaction
         throw new Error("No staged orders found for reference");
+      }
 
-      // Separate online vs POD orders
+      // Separate online orders (to verify) from POD ones
       const onlineOrders = stagedOrders.filter(
         (o) => o.paymentMethod !== "P_O_D"
       );
 
-      // Verify paystack only if there are online orders
+      // If there are online orders, verify Paystack once
       if (onlineOrders.length > 0) {
         const totalOnline = onlineOrders.reduce(
           (sum, o) => sum + o.totalAmount,
@@ -396,17 +397,19 @@ export async function confirmOrder(
 
         const verifyRes = await fetch(
           `https://api.paystack.co/transaction/verify/${reference}`,
-          { headers: { Authorization: `Bearer ${paystackSecretKey}` } }
+          {
+            headers: { Authorization: `Bearer ${paystackSecretKey}` },
+          }
         );
-
         const verifyJson = await verifyRes.json();
+
         if (!verifyJson?.status) throw new Error("Payment verification failed");
         if (verifyJson.data.status !== "success")
           throw new Error("Payment was not successful");
 
+        // Paystack gives amount in kobo
         const paystackAmount = verifyJson.data.amount;
         const expectedAmount = Math.round(totalOnline * 100);
-
         if (paystackAmount !== expectedAmount) {
           throw new Error(
             `Payment amount mismatch: expected ${expectedAmount} kobo, got ${paystackAmount} kobo`
@@ -414,59 +417,60 @@ export async function confirmOrder(
         }
       }
 
-      // Process each staged order
+      // Process each staged order (both POD and online): set to PENDING, update DB, and create payments only for non-P_O_D
       for (const order of stagedOrders) {
+        // update status
         await tx.order.update({
           where: { id: order.id },
           data: { status: "PENDING" },
         });
 
-        // ---- Compute supplier payout ----
+        // Only create payment records for non-P_O_D orders
+        if (order.paymentMethod === "P_O_D") {
+          // Skip creating SupplierPayment / PlugPayment for pay-on-delivery orders
+          continue;
+        }
+
+        // compute supplier payout amount
+        // If it's a plug order (order.plugId exists), supplier payout should be based on supplierPrice * qty + deliveryFee
+        // If it's a direct supplier order (no plugId), the order.totalAmount already reflects supplier's amount (includes delivery)
         let supplierPayoutAmount = 0;
-
         if (order.plugId) {
-          // ✅ If it's a plug order, supplier gets only their product base prices (no markup)
-          supplierPayoutAmount = order.orderItems.reduce(
-            (sum, item) => sum + item.supplierPrice * item.quantity,
-            0
-          );
-
-          // 🔹 If the plug order was fulfilled by a supplier directly, 
-          // we still add the delivery fee for supplier payout
-          supplierPayoutAmount += order.deliveryFee || 0;
+          supplierPayoutAmount =
+            order.orderItems.reduce(
+              (sum, item) => sum + (item.supplierPrice ?? 0) * item.quantity,
+              0
+            ) + (order.deliveryFee ?? 0);
         } else {
-          // ✅ If supplier order directly, use the order.totalAmount (already supplier-based)
           supplierPayoutAmount = order.totalAmount;
         }
 
-        // --- Create SupplierPayment if missing ---
+        // Create SupplierPayment if not exists
         const existingSupplierPayment = await tx.supplierPayment.findFirst({
           where: { orderId: order.id, supplierId: order.supplierId! },
         });
-
         if (!existingSupplierPayment) {
           await tx.supplierPayment.create({
             data: {
               orderId: order.id,
               supplierId: order.supplierId!,
               amount: supplierPayoutAmount,
-              // status defaults to UNPAID
+              // status defaults to UNPAID per your schema
             },
           });
         }
 
-        // --- Create PlugPayment if applicable ---
+        // Create PlugPayment only if plugId exists (and order is not P_O_D, which we already checked)
         if (order.plugId) {
           const existingPlugPayment = await tx.plugPayment.findFirst({
             where: { orderId: order.id, plugId: order.plugId },
           });
-
           if (!existingPlugPayment) {
             await tx.plugPayment.create({
               data: {
                 orderId: order.id,
                 plugId: order.plugId,
-                amount: order.totalAmount, // plug’s revenue including markup
+                amount: order.totalAmount, // plug's revenue (includes markup & delivery if included)
                 // status defaults to UNPAID
               },
             });
@@ -474,7 +478,7 @@ export async function confirmOrder(
         }
       }
 
-      // Return store info for redirect or confirmation
+      // Build return info (businessName + storeUrl) from first order
       const first = stagedOrders[0];
       const businessName =
         first.plug?.businessName || first.supplier?.businessName || "";
@@ -491,11 +495,14 @@ export async function confirmOrder(
       message: "Orders confirmed successfully!",
       data: result,
     });
+    return;
   } catch (err) {
     console.error("ConfirmOrder Error:", err);
     next(err);
+    return;
   }
 }
+
 
 
 /**
